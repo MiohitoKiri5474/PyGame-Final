@@ -4,9 +4,15 @@
 
 **Blocked by:** 02 — Task queue + Gather task
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Expand Territory registered as a task type NPCs can be ranked for and can claim from the queue
-- [ ] Clicking a valid frontier tile (revealed-or-not, unclaimed) queues an Expand task targeting it
-- [ ] NPC with an assigned Expand task paths to the tile, spends work time on arrival, then reveals fog + claims tiles in the existing expand radius, task removed from queue, NPC returns to idle
-- [ ] Unit tests cover: full Expand task lifecycle updates grid claim/fog state as expected, task only queueable on a valid frontier tile (not on already-claimed tiles)
+- [x] Expand Territory registered as a task type NPCs can be ranked for and can claim from the queue
+- [x] Clicking a valid frontier tile (revealed-or-not, unclaimed) queues an Expand task targeting it
+- [x] NPC with an assigned Expand task paths to the tile, spends work time on arrival, then reveals fog + claims tiles in the existing expand radius, task removed from queue, NPC returns to idle
+- [x] Unit tests cover: full Expand task lifecycle updates grid claim/fog state as expected, task only queueable on a valid frontier tile (not on already-claimed tiles)
+
+**Implementation notes:**
+- Created `src/expand_task.py` based on the reference pattern of `gather_task.py`.
+- Task validity checks that the targeted tile is inbound and unclaimed, but does not strictly require it to be revealed, which is useful when working with game fog.
+- Configured expansion radius parameters and work seconds in `src/constants.py`.
+- Verified task queueing and lifecycle successfully claim tiles and reveal fog in `tests/test_expand_task.py`.
