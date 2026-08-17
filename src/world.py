@@ -13,6 +13,7 @@ class World:
         self.grid = Grid()
         self.inventory = Inventory()
         self.tasks = TaskQueue()
+        self.buildings: list = []
 
         center_x, center_y = self.grid.width // 2, self.grid.height // 2
         self.npcs: list[NPC] = [
