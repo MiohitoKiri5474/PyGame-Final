@@ -97,9 +97,34 @@ class Game:
                     self._cycle_selected_task_type()
                 elif event.key == pygame.K_p:
                     self.priority_ui.toggle()
+                elif event.key in (
+                    pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4,
+                    pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9,
+                    pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4,
+                    pygame.K_KP5, pygame.K_KP6, pygame.K_KP7, pygame.K_KP8, pygame.K_KP9,
+                ):
+                    self._select_task_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not self.priority_ui.visible:
                     self.handle_click(event.pos)
+
+    def _select_task_by_number(self, key: int) -> None:
+        key_map = {
+            pygame.K_1: 0, pygame.K_KP1: 0,
+            pygame.K_2: 1, pygame.K_KP2: 1,
+            pygame.K_3: 2, pygame.K_KP3: 2,
+            pygame.K_4: 3, pygame.K_KP4: 3,
+            pygame.K_5: 4, pygame.K_KP5: 4,
+            pygame.K_6: 5, pygame.K_KP6: 5,
+            pygame.K_7: 6, pygame.K_KP7: 6,
+            pygame.K_8: 7, pygame.K_KP8: 7,
+            pygame.K_9: 8, pygame.K_KP9: 8,
+        }
+        idx = key_map.get(key)
+        if idx is not None:
+            types = list(TASK_TYPES.keys())
+            if idx < len(types):
+                self.selected_task_type = types[idx]
 
     def _cycle_selected_task_type(self) -> None:
         types = list(TASK_TYPES.keys())
@@ -289,11 +314,18 @@ class Game:
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
         hover_info = self._hover_tile_info()
+
+        options_list = []
+        for i, t_name in enumerate(TASK_TYPES.keys(), start=1):
+            marker = "*" if t_name == self.selected_task_type else ""
+            options_list.append(f"[{i}] {t_name}{marker}")
+        options_str = "  ".join(options_list)
+
         lines = [
             f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
             f"NPCs alive: {len(self.world.npcs)}",
             "PAUSED" if self.paused else "",
-            f"Selected task: {self.selected_task_type or 'none'}  [Tab to cycle, P for Priority]",
+            f"Tasks: {options_str}  [Keys 1-{len(TASK_TYPES)} / Tab, P for Priority]",
             hover_info,
             *hud_lines(self.world),
         ]
