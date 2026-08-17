@@ -47,3 +47,20 @@ def test_update_does_nothing_when_no_path():
     npc = NPC(x=5.0, y=5.0)
     npc.update(1.0)
     assert (npc.x, npc.y) == (5.0, 5.0)
+
+
+def test_path_targeting_current_tile_arrives_on_first_update():
+    x, y = tile_center(3, 4)
+    npc = NPC(x=x, y=y)
+    npc.set_path([(3, 4)])
+    assert not npc.has_arrived
+    npc.update(1 / 60)
+    assert npc.has_arrived
+    assert (npc.x, npc.y) == (x, y)
+
+
+def test_new_npc_has_no_task_and_default_priority():
+    npc = NPC(x=0.0, y=0.0)
+    assert npc.task is None
+    assert npc.task_progress == 0.0
+    assert npc.priority is None

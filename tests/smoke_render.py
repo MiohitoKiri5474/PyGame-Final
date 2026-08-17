@@ -28,7 +28,7 @@ def main() -> None:
         game.render()
 
     assert game.cycle.round_number >= 1
-    assert len(game.npcs) > 0
+    assert len(game.world.npcs) > 0
     pygame.quit()
     print(f"smoke OK: {TICKS} ticks, phase={game.cycle.phase}, round={game.cycle.round_number}")
 

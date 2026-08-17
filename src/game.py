@@ -10,7 +10,6 @@ from constants import (
     TILE_SIZE,
     VIEWPORT_TILES_X,
     VIEWPORT_TILES_Y,
-    STARTING_NPC_COUNT,
     NPC_RADIUS,
     NEST_INITIAL_COUNT,
     COLOR_BG,
@@ -27,7 +26,6 @@ from constants import (
     COLOR_MONSTER,
     COLOR_NEST,
 )
-from grid import Grid
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY
@@ -36,6 +34,9 @@ from nest import NestManager, create_initial_nests
 from npc import NPC
 from monster import spawn_monster
 from pathfinding import find_path
+from task import TASK_TYPES, update_npc_tasks
+from extensions import hud_lines, render_overlays
+from world import World
 
 
 class Game:
@@ -46,23 +47,19 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
 
-        self.grid = Grid()
+        self.world = World()
         self.camera = Camera()
         self.cycle = DayNightCycle()
         self.paused = False
         self.running = True
 
-        center = (self.grid.width // 2, self.grid.height // 2)
-        self.npcs = [
-            NPC(*tile_center(center[0] + i - STARTING_NPC_COUNT // 2, center[1]))
-            for i in range(STARTING_NPC_COUNT)
-        ]
         self.selected_npc: NPC | None = None
+        self.selected_task_type: str | None = next(iter(TASK_TYPES), None)
 
         initial_nests = create_initial_nests(
-            self.grid.width, self.grid.height, NEST_INITIAL_COUNT, random.Random()
+            self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
         )
-        self.nest_manager = NestManager(self.grid.width, self.grid.height, initial_nests)
+        self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
         self.monsters = []
 
     def run(self) -> None:
@@ -82,8 +79,21 @@ class Game:
                     self.running = False
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
+                elif event.key == pygame.K_TAB:
+                    self._cycle_selected_task_type()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 self.handle_click(event.pos)
+
+    def _cycle_selected_task_type(self) -> None:
+        types = list(TASK_TYPES.keys())
+        if not types:
+            self.selected_task_type = None
+            return
+        if self.selected_task_type not in types:
+            self.selected_task_type = types[0]
+            return
+        next_index = (types.index(self.selected_task_type) + 1) % len(types)
+        self.selected_task_type = types[next_index]
 
     def handle_click(self, screen_pos: tuple[int, int]) -> None:
         world_x = screen_pos[0] + self.camera.x
@@ -95,24 +105,15 @@ class Game:
             return
 
         gx, gy = tile_at(world_x, world_y)
-        if not self.grid.in_bounds(gx, gy):
-            return
-        if self.selected_npc is None or not self.grid.get(gx, gy).claimed:
+        if not self.world.grid.in_bounds(gx, gy):
             return
 
-        start = tile_at(self.selected_npc.x, self.selected_npc.y)
-        path = find_path(
-            lambda x, y: self.grid.get(x, y).claimed,
-            self.grid.width,
-            self.grid.height,
-            start,
-            (gx, gy),
-        )
-        if path:
-            self.selected_npc.set_path(path)
+        task_type = TASK_TYPES.get(self.selected_task_type) if self.selected_task_type else None
+        if task_type is not None and task_type.can_queue(self.world, (gx, gy)):
+            self.world.tasks.add(self.selected_task_type, (gx, gy))
 
     def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
-        for npc in self.npcs:
+        for npc in self.world.npcs:
             if math.hypot(npc.x - wx, npc.y - wy) <= NPC_RADIUS * 1.5:
                 return npc
         return None
@@ -125,15 +126,14 @@ class Game:
 
         if not self.paused:
             self.cycle.update(dt)
-            for npc in self.npcs:
-                npc.update(dt)
+            update_npc_tasks(self.world, dt)
 
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
-                self.monsters.append(spawn_monster(tile, self.grid))
+                self.monsters.append(spawn_monster(tile, self.world.grid))
             for monster in self.monsters:
                 monster.update(dt)
 
-            resolve_combat(self.npcs, self.monsters)
+            resolve_combat(self.world.npcs, self.monsters)
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None
 
@@ -143,11 +143,12 @@ class Game:
         self.render_nests()
         self.render_npcs()
         self.render_monsters()
+        render_overlays(self.screen, self.world, self.camera)
         self.render_hud()
         pygame.display.flip()
 
     def render_npcs(self) -> None:
-        for npc in self.npcs:
+        for npc in self.world.npcs:
             screen_x = int(npc.x - self.camera.x)
             screen_y = int(npc.y - self.camera.y)
             pygame.draw.circle(self.screen, COLOR_NPC, (screen_x, screen_y), NPC_RADIUS)
@@ -162,7 +163,7 @@ class Game:
 
     def render_nests(self) -> None:
         for nest in self.nest_manager.nests:
-            if not self.grid.get(nest.x, nest.y).revealed:
+            if not self.world.grid.get(nest.x, nest.y).revealed:
                 continue
             screen_x = nest.x * TILE_SIZE - self.camera.x
             screen_y = nest.y * TILE_SIZE - self.camera.y
@@ -173,10 +174,11 @@ class Game:
         cam_x, cam_y = self.camera.x, self.camera.y
         start_col = cam_x // TILE_SIZE
         start_row = cam_y // TILE_SIZE
+        grid = self.world.grid
 
-        for row in range(start_row, min(self.grid.height, start_row + VIEWPORT_TILES_Y + 2)):
-            for col in range(start_col, min(self.grid.width, start_col + VIEWPORT_TILES_X + 2)):
-                tile = self.grid.get(col, row)
+        for row in range(start_row, min(grid.height, start_row + VIEWPORT_TILES_Y + 2)):
+            for col in range(start_col, min(grid.width, start_col + VIEWPORT_TILES_X + 2)):
+                tile = grid.get(col, row)
                 screen_x = col * TILE_SIZE - cam_x
                 screen_y = row * TILE_SIZE - cam_y
                 rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
@@ -198,6 +200,8 @@ class Game:
         lines = [
             f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
             "PAUSED" if self.paused else "",
+            f"Selected task: {self.selected_task_type or 'none'}  [Tab to cycle]",
+            *hud_lines(self.world),
         ]
         y = 8
         for i, text in enumerate(lines):

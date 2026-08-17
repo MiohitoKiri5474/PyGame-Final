@@ -5,7 +5,13 @@ DEFAULT_SPEED = 120.0  # pixels/sec
 
 
 class NPC:
-    def __init__(self, x: float, y: float, speed: float = DEFAULT_SPEED):
+    def __init__(
+        self,
+        x: float,
+        y: float,
+        speed: float = DEFAULT_SPEED,
+        priority: list[str] | None = None,
+    ):
         self.x = x
         self.y = y
         self.speed = speed
@@ -13,6 +19,9 @@ class NPC:
         self.health = NPC_MAX_HEALTH
         self.attack = NPC_ATTACK
         self.defense = NPC_DEFENSE
+        self.priority = priority  # None = fall back to task-type registration order
+        self.task = None  # set by task.update_npc_tasks; typed loosely to avoid a task.py<->npc.py import cycle
+        self.task_progress = 0.0
 
     @property
     def has_arrived(self) -> bool:

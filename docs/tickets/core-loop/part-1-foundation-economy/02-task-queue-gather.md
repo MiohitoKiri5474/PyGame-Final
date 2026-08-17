@@ -4,13 +4,15 @@
 
 **Blocked by:** 01 — NPC entity + pathfinding + render
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Task representation: type, target tile, assigned NPC (or unassigned), progress
-- [ ] Global task queue holds unassigned and in-progress tasks; tasks are removed on completion
-- [ ] Per-NPC priority ranking data structure exists (ordered list of task types), even with only Gather registered so far
-- [ ] Idle-NPC claim algorithm: NPC with no task scans the queue, picks the highest-ranked available task type per its own ranking, assigns itself
-- [ ] Clicking a resource tile queues a Gather task targeting it
-- [ ] NPC with an assigned Gather task paths to the tile, spends gather time on arrival, then: resource cleared from tile, inventory credited, task removed from queue, NPC returns to idle
-- [ ] Shared inventory module: resource type → count, with an add operation
-- [ ] Unit tests cover: idle-claim picks correctly by priority ranking with multiple queued tasks, full Gather task lifecycle (queued → assigned → walking → gathering → complete) updates tile/inventory/queue state as expected, inventory add is correct and cumulative
+- [x] Task representation: type, target tile, assigned NPC (or unassigned), progress
+- [x] Global task queue holds unassigned and in-progress tasks; tasks are removed on completion
+- [x] Per-NPC priority ranking data structure exists (ordered list of task types), even with only Gather registered so far
+- [x] Idle-NPC claim algorithm: NPC with no task scans the queue, picks the highest-ranked available task type per its own ranking, assigns itself
+- [x] Clicking a resource tile queues a Gather task targeting it
+- [x] NPC with an assigned Gather task paths to the tile, spends gather time on arrival, then: resource cleared from tile, inventory credited, task removed from queue, NPC returns to idle
+- [x] Shared inventory module: resource type → count, with an add operation
+- [x] Unit tests cover: idle-claim picks correctly by priority ranking with multiple queued tasks, full Gather task lifecycle (queued → assigned → walking → gathering → complete) updates tile/inventory/queue state as expected, inventory add is correct and cumulative
+
+**Implementation notes:** built a task-type registry (`task.py`: `TaskType`/`register_task_type`/`TASK_TYPES`) rather than hardcoding Gather, plus `World` (pygame-free grid+inventory+npcs+tasks bundle) and three extension points on `game.py` (task-type registration via `plugins.py`, `extensions.register_overlay`, `extensions.register_hud_line`) — this is prep for 03/04/10 landing in parallel without editing `game.py`; see CLAUDE.md's "Extending the task/render system" section. `Grid.expand()` was also fixed to decouple fog-reveal radius from claim radius (separate commit), since 03's frontier-tile targeting needs a revealed-but-unclaimed band that didn't exist before. Task-type selection in-game is Tab-cycle (no per-task-type hotkeys), since a click-menu wasn't in scope here and building's Wall-vs-Tower choice (04) will reuse the same mechanism.
