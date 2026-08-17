@@ -1,5 +1,11 @@
 from blocking import is_wall_blocked
-from constants import MONSTER_ATTACK, MONSTER_DEFENSE, MONSTER_MAX_HEALTH, MONSTER_SPEED
+from constants import (
+    FIRE_BURN_TICK_INTERVAL,
+    MONSTER_ATTACK,
+    MONSTER_DEFENSE,
+    MONSTER_MAX_HEALTH,
+    MONSTER_SPEED,
+)
 from coords import tile_center
 from movement import step_toward_path
 from pathfinding import find_path
@@ -14,6 +20,9 @@ class Monster:
         self.health = MONSTER_MAX_HEALTH
         self.attack = MONSTER_ATTACK
         self.defense = MONSTER_DEFENSE
+        self.burn_ticks_remaining = 0
+        self.burn_damage_per_tick = 0
+        self.burn_tick_timer = 0.0
 
     @property
     def has_arrived(self) -> bool:
@@ -26,7 +35,26 @@ class Monster:
     def set_path(self, path: list[tuple[int, int]]) -> None:
         self.path = list(path)
 
+    def apply_burn(self, damage_per_tick: int, ticks: int) -> None:
+        self.burn_damage_per_tick = damage_per_tick
+        self.burn_ticks_remaining = ticks
+        self.burn_tick_timer = 0.0
+
+    def _tick_burn(self, dt: float) -> None:
+        # Same "accumulate dt, fire at interval, reset to 0" shape as
+        # DayNightCycle.update/Nest.update - a stalled frame just delays the
+        # next tick by that same amount rather than catching up multiple
+        # ticks at once, matching how those two already behave.
+        if self.burn_ticks_remaining <= 0:
+            return
+        self.burn_tick_timer += dt
+        if self.burn_tick_timer >= FIRE_BURN_TICK_INTERVAL:
+            self.burn_tick_timer = 0.0
+            self.health -= self.burn_damage_per_tick
+            self.burn_ticks_remaining -= 1
+
     def update(self, dt: float) -> None:
+        self._tick_burn(dt)
         self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
 
 

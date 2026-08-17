@@ -63,6 +63,61 @@ def test_monster_is_dead_at_zero_health():
     assert monster.is_dead
 
 
+class TestBurn:
+    def test_apply_burn_sets_state(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_burn(damage_per_tick=5, ticks=3)
+        assert monster.burn_ticks_remaining == 3
+        assert monster.burn_damage_per_tick == 5
+
+    def test_burn_deals_damage_once_per_second(self):
+        monster = Monster(x=0.0, y=0.0)
+        start_health = monster.health
+        monster.apply_burn(damage_per_tick=5, ticks=3)
+
+        monster.update(0.5)
+        assert monster.health == start_health  # under 1s, no tick yet
+
+        monster.update(0.5)  # crosses the 1.0s mark
+        assert monster.health == start_health - 5
+        assert monster.burn_ticks_remaining == 2
+
+    def test_burn_deals_total_damage_over_full_duration(self):
+        monster = Monster(x=0.0, y=0.0)
+        start_health = monster.health
+        monster.apply_burn(damage_per_tick=5, ticks=3)
+
+        for _ in range(4):  # 4 seconds, generous margin over the 3 ticks
+            monster.update(1.0)
+
+        assert monster.health == start_health - 15  # 3 ticks * 5
+        assert monster.burn_ticks_remaining == 0
+
+    def test_burn_expires_and_stops_dealing_damage(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_burn(damage_per_tick=5, ticks=1)
+        monster.update(1.0)
+        health_after_expiry = monster.health
+
+        monster.update(5.0)  # well past expiry
+        assert monster.health == health_after_expiry
+
+    def test_no_burn_by_default(self):
+        monster = Monster(x=0.0, y=0.0)
+        start_health = monster.health
+        monster.update(10.0)
+        assert monster.health == start_health
+
+    def test_burn_does_not_error_when_monster_dies_mid_burn(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.health = 3
+        monster.apply_burn(damage_per_tick=5, ticks=3)
+        monster.update(1.0)  # first tick drops health below zero
+        assert monster.is_dead
+        monster.update(1.0)  # must not raise even though "dead"
+        assert monster.burn_ticks_remaining == 1
+
+
 class _Building:
     def __init__(self, type_: str, x: int, y: int):
         self.type = type_

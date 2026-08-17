@@ -1,5 +1,15 @@
-from constants import LIGHTNING_COOLDOWN, LIGHTNING_DAMAGE, ROLE_MAGE
-from magic import Spellbook, cast_lightning, nearest_monster_to_territory
+from constants import (
+    COLOR_FIRE_FLASH,
+    COLOR_LIGHTNING_FLASH,
+    FIRE_BURN_DAMAGE_PER_TICK,
+    FIRE_BURN_TICKS,
+    FIRE_COOLDOWN,
+    FIRE_DAMAGE,
+    LIGHTNING_COOLDOWN,
+    LIGHTNING_DAMAGE,
+    ROLE_MAGE,
+)
+from magic import Spellbook, cast_fire, cast_lightning, nearest_monster_to_territory
 from monster import Monster
 from npc import NPC
 from world import World
@@ -88,6 +98,7 @@ def test_cast_lightning_succeeds_damages_nearest_and_starts_cooldown():
     assert near.health == start_health - LIGHTNING_DAMAGE
     assert far.health == far.health  # untouched
     assert world.spellbook.remaining("Lightning") == LIGHTNING_COOLDOWN
+    assert world.spellbook.flash_color == COLOR_LIGHTNING_FLASH
 
 
 def test_cast_lightning_ignores_dead_mage():
@@ -97,3 +108,59 @@ def test_cast_lightning_ignores_dead_mage():
     world.npcs.append(dead_mage)
     monster = Monster(0.0, 0.0)
     assert cast_lightning(world, [monster]) is False
+
+
+def test_cast_fire_fails_on_cooldown():
+    world = _world_with_mage()
+    monster = Monster(0.0, 0.0)
+    world.spellbook.start_cooldown("Fire", 5.0)
+    assert cast_fire(world, [monster]) is False
+
+
+def test_cast_fire_fails_without_a_living_mage():
+    world = World(npc_count=0)
+    monster = Monster(0.0, 0.0)
+    assert cast_fire(world, [monster]) is False
+
+
+def test_cast_fire_fails_with_no_monsters():
+    world = _world_with_mage()
+    assert cast_fire(world, []) is False
+
+
+def test_cast_fire_deals_immediate_damage_and_applies_burn():
+    world = _world_with_mage()
+    from coords import tile_center
+
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    target = Monster(*tile_center(cx + 6, cy))
+    start_health = target.health
+
+    assert cast_fire(world, [target]) is True
+    assert target.health == start_health - FIRE_DAMAGE
+    assert target.burn_ticks_remaining == FIRE_BURN_TICKS
+    assert target.burn_damage_per_tick == FIRE_BURN_DAMAGE_PER_TICK
+    assert world.spellbook.remaining("Fire") == FIRE_COOLDOWN
+    assert world.spellbook.flash_color == COLOR_FIRE_FLASH
+
+
+def test_cast_fire_total_damage_includes_burn_dot():
+    world = _world_with_mage()
+    monster = Monster(0.0, 0.0)
+    start_health = monster.health
+
+    cast_fire(world, [monster])
+    for _ in range(FIRE_BURN_TICKS):
+        monster.update(1.0)
+
+    expected_total = FIRE_DAMAGE + FIRE_BURN_TICKS * FIRE_BURN_DAMAGE_PER_TICK
+    assert monster.health == start_health - expected_total
+
+
+def test_fire_and_lightning_cooldowns_are_independent():
+    world = _world_with_mage()
+    monster = Monster(0.0, 0.0)
+    assert cast_lightning(world, [monster]) is True
+    assert cast_fire(world, [monster]) is True  # not blocked by Lightning's cooldown
+    assert not world.spellbook.is_ready("Lightning")
+    assert not world.spellbook.is_ready("Fire")

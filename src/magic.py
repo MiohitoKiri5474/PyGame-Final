@@ -1,8 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
-from constants import LIGHTNING_COOLDOWN, LIGHTNING_DAMAGE, MAGIC_FLASH_DURATION, ROLE_MAGE
+from constants import (
+    COLOR_FIRE_FLASH,
+    COLOR_LIGHTNING_FLASH,
+    FIRE_BURN_DAMAGE_PER_TICK,
+    FIRE_BURN_TICKS,
+    FIRE_COOLDOWN,
+    FIRE_DAMAGE,
+    LIGHTNING_COOLDOWN,
+    LIGHTNING_DAMAGE,
+    MAGIC_FLASH_DURATION,
+    ROLE_MAGE,
+)
 from coords import tile_at
 from extensions import register_hud_line, register_tick
 from monster import nearest_claimed_tile
@@ -21,6 +32,7 @@ class Spellbook:
         self.cooldowns: dict[str, float] = dict(cooldowns) if cooldowns else {}
         self.flash_position: tuple[float, float] | None = None
         self.flash_timer: float = 0.0
+        self.flash_color: tuple[int, int, int] | None = None
 
     def remaining(self, spell: str) -> float:
         return self.cooldowns.get(spell, 0.0)
@@ -31,9 +43,12 @@ class Spellbook:
     def start_cooldown(self, spell: str, seconds: float) -> None:
         self.cooldowns[spell] = seconds
 
-    def trigger_flash(self, position: tuple[float, float], duration: float) -> None:
+    def trigger_flash(
+        self, position: tuple[float, float], duration: float, color: tuple[int, int, int]
+    ) -> None:
         self.flash_position = position
         self.flash_timer = duration
+        self.flash_color = color
 
     def tick(self, dt: float) -> None:
         for spell in list(self.cooldowns):
@@ -59,11 +74,22 @@ def _has_living_mage(world: "World") -> bool:
     return any(npc.role == ROLE_MAGE and not npc.is_dead for npc in world.npcs)
 
 
-def cast_lightning(world: "World", monsters: list["Monster"]) -> bool:
-    """Colony-wide cast: castable whenever off-cooldown and a living Mage
-    exists, regardless of that Mage's position - auto-targets the nearest
-    monster to territory. Silent no-op (no wasted cooldown) otherwise."""
-    if not world.spellbook.is_ready("Lightning"):
+def _cast_single_target_spell(
+    world: "World",
+    monsters: list["Monster"],
+    spell: str,
+    damage: int,
+    cooldown: float,
+    color: tuple[int, int, int],
+    on_hit: Callable[["Monster"], None] | None = None,
+) -> bool:
+    """Shared scaffolding for single-target spells: ready-check, living-Mage
+    check, nearest-target lookup, damage, cooldown, flash. Castable whenever
+    off-cooldown and a living Mage exists, regardless of that Mage's
+    position - auto-targets the nearest monster to territory. Silent no-op
+    (no wasted cooldown) otherwise. `on_hit` applies any effect beyond flat
+    damage (e.g. Fire's burn)."""
+    if not world.spellbook.is_ready(spell):
         return False
     if not _has_living_mage(world):
         return False
@@ -71,10 +97,30 @@ def cast_lightning(world: "World", monsters: list["Monster"]) -> bool:
     if target is None:
         return False
 
-    target.health -= LIGHTNING_DAMAGE
-    world.spellbook.start_cooldown("Lightning", LIGHTNING_COOLDOWN)
-    world.spellbook.trigger_flash((target.x, target.y), MAGIC_FLASH_DURATION)
+    target.health -= damage
+    if on_hit is not None:
+        on_hit(target)
+    world.spellbook.start_cooldown(spell, cooldown)
+    world.spellbook.trigger_flash((target.x, target.y), MAGIC_FLASH_DURATION, color)
     return True
+
+
+def cast_lightning(world: "World", monsters: list["Monster"]) -> bool:
+    return _cast_single_target_spell(
+        world, monsters, "Lightning", LIGHTNING_DAMAGE, LIGHTNING_COOLDOWN, COLOR_LIGHTNING_FLASH
+    )
+
+
+def cast_fire(world: "World", monsters: list["Monster"]) -> bool:
+    """Immediate damage plus a burn DoT applied directly on the target
+    Monster (ticked in Monster.update itself, not via
+    extensions.register_tick: monsters live on Game, not World, so the
+    register_tick hook - which only ever receives (world, dt) - has no way
+    to reach them)."""
+    return _cast_single_target_spell(
+        world, monsters, "Fire", FIRE_DAMAGE, FIRE_COOLDOWN, COLOR_FIRE_FLASH,
+        on_hit=lambda target: target.apply_burn(FIRE_BURN_DAMAGE_PER_TICK, FIRE_BURN_TICKS),
+    )
 
 
 def _tick_magic(world: "World", dt: float) -> None:
@@ -82,10 +128,12 @@ def _tick_magic(world: "World", dt: float) -> None:
 
 
 def _magic_hud_line(world: "World") -> str:
-    remaining = world.spellbook.remaining("Lightning")
-    if remaining <= 0:
-        return "Lightning: ready [W]"
-    return f"Lightning: {remaining:.0f}s [W]"
+    parts = []
+    for spell, hotkey in (("Lightning", "W"), ("Fire", "Q")):
+        remaining = world.spellbook.remaining(spell)
+        status = "ready" if remaining <= 0 else f"{remaining:.0f}s"
+        parts.append(f"{spell}: {status} [{hotkey}]")
+    return "  ".join(parts)
 
 
 register_tick(_tick_magic)

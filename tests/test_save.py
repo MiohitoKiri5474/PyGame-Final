@@ -49,6 +49,7 @@ def _build_nontrivial_state():
     monster = Monster(300.0, 400.0)
     monster.set_path([(9, 9), (10, 10)])
     monster.health = 17
+    monster.apply_burn(damage_per_tick=5, ticks=2)  # burn_tick_timer not persisted, deliberately
 
     game_over_state = GameOverState()
 
@@ -103,6 +104,8 @@ def test_round_trip_preserves_specific_field_values(tmp_path):
     assert loaded_nests.nests[0].spawn_timer == 3.25
     assert loaded_cycle.timer == 12.5
     assert loaded_monsters[0].health == 17
+    assert loaded_monsters[0].burn_ticks_remaining == 2
+    assert loaded_monsters[0].burn_damage_per_tick == 5
     assert l_points == 4
     assert l_killed == 3
     assert loaded_world.spellbook.remaining("Lightning") == 13.5
