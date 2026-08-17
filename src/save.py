@@ -57,6 +57,7 @@ def dump_state(
         "game_over": {"is_over": game_over_state.is_over, "score": game_over_state.score},
         "skill_points_available": skill_points_available,
         "monsters_killed_this_night": monsters_killed_this_night,
+        "spell_cooldowns": dict(world.spellbook.cooldowns) if hasattr(world, "spellbook") else {},
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
         "buildings": [
@@ -98,10 +99,14 @@ def dump_state(
                 "x": m.x,
                 "y": m.y,
                 "speed": m.speed,
+                "type": m.type,
                 "path": [list(p) for p in m.path],
                 "health": m.health,
                 "attack": m.attack,
                 "defense": m.defense,
+                "burn_remaining": m.burn_remaining,
+                "burn_dps": m.burn_dps,
+                "frozen_timer": m.frozen_timer,
             }
             for m in monsters
         ],
@@ -134,6 +139,10 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         Building(type=b["type"], x=b["x"], y=b["y"], block=b["block"], attack=b["attack"])
         for b in data["buildings"]
     ]
+
+    from magic import Spellbook
+    world.spellbook = Spellbook()
+    world.spellbook.cooldowns = data.get("spell_cooldowns", {})
 
     tasks = [Task(type=t["type"], target=tuple(t["target"])) for t in data["tasks"]]
     world.tasks = TaskQueue()
@@ -183,12 +192,16 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
 
     monsters = []
     for md in data["monsters"]:
-        monster = Monster(md["x"], md["y"], speed=md["speed"])
+        monster = Monster(md["x"], md["y"], speed=md["speed"], type=md.get("type"))
         monster.path = [tuple(p) for p in md["path"]]
         monster.health = md["health"]
         monster.attack = md["attack"]
         monster.defense = md["defense"]
+        monster.burn_remaining = md.get("burn_remaining", 0.0)
+        monster.burn_dps = md.get("burn_dps", 0.0)
+        monster.frozen_timer = md.get("frozen_timer", 0.0)
         monsters.append(monster)
+
 
     return (
         world,

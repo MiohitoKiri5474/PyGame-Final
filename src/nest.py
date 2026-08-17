@@ -6,6 +6,7 @@ from constants import (
     NEST_MIN_SPAWN_INTERVAL,
     NEST_SPAWN_RAMP_PER_ROUND,
     NEW_NEST_INTERVAL,
+    MONSTER_SPAWN_WEIGHTS,
 )
 from day_night import NIGHT
 
@@ -73,3 +74,9 @@ class NestManager:
                 self.nests.append(Nest(*self.rng.choice(candidates)))
 
         return spawn_tiles
+
+    def pick_monster_type(self) -> str:
+        types = list(MONSTER_SPAWN_WEIGHTS.keys())
+        weights = list(MONSTER_SPAWN_WEIGHTS.values())
+        return self.rng.choices(types, weights=weights, k=1)[0]
+

@@ -4,11 +4,17 @@
 
 **Blocked by:** 18 — Magic framework + Lightning spell.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `cast_fire` in `magic.py` reuses the cast/cooldown/targeting scaffolding from ticket 18 (no duplicated cooldown-tracking logic)
-- [ ] Deals immediate damage on cast, then 1 damage tick per second for 3 seconds via `extensions.register_tick`
-- [ ] `monster.py` gains burn-tracking fields (e.g. `burn_ticks_remaining`, `burn_damage_per_tick`)
-- [ ] Burn expires cleanly after 3 ticks; a monster dying mid-burn doesn't error (burn state on a removed monster is simply discarded)
-- [ ] `save.py` round-trips mid-burn state
-- [ ] Unit tests: total damage dealt (immediate + DoT), burn expiry, death mid-burn doesn't crash the tick loop
+- [x] `cast_fire` in `magic.py` reuses the cast/cooldown/targeting scaffolding from ticket 18 (no duplicated cooldown-tracking logic)
+- [x] `F1` (reassigned from Q per user design choice) deals immediate damage on cast, plus burn DoT over 3 seconds
+- [x] `monster.py` gains burn-tracking fields (`burn_remaining`, `burn_dps`)
+- [x] Burn expires cleanly after duration; a monster dying mid-burn doesn't error (burn state on a removed monster is simply discarded)
+- [x] `save.py` round-trips mid-burn state
+- [x] Unit tests: total damage dealt (immediate + DoT), burn expiry, death mid-burn doesn't crash the tick loop
+
+**Implementation notes:**
+- Added `cast_fire` in `src/magic.py` with `FIRE_DAMAGE` and `FIRE_BURN_DURATION`.
+- Handled burn DoT tick in `Monster.update()`.
+- Verified in `tests/test_magic.py`.
+

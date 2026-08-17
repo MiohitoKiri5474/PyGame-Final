@@ -146,3 +146,52 @@ RESOURCE_WEIGHTS = {
     "berries": 0.02,
     "raw_stone": 0.02,
 }
+
+# --- Magic Spells (tickets 18, 19, 20) ---
+LIGHTNING_DAMAGE = 30
+LIGHTNING_COOLDOWN = 20.0
+
+FIRE_DAMAGE = 15
+FIRE_COOLDOWN = 15.0
+FIRE_BURN_DPS = 5.0
+FIRE_BURN_DURATION = 3.0
+
+FREEZE_COOLDOWN = 25.0
+FREEZE_DURATION = 4.0
+FREEZE_RADIUS = 1  # 3x3 tiles centered on target
+
+# --- Monster Variety (ticket 21) ---
+MONSTER_WEREWOLF = "Werewolf"
+MONSTER_VAMPIRE = "Vampire"
+MONSTER_ZOMBIE = "Zombie"
+
+MONSTER_STATS = {
+    MONSTER_WEREWOLF: {
+        "speed": 80.0,
+        "max_health": 50,
+        "attack": 14,
+        "defense": 2,
+        "life_steal": False,
+    },
+    MONSTER_VAMPIRE: {
+        "speed": 70.0,
+        "max_health": 40,
+        "attack": 12,
+        "defense": 3,
+        "life_steal": True,
+    },
+    MONSTER_ZOMBIE: {
+        "speed": 40.0,
+        "max_health": 90,
+        "attack": 8,
+        "defense": 4,
+        "life_steal": False,
+    },
+}
+
+MONSTER_SPAWN_WEIGHTS = {
+    MONSTER_WEREWOLF: 4,
+    MONSTER_VAMPIRE: 3,
+    MONSTER_ZOMBIE: 3,
+}
+

@@ -19,8 +19,13 @@ def resolve_combat(npcs: list, monsters: list, buildings=()) -> None:
     for npc in npcs:
         for monster in monsters:
             if _within(npc.x, npc.y, monster.x, monster.y, npc.combat_range):
-                monster.health -= max(COMBAT_MIN_DAMAGE, npc.attack - monster.defense)
-                npc.health -= max(COMBAT_MIN_DAMAGE, monster.attack - npc.defense)
+                npc_dmg = max(COMBAT_MIN_DAMAGE, npc.attack - monster.defense)
+                monster_dmg = max(COMBAT_MIN_DAMAGE, monster.attack - npc.defense)
+                monster.health -= npc_dmg
+                npc.health -= monster_dmg
+                if getattr(monster, "life_steal", False):
+                    max_hp = getattr(monster, "max_health", 40)
+                    monster.health = min(max_hp, monster.health + monster_dmg)
 
     for building in buildings:
         if building.type != "Tower":

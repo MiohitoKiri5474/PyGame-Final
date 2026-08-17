@@ -42,10 +42,12 @@ from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
 from coords import tile_at, tile_center
 from game_over import GameOverState
+from magic import cast_fire, cast_lightning, cast_freeze
 from nest import NestManager, create_initial_nests
 from npc import NPC
 from monster import spawn_monster
 from pathfinding import find_path
+from render_magic import trigger_vfx
 from settlement import evaluate_wave
 from task import TASK_TYPES, update_npc_tasks
 from extensions import hud_lines, render_overlays, run_ticks
@@ -125,6 +127,18 @@ class Game:
                     self._cycle_selected_task_type()
                 elif event.key == pygame.K_p:
                     self.priority_ui.toggle()
+                elif event.key == pygame.K_F1:
+                    res = cast_fire(self.world.spellbook, self.world, self.monsters)
+                    if res is not None:
+                        trigger_vfx(res.x, res.y, "fire")
+                elif event.key == pygame.K_F2:
+                    res = cast_lightning(self.world.spellbook, self.world, self.monsters)
+                    if res is not None:
+                        trigger_vfx(res.x, res.y, "lightning")
+                elif event.key == pygame.K_F3:
+                    affected = cast_freeze(self.world.spellbook, self.world, self.monsters)
+                    for m in affected:
+                        trigger_vfx(m.x, m.y, "freeze")
                 elif event.key in (
                     pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4,
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9,
@@ -204,9 +218,15 @@ class Game:
             run_ticks(self.world, dt)
 
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
-                self.monsters.append(spawn_monster(tile, self.world.grid, self.world.buildings))
+                m_type = self.nest_manager.pick_monster_type()
+                self.monsters.append(spawn_monster(tile, self.world.grid, self.world.buildings, monster_type=m_type))
             for monster in self.monsters:
                 monster.update(dt)
+
+            # Count and clean monsters killed by DoT/spells before melee combat
+            dead_from_effects = sum(1 for m in self.monsters if m.is_dead)
+            self._monsters_killed_this_night += dead_from_effects
+            self.monsters[:] = [m for m in self.monsters if not m.is_dead]
 
             monster_count_before_combat = len(self.monsters)
             resolve_combat(self.world.npcs, self.monsters, self.world.buildings)

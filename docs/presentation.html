@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medievil — 遊戲發表會</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --bg-dark: #08090d;
+    --bg-slide: #0e1018;
+    --bg-card: rgba(20, 22, 32, 0.85);
+    --accent-gold: #d4a843;
+    --accent-warm: #e8c05a;
+    --accent-fire: #e06838;
+    --text-primary: #eae8e0;
+    --text-secondary: #a8a6a0;
+    --text-dim: #605e58;
+    --red: #c84040;
+    --green: #68b858;
+    --blue: #4888c8;
+    --night-blue: #3848a0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+  }
+
+  /* ── Slide Container ── */
+  .slides-wrapper { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
+
+  .slide {
+    width: 100vw; height: 100vh;
+    display: none; flex-direction: column; justify-content: center; align-items: center;
+    padding: 60px 80px;
+    position: absolute; top: 0; left: 0;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    background-size: cover;
+    background-position: center;
+  }
+  .slide.active { display: flex; opacity: 1; }
+
+  /* Atmospheric background layer */
+  .slide::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 40%, rgba(212,168,67,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(192,64,64,0.03) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .slide > * { position: relative; z-index: 1; }
+
+  /* ── Typography ── */
+  .slide-number {
+    position: absolute; bottom: 24px; right: 40px;
+    font-size: 13px; color: var(--text-dim); letter-spacing: 3px; font-variant-numeric: tabular-nums;
+  }
+
+  .medieval { font-family: 'Cinzel', serif; }
+
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 80px; font-weight: 900;
+    letter-spacing: 6px; line-height: 1.05;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, #f0d870 0%, #c89830 50%, #a07020 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 4px 12px rgba(200,160,40,0.3));
+  }
+
+  h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 44px; font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 28px;
+    color: var(--text-primary);
+  }
+  h2 .gold {
+    background: linear-gradient(180deg, #f0d870, #b88828);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  h3 {
+    font-size: 20px; font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--accent-warm);
+    letter-spacing: 0.5px;
+  }
+
+  .tagline {
+    font-size: 24px; color: var(--text-secondary);
+    font-weight: 300; letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 16px;
+  }
+
+  .big-quote {
+    font-size: 32px; font-weight: 300;
+    color: var(--text-secondary);
+    font-style: italic;
+    line-height: 1.6;
+    max-width: 800px;
+    text-align: center;
+  }
+  .big-quote em {
+    color: var(--accent-warm);
+    font-weight: 600;
+    font-style: normal;
+  }
+
+  p, li { font-size: 17px; line-height: 1.8; color: var(--text-secondary); }
+  ul { list-style: none; padding-left: 0; }
+  ul li { margin-bottom: 10px; padding-left: 20px; position: relative; }
+  ul li::before {
+    content: '⬦';
+    color: var(--accent-gold);
+    position: absolute; left: 0;
+    font-size: 10px; top: 5px;
+  }
+
+  /* ── Layout ── */
+  .content { max-width: 1100px; width: 100%; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; width: 100%; max-width: 1100px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; width: 100%; max-width: 1100px; }
+
+  .card {
+    background: var(--bg-card);
+    border-radius: 14px;
+    padding: 30px 28px;
+    border: 1px solid rgba(212,168,67,0.08);
+    backdrop-filter: blur(8px);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(212,168,67,0.2);
+  }
+
+  /* ── Feature Pill ── */
+  .feature-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(212,168,67,0.08);
+    border: 1px solid rgba(212,168,67,0.15);
+    border-radius: 100px;
+    padding: 6px 18px 6px 12px;
+    font-size: 14px; font-weight: 500;
+    color: var(--accent-warm);
+    margin: 4px 4px;
+  }
+  .feature-pill .icon { font-size: 18px; }
+
+  /* ── Cinematic bars ── */
+  .cinema-top, .cinema-bottom {
+    position: absolute; left: 0; right: 0;
+    height: 40px;
+    background: #000;
+    z-index: 10;
+  }
+  .cinema-top { top: 0; }
+  .cinema-bottom { bottom: 0; }
+
+  /* ── Dramatic divider ── */
+  .divider-fancy {
+    display: flex; align-items: center; gap: 16px;
+    margin: 20px 0 32px;
+    width: 200px;
+  }
+  .divider-fancy::before, .divider-fancy::after {
+    content: '';
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+  }
+  .divider-fancy .gem {
+    width: 8px; height: 8px;
+    background: var(--accent-gold);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th {
+    text-align: left; font-size: 12px; font-weight: 600;
+    color: var(--accent-gold); text-transform: uppercase;
+    letter-spacing: 2px; padding: 10px 14px;
+    border-bottom: 1px solid rgba(212,168,67,0.12);
+  }
+  td {
+    font-size: 15px; padding: 11px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: var(--text-secondary);
+  }
+  tr:hover td { background: rgba(212,168,67,0.03); }
+
+  /* ── Key badges ── */
+  kbd {
+    display: inline-block;
+    background: rgba(40,38,35,0.9);
+    border: 1px solid rgba(212,168,67,0.2);
+    border-bottom: 2px solid rgba(212,168,67,0.3);
+    border-radius: 5px;
+    padding: 2px 9px;
+    font-size: 13px;
+    font-family: 'Inter', monospace;
+    font-weight: 600;
+    color: var(--accent-warm);
+    margin: 0 1px;
+  }
+
+  /* ── Dramatic number ── */
+  .hero-stat {
+    text-align: center;
+    padding: 20px;
+  }
+  .hero-stat .num {
+    font-family: 'Cinzel', serif;
+    font-size: 56px; font-weight: 900;
+    background: linear-gradient(180deg, #f0d870, #a07020);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    line-height: 1;
+  }
+  .hero-stat .lbl {
+    font-size: 13px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 2px;
+    margin-top: 8px;
+  }
+
+  /* ── Phase timeline ── */
+  .timeline {
+    display: flex; align-items: stretch; gap: 0;
+    width: 100%; max-width: 1000px;
+    margin: 32px 0;
+  }
+  .timeline-item {
+    flex: 1;
+    text-align: center;
+    padding: 24px 16px;
+    position: relative;
+    border-top: 3px solid var(--text-dim);
+    transition: border-color 0.3s;
+  }
+  .timeline-item:hover { border-color: var(--accent-gold); }
+  .timeline-item .phase-icon { font-size: 36px; margin-bottom: 10px; }
+  .timeline-item .phase-name {
+    font-family: 'Cinzel', serif;
+    font-size: 16px; font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .timeline-item .phase-desc {
+    font-size: 13px; color: var(--text-dim); line-height: 1.5;
+  }
+  .timeline-item::after {
+    content: '▸';
+    position: absolute; right: -8px; top: -14px;
+    color: var(--text-dim); font-size: 16px;
+  }
+  .timeline-item:last-child::after { display: none; }
+
+  /* ── Danger zone ── */
+  .danger-box {
+    background: rgba(200,64,64,0.06);
+    border: 1px solid rgba(200,64,64,0.15);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-top: 20px;
+  }
+  .danger-box h3 { color: var(--red); }
+
+  /* ── Tip box ── */
+  .tip-box {
+    background: rgba(212,168,67,0.05);
+    border-left: 3px solid var(--accent-gold);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin-top: 20px;
+  }
+  .tip-box p { font-size: 15px; }
+
+  /* ── Nav ── */
+  .nav-hint {
+    position: fixed; bottom: 14px; left: 40px;
+    font-size: 12px; color: var(--text-dim);
+    z-index: 100; letter-spacing: 1px;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    position: fixed; top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-gold), var(--accent-fire));
+    z-index: 200;
+    transition: width 0.4s ease;
+  }
+
+  /* ── Animations ── */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .float { animation: float 4s ease-in-out infinite; }
+
+  @keyframes pulse-glow {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(212,168,67,0.2)); }
+    50% { filter: drop-shadow(0 0 20px rgba(212,168,67,0.5)); }
+  }
+  .pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .shimmer-text {
+    background: linear-gradient(90deg, var(--text-secondary), var(--accent-warm), var(--text-secondary));
+    background-size: 200% auto;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    animation: shimmer 4s linear infinite;
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="slides-wrapper" id="slides">
+
+  <!-- ════════════════ SLIDE 1: CINEMATIC TITLE ════════════════ -->
+  <div class="slide active" data-index="1">
+    <div class="cinema-top"></div>
+    <div class="cinema-bottom"></div>
+    <div style="text-align: center;">
+      <div class="float pulse-glow" style="font-size: 100px; margin-bottom: 20px;">⚔️</div>
+      <h1>Medievil</h1>
+      <div class="divider-fancy" style="margin: 24px auto;">
+        <div class="gem"></div>
+      </div>
+      <p class="tagline">建設 · 探索 · 防禦 · 生存</p>
+      <p style="color: var(--text-dim); font-size: 14px; margin-top: 32px; letter-spacing: 2px;">
+        A Medieval Fantasy Colony Survival Game
+      </p>
+    </div>
+    <span class="slide-number">01 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 2: THE HOOK ════════════════ -->
+  <div class="slide" data-index="2">
+    <div class="cinema-top"></div>
+    <div class="cinema-bottom"></div>
+    <div style="text-align: center; max-width: 900px;">
+      <p class="big-quote">
+        「白天，你是一位<em>開拓者</em>——<br>
+        採集資源、建設城牆、擴張領土。<br><br>
+        夜晚，你是一位<em>守護者</em>——<br>
+        怪物從黑暗中湧出，<br>
+        而你的殖民者就是最後的防線。」
+      </p>
+      <div style="margin-top: 48px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+        <span class="feature-pill"><span class="icon">🏗️</span> 殖民地經營</span>
+        <span class="feature-pill"><span class="icon">⚔️</span> 即時戰鬥</span>
+        <span class="feature-pill"><span class="icon">🧠</span> AI 任務系統</span>
+        <span class="feature-pill"><span class="icon">🌙</span> 日夜循環</span>
+        <span class="feature-pill"><span class="icon">♾️</span> 無盡生存</span>
+      </div>
+    </div>
+    <span class="slide-number">02 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 3: DAY/NIGHT DRAMA ════════════════ -->
+  <div class="slide" data-index="3">
+    <div class="content">
+      <h2>一天兩面，<span class="gold">步步為營</span></h2>
+      <div class="divider-fancy"><div class="gem"></div></div>
+
+      <div class="timeline">
+        <div class="timeline-item" style="border-color: var(--accent-warm);">
+          <div class="phase-icon">☀️</div>
+          <div class="phase-name">白天</div>
+          <div class="phase-desc">採集 · 建造 · 擴張<br>120 秒準備時間</div>
+        </div>
+        <div class="timeline-item" style="border-color: var(--red);">
+          <div class="phase-icon">🌙</div>
+          <div class="phase-name">夜晚</div>
+          <div class="phase-desc">怪物入侵 · 自動戰鬥<br>60 秒生死存亡</div>
+        </div>
+        <div class="timeline-item" style="border-color: var(--green);">
+          <div class="phase-icon">📈</div>
+          <div class="phase-name">結算</div>
+          <div class="phase-desc">難度升級 · 巢穴增加<br>敵人越來越強</div>
+        </div>
+        <div class="timeline-item" style="border-color: var(--blue);">
+          <div class="phase-icon">🔄</div>
+          <div class="phase-name">新回合</div>
+          <div class="phase-desc">挑戰升級<br>你能撐多久？</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 20px;">
+        <div class="card">
+          <h3>☀️ 白天的關鍵決策</h3>
+          <p>120 秒看似充裕，但你需要同時兼顧<strong>食物採集</strong>避免 NPC 餓死、
+          <strong>開拓邊界</strong>取得新資源、以及<strong>建造防線</strong>抵禦即將到來的入侵。
+          每一秒都不能浪費。</p>
+        </div>
+        <div class="card">
+          <h3>🌙 夜晚的生存考驗</h3>
+          <p>怪物巢穴不斷生成敵人，且<strong>隨著回合數增加，生成速度越來越快</strong>。
+          巢穴數量也會增長。
+          城牆可以阻擋路徑，箭塔提供火力支援——但最終，NPC 必須正面迎敵。</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">03 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 4: WHAT YOU CAN DO ════════════════ -->
+  <div class="slide" data-index="4">
+    <div class="content">
+      <h2>領主的<span class="gold">五大指令</span></h2>
+      <div class="divider-fancy"><div class="gem"></div></div>
+
+      <div class="grid-3" style="margin-top: 8px;">
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 40px; margin-bottom: 12px;">🌾</div>
+          <h3 style="text-align: center;">採集 Gather</h3>
+          <p style="text-align: center;">收割地圖上的資源<br>建設城池的原料來源<br>也是 NPC 的食物保障</p>
+          <div style="margin-top: 12px;"><kbd>1</kbd></div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 40px; margin-bottom: 12px;">🗺️</div>
+          <h3 style="text-align: center;">探索 Expand</h3>
+          <p style="text-align: center;">驅散戰爭迷霧<br>佔領未知的邊境<br>發現新的資源產地</p>
+          <div style="margin-top: 12px;"><kbd>2</kbd></div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 40px; margin-bottom: 12px;">🧱</div>
+          <h3 style="text-align: center;">築城 Build Wall</h3>
+          <p style="text-align: center;">堅固的城牆<br>改變怪物的行進路線<br>為你爭取寶貴時間</p>
+          <div style="margin-top: 12px;"><kbd>3</kbd></div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 24px; max-width: 740px; margin-left: auto; margin-right: auto;">
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 40px; margin-bottom: 12px;">🏹</div>
+          <h3 style="text-align: center;">箭塔 Build Tower</h3>
+          <p style="text-align: center;">遠程自動攻擊<br>射程內的怪物無所遁形</p>
+          <div style="margin-top: 12px;"><kbd>4</kbd></div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 40px; margin-bottom: 12px;">💥</div>
+          <h3 style="text-align: center;">拆除 Destroy</h3>
+          <p style="text-align: center;">拆除不需要的建築<br>重新規劃防線佈局</p>
+          <div style="margin-top: 12px;"><kbd>5</kbd></div>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">04 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 5: SMART NPC AI ════════════════ -->
+  <div class="slide" data-index="5">
+    <div class="content">
+      <h2>智慧<span class="gold">殖民者 AI</span></h2>
+      <div class="divider-fancy"><div class="gem"></div></div>
+
+      <div class="grid-2">
+        <div>
+          <h3>🧠 ONI 風格的優先級系統</h3>
+          <p style="margin-bottom: 16px;">
+            靈感來自《缺氧》的工作分配模型。你不需要一個一個命令 NPC——
+            <strong>設定好他們的優先順序，他們就會自動做出最佳判斷。</strong>
+          </p>
+          <ul>
+            <li>每位 NPC 有獨立的任務優先級排序</li>
+            <li>閒置時自動認領優先級最高的可用任務</li>
+            <li>A* 尋路自動規劃路徑，遇到障礙自動繞行</li>
+            <li>被阻擋的任務會自動跳過，改做其他工作</li>
+            <li>完成任務後自動返回佇列尋找下一份工作</li>
+          </ul>
+
+          <div class="tip-box" style="margin-top: 20px;">
+            <p>💡 <strong>策略提示</strong>：讓一位 NPC 專注採集食物、另一位專注建設防禦——
+            合理分工是生存的關鍵！</p>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="padding: 24px;">
+            <h3>📋 優先級面板 <kbd>P</kbd></h3>
+            <p style="margin-bottom: 16px;">按 <kbd>P</kbd> 開啟面板，為每位 NPC 量身訂做工作偏好：</p>
+            <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 16px; font-family: monospace; font-size: 14px; line-height: 2.2;">
+              <span style="color: var(--accent-warm);">▸ NPC 0</span> <span style="color: var(--text-dim);">(選取中)</span><br>
+              <span style="color: var(--text-dim);">&nbsp; 1.</span> <span style="color: var(--green);">Gather</span> <span style="color: var(--text-dim);">← 最優先</span><br>
+              <span style="color: var(--text-dim);">&nbsp; 2.</span> <span style="color: var(--text-primary);">BuildWall</span><br>
+              <span style="color: var(--text-dim);">&nbsp; 3.</span> <span style="color: var(--text-primary);">BuildTower</span><br>
+              <span style="color: var(--text-dim);">&nbsp; 4.</span> <span style="color: var(--text-primary);">Expand</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-dim); margin-top: 12px;">
+              <kbd>Tab</kbd> 切換 NPC &nbsp; <kbd>↑↓</kbd> 選取 &nbsp; <kbd>←→</kbd> 調整順序
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">05 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 6: COMBAT & DEFENSE ════════════════ -->
+  <div class="slide" data-index="6">
+    <div class="content">
+      <h2>戰鬥與<span class="gold">防禦戰略</span></h2>
+      <div class="divider-fancy"><div class="gem"></div></div>
+
+      <div class="grid-2">
+        <div>
+          <h3>⚔️ 自動戰鬥引擎</h3>
+          <p style="margin-bottom: 16px;">
+            當 NPC 與怪物距離足夠近時，<strong>戰鬥自動觸發</strong>。
+            你的職責是在白天佈好防線，讓 NPC 在最有利的位置迎敵。
+          </p>
+
+          <div class="card" style="margin-top: 12px;">
+            <table>
+              <thead><tr><th>單位</th><th>❤️ HP</th><th>⚔️ ATK</th><th>🛡️ DEF</th></tr></thead>
+              <tbody>
+                <tr><td style="color:var(--accent-warm);">🟡 NPC</td><td>100</td><td>12</td><td>4</td></tr>
+                <tr><td style="color:var(--red);">🔴 怪物</td><td>40</td><td>10</td><td>2</td></tr>
+                <tr><td style="color:var(--blue);">🔷 箭塔</td><td>—</td><td>15</td><td>—</td></tr>
+                <tr><td style="color:var(--text-dim);">⬜ 城牆</td><td>—</td><td>—</td><td>100 Block</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <h3>🏰 防禦建築的妙用</h3>
+          <ul>
+            <li><strong>城牆</strong>完全阻擋怪物路徑，迫使敵人繞路</li>
+            <li><strong>箭塔</strong>在射程範圍內自動攻擊最近的怪物</li>
+            <li>巧妙組合城牆與箭塔，打造<strong>死亡走廊</strong></li>
+            <li>引導怪物進入箭塔火力交叉覆蓋區</li>
+          </ul>
+
+          <div class="danger-box">
+            <h3>⚠️ 難度逐步攀升</h3>
+            <ul>
+              <li>怪物巢穴從 3 個逐漸增加到 8 個</li>
+              <li>每回合生怪間隔縮短 1 秒（最快 4 秒一隻）</li>
+              <li>後期會面臨<strong>多線同時入侵</strong>的壓力</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">06 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 7: SURVIVAL PRESSURE ════════════════ -->
+  <div class="slide" data-index="7">
+    <div class="content">
+      <h2>雙重<span class="gold">生存壓力</span></h2>
+      <div class="divider-fancy"><div class="gem"></div></div>
+
+      <p style="font-size: 20px; text-align: center; margin-bottom: 32px; color: var(--text-secondary);">
+        怪物不是唯一的威脅——<em style="color: var(--accent-fire);">飢餓同樣致命</em>。
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div style="font-size: 44px; text-align: center; margin-bottom: 12px;">🍖</div>
+          <h3 style="text-align: center;">飢餓系統</h3>
+          <ul>
+            <li>每位 NPC 持有 100 點飢餓值</li>
+            <li>飢餓值<strong>隨時間持續下降</strong></li>
+            <li>低於閾值時自動從倉庫取食物</li>
+            <li>倉庫沒食物？<strong>飢餓歸零 → 死亡</strong></li>
+          </ul>
+          <p style="font-size: 14px; color: var(--accent-fire); margin-top: 12px; text-align: center; font-weight: 600;">
+            ⚠️ 忘記採集食物 = 全軍覆沒
+          </p>
+        </div>
+        <div class="card">
+          <div style="font-size: 44px; text-align: center; margin-bottom: 12px;">💀</div>
+          <h3 style="text-align: center;">Game Over</h3>
+          <ul>
+            <li>所有 NPC 死亡 → <strong>遊戲結束</strong></li>
+            <li>死亡原因①：被怪物擊殺（HP 歸零）</li>
+            <li>死亡原因②：活活餓死（飢餓歸零）</li>
+            <li>最終分數 = 你存活的<strong>回合數</strong></li>
+          </ul>
+          <p style="font-size: 14px; color: var(--text-dim); margin-top: 12px; text-align: center;">
+            沒有固定結局——看你能撐多久！
+          </p>
+        </div>
+      </div>
+
+      <div class="tip-box" style="max-width: 700px; margin: 28px auto 0;">
+        <p>💾 <strong>自動存檔</strong>：每次日夜交替時自動存檔，下次啟動遊戲可無縫繼續挑戰！</p>
+      </div>
+    </div>
+    <span class="slide-number">07 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 8: CONTROLS CHEAT SHEET ════════════════ -->
+  <div class="slide" data-index="8">
+    <div class="content">
+      <h2>操作<span class="gold">速查表</span></h2>
+      <div class="divider-fancy"><div class="gem"></div></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>🗺️ 視角與互動</h3>
+          <table>
+            <tr><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></td><td>平移地圖視角</td></tr>
+            <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>方向鍵平移</td></tr>
+            <tr><td>🖱️ 左鍵點擊 NPC</td><td>選取 NPC</td></tr>
+            <tr><td>🖱️ 左鍵點擊地圖</td><td>在該格發布任務</td></tr>
+            <tr><td>🖱️ 滑鼠懸停</td><td>即時查看格子資訊</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>🔨 任務指令</h3>
+          <table>
+            <tr><td><kbd>1</kbd></td><td>🌾 Gather 採集</td></tr>
+            <tr><td><kbd>2</kbd></td><td>🗺️ Expand 探索</td></tr>
+            <tr><td><kbd>3</kbd></td><td>🧱 BuildWall 築城牆</td></tr>
+            <tr><td><kbd>4</kbd></td><td>🏹 BuildTower 建箭塔</td></tr>
+            <tr><td><kbd>5</kbd></td><td>💥 Destroy 拆除建築</td></tr>
+            <tr><td><kbd>Tab</kbd></td><td>循環切換任務類型</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 24px;">
+        <div class="card">
+          <h3>📋 優先級面板</h3>
+          <table>
+            <tr><td><kbd>P</kbd></td><td>開啟/關閉面板</td></tr>
+            <tr><td><kbd>Tab</kbd></td><td>切換 NPC</td></tr>
+            <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>選取任務</td></tr>
+            <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>調整優先順序</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>關閉面板</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>⏸️ 系統控制</h3>
+          <table>
+            <tr><td><kbd>Space</kbd></td><td>暫停 / 繼續模擬</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>退出遊戲</td></tr>
+          </table>
+          <div class="tip-box" style="margin-top: 16px;">
+            <p>💡 善用暫停！在混亂中暫停遊戲，冷靜思考下一步策略。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">08 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 9: TECH BEHIND THE GAME ════════════════ -->
+  <div class="slide" data-index="9">
+    <div class="content">
+      <h2>幕後<span class="gold">技術</span></h2>
+      <div class="divider-fancy"><div class="gem"></div></div>
+
+      <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 36px;">
+        <div class="hero-stat"><div class="num">28</div><div class="lbl">程式模組</div></div>
+        <div class="hero-stat"><div class="num">134</div><div class="lbl">單元測試</div></div>
+        <div class="hero-stat"><div class="num">11</div><div class="lbl">核心 Tickets</div></div>
+        <div class="hero-stat"><div class="num">100%</div><div class="lbl">Tests Pass</div></div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3>🐍 技術棧</h3>
+          <ul>
+            <li>Python 3.13</li>
+            <li>Pygame 2.6</li>
+            <li>pytest 9.1</li>
+            <li>A* 尋路演算法</li>
+            <li>JSON 存檔系統</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>📐 架構設計</h3>
+          <ul>
+            <li>邏輯與渲染完全分離</li>
+            <li>Plugin 擴展架構</li>
+            <li>即時可暫停模擬引擎</li>
+            <li>Git Feature Branch 協作</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>🎮 遊戲特色</h3>
+          <ul>
+            <li>ONI 風格 Per-NPC 優先級</li>
+            <li>動態怪物巢穴系統</li>
+            <li>建築影響尋路</li>
+            <li>自動存檔 Checkpoint</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">09 / 10</span>
+  </div>
+
+  <!-- ════════════════ SLIDE 10: CLOSING ════════════════ -->
+  <div class="slide" data-index="10">
+    <div class="cinema-top"></div>
+    <div class="cinema-bottom"></div>
+    <div style="text-align: center;">
+      <div class="float pulse-glow" style="font-size: 80px; margin-bottom: 24px;">🏰</div>
+      <h2 style="font-size: 52px;"><span class="gold">你能守護殖民地多久？</span></h2>
+      <div class="divider-fancy" style="margin: 28px auto;">
+        <div class="gem"></div>
+      </div>
+      <p class="big-quote" style="font-size: 22px; margin-bottom: 40px;">
+        每一次日出都是新的機會，<br>
+        每一次日落都是新的考驗。
+      </p>
+
+      <div style="background: var(--bg-card); border-radius: 12px; padding: 24px 36px; display: inline-block; font-family: monospace; font-size: 18px; border: 1px solid rgba(212,168,67,0.12);">
+        <span style="color: var(--text-dim);">&gt;</span>
+        <span style="color: var(--green);">.\.venv\Scripts\python.exe</span>
+        <span style="color: var(--text-primary);">src\main.py</span>
+      </div>
+
+      <p style="color: var(--text-dim); font-size: 14px; margin-top: 32px; letter-spacing: 2px;">
+        THANK YOU FOR PLAYING
+      </p>
+      <p style="color: var(--text-dim); font-size: 13px; margin-top: 8px;">
+        github.com/MiohitoKiri5474/PyGame-Final
+      </p>
+    </div>
+    <span class="slide-number">10 / 10</span>
+  </div>
+
+</div>
+
+<div class="nav-hint">← → 翻頁 &nbsp;|&nbsp; Space 下一頁</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const progressBar = document.getElementById('progressBar');
+  let current = 0;
+
+  function showSlide(idx) {
+    slides[current].classList.remove('active');
+    current = Math.max(0, Math.min(slides.length - 1, idx));
+    slides[current].classList.add('active');
+    progressBar.style.width = ((current + 1) / slides.length * 100) + '%';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); showSlide(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); showSlide(current - 1);
+    } else if (e.key === 'Home') { showSlide(0); }
+    else if (e.key === 'End') { showSlide(slides.length - 1); }
+  });
+
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) showSlide(current + (diff > 0 ? 1 : -1));
+  });
+
+  progressBar.style.width = (1 / slides.length * 100) + '%';
+</script>
+
+</body>
+</html>
