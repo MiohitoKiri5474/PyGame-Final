@@ -4,20 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-Pre-code. Repo has design doc + Python env only, no game source yet.
+Ticket 01 (NPC entity + pathfinding + render) implemented. See `docs/tickets/core-loop/` for the remaining tickets and their blocking order.
 
 ## Environment
 
 - Python 3.13.3 (pyenv), venv at `venv/`
-- Deps: `pygame==2.6.1`, tracked in `requirement.txt` (via `pip freeze`)
+- Deps: `pygame==2.6.1`, `pytest`, tracked in `requirement.txt` (via `pip freeze`)
 
 ```bash
 source venv/bin/activate
 pip install -r requirement.txt   # after clone
 pip freeze > requirement.txt     # after adding a new dep
-```
 
-No build/lint/test tooling set up yet — add commands here once they exist.
+python src/main.py                       # run the game
+pytest                                    # unit tests (pure-Python sim modules only, see seam below)
+python tests/smoke_render.py              # headless integration smoke check for game.py
+```
 
 ## Design Reference
 
@@ -65,4 +67,6 @@ Resolved via grilling session, not yet all implemented — check `Project Status
 
 **Art**: primitive shapes + color coding via `pygame.draw`, no sprite assets. Keep all drawing centralized so swapping in real sprites later doesn't touch game logic.
 
-**Not yet built** (source doesn't exist for these): task queue, NPCs, buildings, combat, magic, taming, skills, save/load. Current source only has the render/camera/day-night skeleton — see below.
+**Test seam**: `grid.py`, `camera.py`, `day_night.py`, `coords.py`, `pathfinding.py`, `npc.py` are pygame-free pure Python — unit tested directly with pytest. `game.py` is the pygame-coupled integration shell (window, event loop, rendering, click handling) — not unit tested, verified via `tests/smoke_render.py` (headless, `SDL_VIDEODRIVER=dummy`) plus manual play. Keep new simulation modules (tasks, buildings, combat, save) on the pygame-free side of this line.
+
+**Not yet built** (source doesn't exist for these): task queue, buildings, combat, magic, taming, skills, save/load. NPC entity + A* pathfinding + click-to-select/move exist (ticket 01).
