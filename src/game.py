@@ -28,11 +28,13 @@ from constants import (
     COLOR_NEST,
     COLOR_HUNGER_BAR,
     COLOR_BAR_BG,
+    COLOR_GAME_OVER,
 )
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY
 from coords import tile_at, tile_center
+from game_over import GameOverState
 from nest import NestManager, create_initial_nests
 from npc import NPC
 from monster import spawn_monster
@@ -66,6 +68,7 @@ class Game:
         )
         self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
         self.monsters = []
+        self.game_over_state = GameOverState()
 
     def run(self) -> None:
         while self.running:
@@ -136,7 +139,7 @@ class Game:
         dy = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
         self.camera.pan(dx, dy, dt)  # camera pans even while paused
 
-        if not self.paused:
+        if not self.paused and not self.game_over_state.is_over:
             self.cycle.update(dt)
             update_npc_tasks(self.world, dt)
 
@@ -150,6 +153,8 @@ class Game:
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None
 
+            self.game_over_state.check(self.world.npcs, self.cycle.round_number)
+
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         self.render_grid()
@@ -159,6 +164,7 @@ class Game:
         render_overlays(self.screen, self.world, self.camera)
         self.render_hud()
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
+        self.render_game_over()
         pygame.display.flip()
 
     def render_npcs(self) -> None:
@@ -246,3 +252,14 @@ class Game:
             surf = self.font.render(text, True, color)
             self.screen.blit(surf, (8, y))
             y += surf.get_height() + 4
+
+    def render_game_over(self) -> None:
+        if not self.game_over_state.is_over:
+            return
+        lines = ["GAME OVER", f"Score: Round {self.game_over_state.score}"]
+        y = WINDOW_HEIGHT // 2 - 40
+        for text in lines:
+            surf = self.font.render(text, True, COLOR_GAME_OVER)
+            rect = surf.get_rect(center=(WINDOW_WIDTH // 2, y))
+            self.screen.blit(surf, rect)
+            y += surf.get_height() + 8
