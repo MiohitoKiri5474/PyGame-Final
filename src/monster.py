@@ -1,3 +1,4 @@
+from blocking import is_wall_blocked
 from constants import MONSTER_ATTACK, MONSTER_DEFENSE, MONSTER_MAX_HEALTH, MONSTER_SPEED
 from coords import tile_center
 from movement import step_toward_path
@@ -41,15 +42,21 @@ def nearest_claimed_tile(grid, from_tile: tuple[int, int]) -> tuple[int, int] | 
     return best
 
 
-def spawn_monster(tile: tuple[int, int], grid) -> Monster:
+def spawn_monster(tile: tuple[int, int], grid, buildings=()) -> Monster:
     """Create a Monster at `tile` and path it toward the nearest claimed tile.
     Monsters walk in from outside territory, so unlike NPCs they treat every
-    in-bounds tile as walkable (fog/unclaimed included) — only Wall tiles,
-    wired in by ticket 07, will block them."""
+    in-bounds tile as walkable (fog/unclaimed included) — except Wall tiles,
+    which block like they do for NPCs (ticket 07)."""
     monster = Monster(*tile_center(*tile))
     target = nearest_claimed_tile(grid, tile)
     if target is not None:
-        path = find_path(grid.in_bounds, grid.width, grid.height, tile, target)
+        path = find_path(
+            lambda x, y: grid.in_bounds(x, y) and not is_wall_blocked(buildings, x, y),
+            grid.width,
+            grid.height,
+            tile,
+            target,
+        )
         if path:
             monster.set_path(path)
     return monster

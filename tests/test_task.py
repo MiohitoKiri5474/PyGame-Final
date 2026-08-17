@@ -164,6 +164,34 @@ def test_on_complete_returning_false_keeps_task_queued_and_npc_assigned(monkeypa
     assert npc.task is task  # NPC keeps waiting on it rather than abandoning
 
 
+def test_npc_pathing_reports_no_path_when_a_wall_blocks_the_only_route(monkeypatch):
+    # ticket 07: Wall tiles block NPC pathing the same way they block monsters.
+    from build_task import Building
+    from coords import tile_center
+    from task import TaskType
+
+    world = World(npc_count=0)
+    start, wall_tile, target = (0, 0), (1, 0), (2, 0)
+    for x, y in (start, wall_tile, target):
+        world.grid.get(x, y).claimed = True
+    world.buildings.append(Building("Wall", wall_tile[0], wall_tile[1], 100, 0))
+
+    monkeypatch.setattr(
+        task_module,
+        "TASK_TYPES",
+        {"FakeTask": TaskType(work_seconds=0.01, can_queue=lambda w, t: True, on_complete=lambda w, t: True)},
+    )
+
+    npc = NPC(*tile_center(*start))
+    world.npcs.append(npc)
+    task = world.tasks.add("FakeTask", target)
+
+    update_npc_tasks(world, 1 / 60)
+
+    assert npc.task is None
+    assert task.assigned_npc is None
+
+
 def test_idle_npc_does_not_reclaim_a_task_already_in_progress():
     world = World(npc_count=0)
     cx, cy = world.grid.width // 2, world.grid.height // 2
