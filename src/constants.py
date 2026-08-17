@@ -14,7 +14,8 @@ CAMERA_PAN_SPEED = 400  # pixels/sec
 DAY_SECONDS = 120
 NIGHT_SECONDS = 60
 
-START_REVEAL_RADIUS = 5  # tiles claimed/revealed around start, before any Expand task exists
+START_CLAIM_RADIUS = 5  # buildable tiles around start
+START_REVEAL_RADIUS = 8  # fog cleared further out than claimed, giving Expand a frontier to target
 
 COLOR_BG = (18, 18, 24)
 COLOR_FOG = (10, 10, 14)
