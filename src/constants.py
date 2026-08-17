@@ -83,3 +83,6 @@ TOWER_COST = {"crop": 5}
 TOWER_WORK_SECONDS = 5.0
 COLOR_TOWER = (100, 120, 160)
 
+# --- Game over & scoring (ticket 09) ---
+COLOR_GAME_OVER = (255, 90, 90)
+

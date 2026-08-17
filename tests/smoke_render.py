@@ -29,8 +29,24 @@ def main() -> None:
 
     assert game.cycle.round_number >= 1
     assert len(game.world.npcs) > 0
+
+    # ticket 09: killing the last NPC should trigger game-over and freeze
+    # the sim (round/phase/monsters/nests all stop advancing) from then on.
+    game.world.npcs.clear()
+    game.update(1 / 60)
+    assert game.game_over_state.is_over
+    assert game.game_over_state.score == game.cycle.round_number
+    round_at_game_over = game.cycle.round_number
+    phase_at_game_over = game.cycle.phase
+    for _ in range(TICKS):
+        game.update(1 / 60)
+        game.render()
+    assert game.cycle.round_number == round_at_game_over
+    assert game.cycle.phase == phase_at_game_over
+
     pygame.quit()
     print(f"smoke OK: {TICKS} ticks, phase={game.cycle.phase}, round={game.cycle.round_number}")
+    print(f"game-over OK: score={game.game_over_state.score}")
 
 
 if __name__ == "__main__":
