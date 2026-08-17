@@ -40,6 +40,7 @@ from pathfinding import find_path
 from task import TASK_TYPES, update_npc_tasks
 from extensions import hud_lines, render_overlays
 from world import World
+from priority_ui import PriorityTableUI
 
 
 class Game:
@@ -58,6 +59,7 @@ class Game:
 
         self.selected_npc: NPC | None = None
         self.selected_task_type: str | None = next(iter(TASK_TYPES), None)
+        self.priority_ui = PriorityTableUI()
 
         initial_nests = create_initial_nests(
             self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
@@ -78,14 +80,21 @@ class Game:
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
+                # Priority UI intercepts keys when open
+                if self.priority_ui.visible:
+                    self.priority_ui.handle_key(event.key, self.world.npcs)
+                    continue
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
                 elif event.key == pygame.K_TAB:
                     self._cycle_selected_task_type()
+                elif event.key == pygame.K_p:
+                    self.priority_ui.toggle()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                self.handle_click(event.pos)
+                if not self.priority_ui.visible:
+                    self.handle_click(event.pos)
 
     def _cycle_selected_task_type(self) -> None:
         types = list(TASK_TYPES.keys())
@@ -149,6 +158,7 @@ class Game:
         self.render_monsters()
         render_overlays(self.screen, self.world, self.camera)
         self.render_hud()
+        self.priority_ui.render(self.screen, self.font, self.world.npcs)
         pygame.display.flip()
 
     def render_npcs(self) -> None:
