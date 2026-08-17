@@ -5,6 +5,8 @@ from constants import (
     HUNGER_RESTORE_PER_CROP,
     NPC_ATTACK,
     NPC_DEFENSE,
+    COMBAT_RANGE,
+    ROLE_STATS,
 )
 from movement import step_toward_path
 
@@ -22,6 +24,7 @@ class NPC:
         y: float,
         speed: float = DEFAULT_SPEED,
         priority: list[str] | None = None,
+        role: str | None = None,
     ):
         self.id = NPC._next_id
         NPC._next_id += 1
@@ -30,11 +33,25 @@ class NPC:
         self.y = y
         self.speed = speed
         self.path: list[tuple[int, int]] = []
-        self.health = NPC_MAX_HEALTH
+        self.role = role
+
+        stats = ROLE_STATS.get(role)
+        if stats is None:
+            self.attack = NPC_ATTACK
+            self.defense = NPC_DEFENSE
+            self.max_health = NPC_MAX_HEALTH
+            self.combat_range = COMBAT_RANGE
+            self.work_multiplier = 1.0
+        else:
+            self.attack = stats["attack"]
+            self.defense = stats["defense"]
+            self.max_health = stats["max_health"]
+            self.combat_range = stats["combat_range"]
+            self.work_multiplier = stats["work_multiplier"]
+
+        self.health = self.max_health
         self.hunger = NPC_MAX_HUNGER
         self.alive = True
-        self.attack = NPC_ATTACK
-        self.defense = NPC_DEFENSE
         self.priority = priority  # None = fall back to task-type registration order
         self.task = None  # set by task.update_npc_tasks; typed loosely to avoid a task.py<->npc.py import cycle
         self.task_progress = 0.0

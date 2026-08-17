@@ -7,7 +7,21 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "src"))
 
 from coords import tile_center
 from npc import NPC
-from constants import NPC_MAX_HUNGER, NPC_MAX_HEALTH, HUNGER_DECAY_RATE, HUNGER_EAT_THRESHOLD, HUNGER_RESTORE_PER_CROP
+from constants import (
+    NPC_MAX_HUNGER,
+    NPC_MAX_HEALTH,
+    NPC_ATTACK,
+    NPC_DEFENSE,
+    COMBAT_RANGE,
+    HUNGER_DECAY_RATE,
+    HUNGER_EAT_THRESHOLD,
+    HUNGER_RESTORE_PER_CROP,
+    ROLE_FARMER,
+    ROLE_KNIGHT,
+    ROLE_MAGE,
+    ROLE_STATS,
+    MAGE_COMBAT_RANGE,
+)
 from world import World
 from task import update_npc_tasks
 
@@ -268,3 +282,43 @@ class TestNPCInit:
         a = NPC(0, 0)
         b = NPC(0, 0)
         assert a.id != b.id
+
+
+# ------------------------------------------------------------------
+# Role System (ticket 12)
+# ------------------------------------------------------------------
+
+class TestRoleStats:
+    """NPC stats come from its role, or flat defaults when role is None."""
+
+    def test_no_role_uses_flat_defaults(self):
+        npc = NPC(0.0, 0.0)
+        assert npc.role is None
+        assert npc.attack == NPC_ATTACK
+        assert npc.defense == NPC_DEFENSE
+        assert npc.max_health == NPC_MAX_HEALTH
+        assert npc.health == NPC_MAX_HEALTH
+        assert npc.combat_range == COMBAT_RANGE
+        assert npc.work_multiplier == 1.0
+
+    def test_farmer_stats_and_work_multiplier(self):
+        npc = NPC(0.0, 0.0, role=ROLE_FARMER)
+        stats = ROLE_STATS[ROLE_FARMER]
+        assert npc.attack == stats["attack"]
+        assert npc.defense == stats["defense"]
+        assert npc.max_health == stats["max_health"]
+        assert npc.health == stats["max_health"]
+        assert npc.work_multiplier == 0.6
+
+    def test_knight_stats(self):
+        npc = NPC(0.0, 0.0, role=ROLE_KNIGHT)
+        stats = ROLE_STATS[ROLE_KNIGHT]
+        assert npc.attack == stats["attack"]
+        assert npc.defense == stats["defense"]
+        assert npc.max_health == stats["max_health"]
+        assert npc.work_multiplier == 1.0
+
+    def test_mage_has_ranged_combat_range(self):
+        npc = NPC(0.0, 0.0, role=ROLE_MAGE)
+        assert npc.combat_range == MAGE_COMBAT_RANGE
+        assert npc.combat_range > COMBAT_RANGE

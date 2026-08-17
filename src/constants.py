@@ -95,6 +95,33 @@ TOWER_RANGE = TILE_SIZE * 4  # ranged attack, no adjacency required unlike NPCs
 # --- Game over & scoring (ticket 09) ---
 COLOR_GAME_OVER = (255, 90, 90)
 
+# --- Roles (ticket 12) ---
+ROLE_FARMER = "Farmer"
+ROLE_KNIGHT = "Knight"
+ROLE_MAGE = "Mage"
+ROLES = (ROLE_FARMER, ROLE_KNIGHT, ROLE_MAGE)
+
+MAGE_COMBAT_RANGE = TILE_SIZE * 3  # ranged, unlike the melee-adjacent default
+
+ROLE_STATS = {
+    ROLE_FARMER: {
+        "attack": 8, "defense": 3, "max_health": 100,
+        "combat_range": COMBAT_RANGE, "work_multiplier": 0.6,
+    },
+    ROLE_KNIGHT: {
+        "attack": 18, "defense": 8, "max_health": 140,
+        "combat_range": COMBAT_RANGE, "work_multiplier": 1.0,
+    },
+    ROLE_MAGE: {
+        "attack": 22, "defense": 2, "max_health": 70,
+        "combat_range": MAGE_COMBAT_RANGE, "work_multiplier": 1.0,
+    },
+}
+
+COLOR_ROLE_FARMER = (120, 200, 90)
+COLOR_ROLE_KNIGHT = (170, 190, 210)
+COLOR_ROLE_MAGE = (160, 90, 220)
+
 # --- Material taxonomy (ticket 14) ---
 # None is the "no resource" weight so the whole table sums to 1.0 and a single
 # rng.choices() call per tile replaces the old rng.random() < RESOURCE_CHANCE

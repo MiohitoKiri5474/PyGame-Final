@@ -2,6 +2,7 @@ import task as task_module
 from task import TaskQueue, TaskType, update_npc_tasks
 from npc import NPC
 from world import World
+from constants import ROLE_FARMER
 
 
 def test_claim_for_picks_highest_priority_available_type():
@@ -300,6 +301,33 @@ def test_npc_pathing_reports_no_path_when_a_wall_blocks_the_only_route(monkeypat
 
     assert npc.task is None
     assert task.assigned_npc is None
+
+
+def test_farmer_work_multiplier_finishes_task_faster(monkeypatch):
+    # ticket 12: Farmer's 0.6x work_multiplier means the required progress
+    # is task_type.work_seconds * 0.6, not the flat work_seconds.
+    monkeypatch.setattr(
+        task_module,
+        "TASK_TYPES",
+        {"FakeTask": TaskType(work_seconds=1.0, can_queue=lambda w, t: True, on_complete=lambda w, t: True)},
+    )
+
+    world = World(npc_count=0)
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    world.grid.get(cx, cy).claimed = True
+
+    from coords import tile_center
+
+    npc = NPC(*tile_center(cx, cy), role=ROLE_FARMER)
+    world.npcs.append(npc)
+    world.tasks.add("FakeTask", (cx, cy))
+
+    # 0.7s of work: below the flat 1.0s requirement, but above 1.0 * 0.6
+    for _ in range(42):  # 42 * (1/60) = 0.7s
+        update_npc_tasks(world, 1 / 60)
+
+    assert npc.task is None  # finished already, thanks to the 0.6x multiplier
+    assert world.tasks.tasks == []
 
 
 def test_idle_npc_does_not_reclaim_a_task_already_in_progress():
