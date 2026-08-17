@@ -28,6 +28,7 @@ COLOR_DAY_BANNER = (255, 214, 100)
 COLOR_NIGHT_BANNER = (120, 140, 255)
 COLOR_NPC = (220, 220, 60)
 COLOR_NPC_SELECTED = (255, 255, 255)
+COLOR_HOVER_BORDER = (100, 220, 255)
 
 STARTING_NPC_COUNT = 3
 NPC_RADIUS = TILE_SIZE // 3
@@ -35,7 +36,9 @@ NPC_RADIUS = TILE_SIZE // 3
 # --- NPC Stats & Hunger (ticket 08) ---
 NPC_MAX_HEALTH = 100
 NPC_MAX_HUNGER = 100.0
-HUNGER_DECAY_RATE = NPC_MAX_HUNGER / DAY_SECONDS   # hunger points lost per second (~0.833)
+HUNGER_DECAY_RATE = NPC_MAX_HUNGER / (DAY_SECONDS * 2)   # hunger points lost per second (~0.417, lasts 2 full days without food)
+HUNGER_EAT_THRESHOLD = 60.0                              # hunger level at which NPC consumes food from inventory
+HUNGER_RESTORE_PER_CROP = 50.0                           # hunger points restored per crop eaten
 NPC_ATTACK = 12
 NPC_DEFENSE = 4
 
@@ -83,9 +86,11 @@ TOWER_COST = {"crop": 5}
 TOWER_WORK_SECONDS = 5.0
 COLOR_TOWER = (100, 120, 160)
 
+# --- Destroy task ---
+DESTROY_WORK_SECONDS = 2.0
+
 # --- Building combat integration (ticket 07) ---
 TOWER_RANGE = TILE_SIZE * 4  # ranged attack, no adjacency required unlike NPCs
 
 # --- Game over & scoring (ticket 09) ---
 COLOR_GAME_OVER = (255, 90, 90)
-

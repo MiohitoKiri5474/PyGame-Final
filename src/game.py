@@ -11,6 +11,7 @@ from constants import (
     VIEWPORT_TILES_X,
     VIEWPORT_TILES_Y,
     NPC_RADIUS,
+    NPC_MAX_HEALTH,
     NPC_MAX_HUNGER,
     NEST_INITIAL_COUNT,
     COLOR_BG,
@@ -24,6 +25,7 @@ from constants import (
     COLOR_NIGHT_BANNER,
     COLOR_NPC,
     COLOR_NPC_SELECTED,
+    COLOR_HOVER_BORDER,
     COLOR_MONSTER,
     COLOR_NEST,
     COLOR_HUNGER_BAR,
@@ -100,9 +102,34 @@ class Game:
                     self._cycle_selected_task_type()
                 elif event.key == pygame.K_p:
                     self.priority_ui.toggle()
+                elif event.key in (
+                    pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4,
+                    pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9,
+                    pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4,
+                    pygame.K_KP5, pygame.K_KP6, pygame.K_KP7, pygame.K_KP8, pygame.K_KP9,
+                ):
+                    self._select_task_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not self.priority_ui.visible:
                     self.handle_click(event.pos)
+
+    def _select_task_by_number(self, key: int) -> None:
+        key_map = {
+            pygame.K_1: 0, pygame.K_KP1: 0,
+            pygame.K_2: 1, pygame.K_KP2: 1,
+            pygame.K_3: 2, pygame.K_KP3: 2,
+            pygame.K_4: 3, pygame.K_KP4: 3,
+            pygame.K_5: 4, pygame.K_KP5: 4,
+            pygame.K_6: 5, pygame.K_KP6: 5,
+            pygame.K_7: 6, pygame.K_KP7: 6,
+            pygame.K_8: 7, pygame.K_KP8: 7,
+            pygame.K_9: 8, pygame.K_KP9: 8,
+        }
+        idx = key_map.get(key)
+        if idx is not None:
+            types = list(TASK_TYPES.keys())
+            if idx < len(types):
+                self.selected_task_type = types[idx]
 
     def _cycle_selected_task_type(self) -> None:
         types = list(TASK_TYPES.keys())
@@ -139,10 +166,11 @@ class Game:
         return None
 
     def update(self, dt: float) -> None:
-        keys = pygame.key.get_pressed()
-        dx = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
-        dy = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
-        self.camera.pan(dx, dy, dt)  # camera pans even while paused
+        if not self.priority_ui.visible:
+            keys = pygame.key.get_pressed()
+            dx = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
+            dy = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
+            self.camera.pan(dx, dy, dt)  # camera pans even while paused
 
         if not self.paused and not self.game_over_state.is_over:
             transitioned = self.cycle.update(dt)
@@ -226,6 +254,9 @@ class Game:
         start_row = cam_y // TILE_SIZE
         grid = self.world.grid
 
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        hover_gx, hover_gy = tile_at(mouse_x + cam_x, mouse_y + cam_y)
+
         for row in range(start_row, min(grid.height, start_row + VIEWPORT_TILES_Y + 2)):
             for col in range(start_col, min(grid.width, start_col + VIEWPORT_TILES_X + 2)):
                 tile = grid.get(col, row)
@@ -245,13 +276,67 @@ class Game:
                 pygame.draw.rect(self.screen, color, rect)
                 pygame.draw.rect(self.screen, COLOR_GRID_LINE, rect, 1)
 
+                # Material indicator for resource blocks
+                if tile.revealed and tile.resource:
+                    marker_rect = pygame.Rect(screen_x + 8, screen_y + 8, TILE_SIZE - 16, TILE_SIZE - 16)
+                    pygame.draw.rect(self.screen, (240, 210, 80), marker_rect)
+                    pygame.draw.rect(self.screen, (100, 80, 20), marker_rect, 1)
+
+        # Hover outline
+        if grid.in_bounds(hover_gx, hover_gy):
+            hover_screen_x = hover_gx * TILE_SIZE - cam_x
+            hover_screen_y = hover_gy * TILE_SIZE - cam_y
+            hover_rect = pygame.Rect(hover_screen_x, hover_screen_y, TILE_SIZE, TILE_SIZE)
+            pygame.draw.rect(self.screen, COLOR_HOVER_BORDER, hover_rect, 2)
+
+    def _hover_tile_info(self) -> str:
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        gx, gy = tile_at(mouse_x + self.camera.x, mouse_y + self.camera.y)
+        if not self.world.grid.in_bounds(gx, gy):
+            return ""
+
+        tile = self.world.grid.get(gx, gy)
+        if not tile.revealed:
+            return f"Tile ({gx}, {gy}): Fog of War (Unexplored)"
+
+        if not tile.claimed:
+            res_str = f" [Material: {tile.resource.capitalize()}]" if tile.resource else ""
+            return f"Tile ({gx}, {gy}): Unclaimed Land{res_str}"
+
+        building = next((b for b in self.world.buildings if b.x == gx and b.y == gy), None)
+        task = next((t for t in self.world.tasks.tasks if t.target == (gx, gy)), None)
+        npc = next((n for n in self.world.npcs if tile_at(n.x, n.y) == (gx, gy)), None)
+
+        if building:
+            info = f"Building: {building.type} (Block: {building.block}, Attack: {building.attack})"
+        elif tile.resource:
+            info = f"Material: {tile.resource.capitalize()}"
+        else:
+            info = "Claimed Land (Empty)"
+
+        if task:
+            info += f" [Queued Task: {task.type}]"
+        if npc:
+            info += f" | NPC (HP: {int(npc.health)}/{int(NPC_MAX_HEALTH)}, Hunger: {int(npc.hunger)}/{int(NPC_MAX_HUNGER)})"
+
+        return f"Tile ({gx}, {gy}): {info}"
+
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
+        hover_info = self._hover_tile_info()
+
+        options_list = []
+        for i, t_name in enumerate(TASK_TYPES.keys(), start=1):
+            marker = "*" if t_name == self.selected_task_type else ""
+            options_list.append(f"[{i}] {t_name}{marker}")
+        options_str = "  ".join(options_list)
+
         lines = [
             f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
             f"NPCs alive: {len(self.world.npcs)}",
             "PAUSED" if self.paused else "",
-            f"Selected task: {self.selected_task_type or 'none'}  [Tab to cycle]",
+            f"Tasks: {options_str}  [Keys 1-{len(TASK_TYPES)} / Tab, P for Priority]",
+            hover_info,
             *hud_lines(self.world),
         ]
         y = 8

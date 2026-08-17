@@ -2,6 +2,7 @@ from constants import (
     NPC_MAX_HEALTH,
     NPC_MAX_HUNGER,
     HUNGER_DECAY_RATE,
+    HUNGER_RESTORE_PER_CROP,
     NPC_ATTACK,
     NPC_DEFENSE,
 )
@@ -49,6 +50,12 @@ class NPC:
     def kill(self) -> None:
         """Mark this NPC as dead. Called by starvation and combat."""
         self.alive = False
+
+    def eat(self, amount: float = HUNGER_RESTORE_PER_CROP) -> None:
+        """Consume food to restore hunger, capped at NPC_MAX_HUNGER."""
+        if not self.alive or self.is_dead:
+            return
+        self.hunger = min(NPC_MAX_HUNGER, self.hunger + amount)
 
     def set_path(self, path: list[tuple[int, int]]) -> None:
         self.path = list(path)

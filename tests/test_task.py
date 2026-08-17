@@ -1,5 +1,5 @@
 import task as task_module
-from task import TaskQueue, update_npc_tasks
+from task import TaskQueue, TaskType, update_npc_tasks
 from npc import NPC
 from world import World
 
@@ -88,8 +88,6 @@ def test_full_gather_task_lifecycle_credits_inventory_and_clears_tile():
 def test_task_can_target_an_unclaimed_frontier_tile(monkeypatch):
     # generalization needed by ticket 03 (Expand Territory): the tile a task
     # targets need not be claimed yet - that's the whole point of Expand.
-    from task import TaskType
-
     completed = []
 
     def _on_complete(world, task):
@@ -129,11 +127,9 @@ def test_task_can_target_an_unclaimed_frontier_tile(monkeypatch):
     assert completed == [frontier]
 
 
-def test_on_complete_returning_false_keeps_task_queued_and_npc_assigned(monkeypatch):
-    # ticket 04 (Build): insufficient funds -> stays queued, reported, not
-    # silently dropped. on_complete signals this by returning False.
-    from task import TaskType
-
+def test_on_complete_returning_false_keeps_task_queued_and_frees_npc(monkeypatch):
+    # If a task cannot complete (e.g. materials missing), it stays queued,
+    # but the NPC is freed so it can work on other available tasks instead of staying stuck.
     attempts = []
 
     def _on_complete(world, task):
@@ -161,14 +157,128 @@ def test_on_complete_returning_false_keeps_task_queued_and_npc_assigned(monkeypa
 
     assert len(attempts) >= 1
     assert task in world.tasks.tasks  # still queued, not silently dropped
-    assert npc.task is task  # NPC keeps waiting on it rather than abandoning
+    assert task.assigned_npc is None  # unassigned so NPC is not stuck
+    assert npc.task is None
+
+
+def test_npc_skips_blocked_task_and_claims_available_one(monkeypatch):
+    can_perform_a = False
+
+    monkeypatch.setattr(
+        task_module,
+        "TASK_TYPES",
+        {
+            "BlockedTask": TaskType(
+                work_seconds=0.01,
+                can_queue=lambda w, t: True,
+                on_complete=lambda w, t: True,
+                can_perform=lambda w, t: can_perform_a,
+            ),
+            "AvailableTask": TaskType(
+                work_seconds=0.01,
+                can_queue=lambda w, t: True,
+                on_complete=lambda w, t: True,
+            ),
+        },
+    )
+
+    world = World(npc_count=0)
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    world.grid.get(cx, cy).claimed = True
+    world.grid.get(cx + 1, cy).claimed = True
+
+    from coords import tile_center
+
+    npc = NPC(*tile_center(cx, cy), priority=["BlockedTask", "AvailableTask"])
+    world.npcs.append(npc)
+
+    world.tasks.add("BlockedTask", (cx, cy))
+    world.tasks.add("AvailableTask", (cx + 1, cy))
+
+    update_npc_tasks(world, 1 / 60)
+
+    assert npc.task is not None
+    assert npc.task.type == "AvailableTask"
+
+
+def test_npc_aborts_task_if_it_becomes_blocked_in_progress(monkeypatch):
+    can_perform = True
+
+    monkeypatch.setattr(
+        task_module,
+        "TASK_TYPES",
+        {
+            "DynamicTask": TaskType(
+                work_seconds=5.0,
+                can_queue=lambda w, t: True,
+                on_complete=lambda w, t: True,
+                can_perform=lambda w, t: can_perform,
+            ),
+            "FallbackTask": TaskType(
+                work_seconds=1.0,
+                can_queue=lambda w, t: True,
+                on_complete=lambda w, t: True,
+            ),
+        },
+    )
+
+    world = World(npc_count=0)
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    world.grid.get(cx, cy).claimed = True
+    world.grid.get(cx + 1, cy).claimed = True
+
+    from coords import tile_center
+
+    npc = NPC(*tile_center(cx, cy), priority=["DynamicTask", "FallbackTask"])
+    world.npcs.append(npc)
+
+    t1 = world.tasks.add("DynamicTask", (cx, cy))
+    t2 = world.tasks.add("FallbackTask", (cx + 1, cy))
+
+    update_npc_tasks(world, 1 / 60)
+    assert npc.task is t1
+
+    # Invalidate dynamic task (e.g. resources consumed)
+    can_perform = False
+    update_npc_tasks(world, 1 / 60)
+
+    # NPC should have dropped DynamicTask and claimed FallbackTask
+    assert t1.assigned_npc is None
+    assert npc.task is t2
+
+
+def test_npc_skips_unreachable_task_and_claims_reachable_task(monkeypatch):
+    from build_task import Building
+    from coords import tile_center
+
+    world = World(npc_count=0)
+    start, wall_tile, blocked_target, open_target = (0, 0), (1, 0), (2, 0), (0, 1)
+    for x, y in (start, wall_tile, blocked_target, open_target):
+        world.grid.get(x, y).claimed = True
+    world.buildings.append(Building("Wall", wall_tile[0], wall_tile[1], 100, 0))
+
+    monkeypatch.setattr(
+        task_module,
+        "TASK_TYPES",
+        {"FakeTask": TaskType(work_seconds=0.01, can_queue=lambda w, t: True, on_complete=lambda w, t: True)},
+    )
+
+    npc = NPC(*tile_center(*start))
+    world.npcs.append(npc)
+    t_blocked = world.tasks.add("FakeTask", blocked_target)
+    t_open = world.tasks.add("FakeTask", open_target)
+
+    update_npc_tasks(world, 1 / 60)
+
+    assert npc.task is t_open
+    assert t_blocked.assigned_npc is None
+    assert t_open.assigned_npc is npc
 
 
 def test_npc_pathing_reports_no_path_when_a_wall_blocks_the_only_route(monkeypatch):
     # ticket 07: Wall tiles block NPC pathing the same way they block monsters.
     from build_task import Building
     from coords import tile_center
-    from task import TaskType
 
     world = World(npc_count=0)
     start, wall_tile, target = (0, 0), (1, 0), (2, 0)

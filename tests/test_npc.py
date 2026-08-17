@@ -7,7 +7,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), os.pardir, "src"))
 
 from coords import tile_center
 from npc import NPC
-from constants import NPC_MAX_HUNGER, NPC_MAX_HEALTH, HUNGER_DECAY_RATE
+from constants import NPC_MAX_HUNGER, NPC_MAX_HEALTH, HUNGER_DECAY_RATE, HUNGER_EAT_THRESHOLD, HUNGER_RESTORE_PER_CROP
+from world import World
+from task import update_npc_tasks
 
 
 # ------------------------------------------------------------------
@@ -147,6 +149,70 @@ class TestStarvationDeath:
             npc.update(dt)
         assert npc.hunger == 0.0
         assert npc.alive is False
+
+
+# ------------------------------------------------------------------
+# Eating & Food Consumption
+# ------------------------------------------------------------------
+
+class TestNPCEat:
+    """NPC eats food to restore hunger."""
+
+    def test_eat_restores_hunger_up_to_max(self):
+        npc = _fresh_npc()
+        npc.hunger = 40.0
+        npc.eat(HUNGER_RESTORE_PER_CROP)
+        assert npc.hunger == 90.0
+
+        # Capped at max hunger
+        npc.eat(HUNGER_RESTORE_PER_CROP)
+        assert npc.hunger == NPC_MAX_HUNGER
+
+    def test_dead_npc_cannot_eat(self):
+        npc = _fresh_npc()
+        npc.kill()
+        npc.eat(50.0)
+        assert npc.hunger == NPC_MAX_HUNGER  # untouched
+
+
+class TestColonyFoodConsumption:
+    """Hungry NPCs automatically consume food from the colony inventory."""
+
+    def test_hungry_npc_eats_from_inventory(self):
+        world = World(npc_count=0)
+        npc = _fresh_npc()
+        npc.hunger = HUNGER_EAT_THRESHOLD - 5.0  # hungry
+        world.npcs.append(npc)
+        world.inventory.add("crop", 2)
+
+        update_npc_tasks(world, 0.1)
+
+        assert world.inventory.get("crop") == 1
+        assert npc.hunger > HUNGER_EAT_THRESHOLD
+
+    def test_not_hungry_npc_does_not_eat(self):
+        world = World(npc_count=0)
+        npc = _fresh_npc()
+        npc.hunger = HUNGER_EAT_THRESHOLD + 20.0
+        world.npcs.append(npc)
+        world.inventory.add("crop", 2)
+
+        update_npc_tasks(world, 0.1)
+
+        assert world.inventory.get("crop") == 2
+        assert npc.hunger <= HUNGER_EAT_THRESHOLD + 20.0
+
+    def test_hungry_npc_without_food_keeps_decaying(self):
+        world = World(npc_count=0)
+        npc = _fresh_npc()
+        npc.hunger = HUNGER_EAT_THRESHOLD - 5.0
+        world.npcs.append(npc)
+        # inventory has 0 crops
+
+        update_npc_tasks(world, 1.0)
+
+        assert world.inventory.get("crop") == 0
+        assert npc.hunger < HUNGER_EAT_THRESHOLD - 5.0
 
 
 # ------------------------------------------------------------------
