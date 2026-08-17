@@ -31,3 +31,21 @@ def test_spend_never_goes_negative_on_missing_resource():
     inv = Inventory()
     assert inv.spend("wood", 1) is False
     assert inv.get("wood") == 0
+
+
+def test_spend_all_deducts_every_resource_when_all_affordable():
+    inv = Inventory()
+    inv.add("crop", 5)
+    inv.add("wood", 3)
+    assert inv.spend_all({"crop": 2, "wood": 1}) is True
+    assert inv.get("crop") == 3
+    assert inv.get("wood") == 2
+
+
+def test_spend_all_spends_nothing_when_any_resource_is_short():
+    inv = Inventory()
+    inv.add("crop", 5)
+    inv.add("wood", 0)  # short on wood
+    assert inv.spend_all({"crop": 2, "wood": 1}) is False
+    assert inv.get("crop") == 5  # untouched, not partially spent
+    assert inv.get("wood") == 0

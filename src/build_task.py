@@ -14,7 +14,7 @@ from constants import (
     TOWER_ATTACK,
 )
 from task import Task, TaskType, register_task_type
-import render_buildings  # noqa: F401  # registers the buildings overlay renderer
+from extensions import register_hud_line
 
 if TYPE_CHECKING:
     from world import World
@@ -51,16 +51,32 @@ def _on_complete_tower(world: "World", task: Task) -> bool:
 
 
 def _try_build(world: "World", task: Task, b_type: str, cost: dict[str, int], block: int, attack: int) -> bool:
-    for res, amount in cost.items():
-        if world.inventory.get(res) < amount:
-            return False
-
-    for res, amount in cost.items():
-        world.inventory.spend(res, amount)
+    if not world.inventory.spend_all(cost):
+        return False
 
     x, y = task.target
     world.buildings.append(Building(type=b_type, x=x, y=y, block=block, attack=attack))
     return True
+
+
+_COSTS_BY_TASK_TYPE = {"BuildWall": WALL_COST, "BuildTower": TOWER_COST}
+
+
+def _blocked_builds_hud_line(world: "World") -> str:
+    # Insufficient-funds tasks stay queued (on_complete returns False) and
+    # retry silently every work cycle - report them so that's visible
+    # rather than the NPC just looking stuck for no apparent reason.
+    blocked = sorted(
+        {
+            task.type
+            for task in world.tasks.tasks
+            if task.type in _COSTS_BY_TASK_TYPE
+            and any(world.inventory.get(res) < amt for res, amt in _COSTS_BY_TASK_TYPE[task.type].items())
+        }
+    )
+    if not blocked:
+        return ""
+    return f"Build blocked (insufficient resources): {', '.join(blocked)}"
 
 
 register_task_type(
@@ -72,3 +88,5 @@ register_task_type(
     "BuildTower",
     TaskType(work_seconds=TOWER_WORK_SECONDS, can_queue=_can_queue, on_complete=_on_complete_tower),
 )
+
+register_hud_line(_blocked_builds_hud_line)
