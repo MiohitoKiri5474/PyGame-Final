@@ -17,5 +17,14 @@ class Inventory:
         self._counts[resource] -= amount
         return True
 
+    def spend_all(self, costs: dict[str, int]) -> bool:
+        """Atomic multi-resource spend: either every resource in costs is
+        affordable and all get deducted, or nothing is spent."""
+        if any(self._counts[res] < amount for res, amount in costs.items()):
+            return False
+        for res, amount in costs.items():
+            self._counts[res] -= amount
+        return True
+
     def items(self) -> dict[str, int]:
         return dict(self._counts)
