@@ -25,3 +25,14 @@ COLOR_GRID_LINE = (0, 0, 0)
 COLOR_TEXT = (230, 230, 230)
 COLOR_DAY_BANNER = (255, 214, 100)
 COLOR_NIGHT_BANNER = (120, 140, 255)
+
+# --- NPC ---
+NPC_MAX_HEALTH = 100.0
+NPC_MAX_HUNGER = 100.0
+HUNGER_DECAY_RATE = NPC_MAX_HUNGER / DAY_SECONDS   # hunger points lost per second (~0.833)
+NPC_SPEED = 64.0  # pixels/sec — placeholder until pathfinding (ticket 01)
+
+COLOR_NPC = (100, 180, 255)
+COLOR_HEALTH_BAR = (200, 60, 60)
+COLOR_HUNGER_BAR = (220, 160, 40)
+COLOR_BAR_BG = (40, 40, 40)
