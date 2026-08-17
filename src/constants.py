@@ -76,13 +76,13 @@ EXPAND_REVEAL_RADIUS = 3
 # --- Build (ticket 04) ---
 WALL_BLOCK = 100
 WALL_ATTACK = 0
-WALL_COST = {"crop": 2}
+WALL_COST = {"wood": 4}
 WALL_WORK_SECONDS = 3.0
 COLOR_WALL = (140, 140, 140)
 
 TOWER_BLOCK = 10
 TOWER_ATTACK = 15
-TOWER_COST = {"crop": 5}
+TOWER_COST = {"wood": 2, "bricks": 3}
 TOWER_WORK_SECONDS = 5.0
 COLOR_TOWER = (100, 120, 160)
 
@@ -94,3 +94,18 @@ TOWER_RANGE = TILE_SIZE * 4  # ranged attack, no adjacency required unlike NPCs
 
 # --- Game over & scoring (ticket 09) ---
 COLOR_GAME_OVER = (255, 90, 90)
+
+# --- Material taxonomy (ticket 14) ---
+# None is the "no resource" weight so the whole table sums to 1.0 and a single
+# rng.choices() call per tile replaces the old rng.random() < RESOURCE_CHANCE
+# roll. Non-None weights sum to 0.12, matching the old flat RESOURCE_CHANCE so
+# overall tile density is unchanged - only the resource mix got richer.
+RESOURCE_WEIGHTS = {
+    None: 0.88,
+    "crop": 0.03,
+    "wood": 0.03,
+    "marble": 0.015,
+    "bricks": 0.015,
+    "berries": 0.015,
+    "raw_stone": 0.015,
+}
