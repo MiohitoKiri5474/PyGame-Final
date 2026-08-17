@@ -46,6 +46,7 @@ from nest import NestManager, create_initial_nests
 from npc import NPC
 from monster import spawn_monster
 from pathfinding import find_path
+from population import maybe_spawn_npc
 from task import TASK_TYPES, update_npc_tasks
 from extensions import hud_lines, render_overlays, run_ticks
 from world import World
@@ -203,6 +204,8 @@ class Game:
                 self.selected_npc = None
 
             self.game_over_state.check(self.world.npcs, self.cycle.round_number)
+
+            maybe_spawn_npc(self.world, self.cycle.round_number, transitioned and self.cycle.phase == DAY)
 
             if transitioned:
                 save_checkpoint(
