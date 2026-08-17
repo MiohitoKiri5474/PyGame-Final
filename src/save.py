@@ -106,6 +106,7 @@ def dump_state(
                 "defense": m.defense,
                 "burn_ticks_remaining": m.burn_ticks_remaining,
                 "burn_damage_per_tick": m.burn_damage_per_tick,
+                "frozen_remaining": m.frozen_remaining,
             }
             for m in monsters
         ],
@@ -195,6 +196,7 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         monster.defense = md["defense"]
         monster.burn_ticks_remaining = md.get("burn_ticks_remaining", 0)
         monster.burn_damage_per_tick = md.get("burn_damage_per_tick", 0)
+        monster.frozen_remaining = md.get("frozen_remaining", 0.0)
         # burn_tick_timer intentionally not persisted - sub-second timing
         # precision on a 3-second DoT isn't worth the extra save-file field;
         # a reloaded mid-burn monster just restarts its current tick's timer.

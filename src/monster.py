@@ -23,6 +23,7 @@ class Monster:
         self.burn_ticks_remaining = 0
         self.burn_damage_per_tick = 0
         self.burn_tick_timer = 0.0
+        self.frozen_remaining = 0.0
 
     @property
     def has_arrived(self) -> bool:
@@ -32,8 +33,15 @@ class Monster:
     def is_dead(self) -> bool:
         return self.health <= 0
 
+    @property
+    def is_frozen(self) -> bool:
+        return self.frozen_remaining > 0
+
     def set_path(self, path: list[tuple[int, int]]) -> None:
         self.path = list(path)
+
+    def apply_freeze(self, duration: float) -> None:
+        self.frozen_remaining = duration  # overwrite, not add - refresh, never stack
 
     def apply_burn(self, damage_per_tick: int, ticks: int) -> None:
         self.burn_damage_per_tick = damage_per_tick
@@ -53,8 +61,15 @@ class Monster:
             self.health -= self.burn_damage_per_tick
             self.burn_ticks_remaining -= 1
 
+    def _tick_freeze(self, dt: float) -> None:
+        if self.frozen_remaining > 0:
+            self.frozen_remaining = max(0.0, self.frozen_remaining - dt)
+
     def update(self, dt: float) -> None:
         self._tick_burn(dt)
+        self._tick_freeze(dt)
+        if self.is_frozen:
+            return  # movement skipped entirely while frozen, not halved
         self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
 
 

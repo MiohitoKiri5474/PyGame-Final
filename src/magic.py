@@ -4,11 +4,15 @@ from typing import Callable, TYPE_CHECKING
 
 from constants import (
     COLOR_FIRE_FLASH,
+    COLOR_FREEZE_FLASH,
     COLOR_LIGHTNING_FLASH,
     FIRE_BURN_DAMAGE_PER_TICK,
     FIRE_BURN_TICKS,
     FIRE_COOLDOWN,
     FIRE_DAMAGE,
+    FREEZE_COOLDOWN,
+    FREEZE_DURATION,
+    FREEZE_RADIUS,
     LIGHTNING_COOLDOWN,
     LIGHTNING_DAMAGE,
     MAGIC_FLASH_DURATION,
@@ -74,6 +78,12 @@ def _has_living_mage(world: "World") -> bool:
     return any(npc.role == ROLE_MAGE and not npc.is_dead for npc in world.npcs)
 
 
+def _can_cast(world: "World", spell: str) -> bool:
+    """Castable whenever off-cooldown and a living Mage exists, regardless
+    of that Mage's position - shared by every spell's cast function."""
+    return world.spellbook.is_ready(spell) and _has_living_mage(world)
+
+
 def _cast_single_target_spell(
     world: "World",
     monsters: list["Monster"],
@@ -83,15 +93,12 @@ def _cast_single_target_spell(
     color: tuple[int, int, int],
     on_hit: Callable[["Monster"], None] | None = None,
 ) -> bool:
-    """Shared scaffolding for single-target spells: ready-check, living-Mage
-    check, nearest-target lookup, damage, cooldown, flash. Castable whenever
-    off-cooldown and a living Mage exists, regardless of that Mage's
-    position - auto-targets the nearest monster to territory. Silent no-op
-    (no wasted cooldown) otherwise. `on_hit` applies any effect beyond flat
-    damage (e.g. Fire's burn)."""
-    if not world.spellbook.is_ready(spell):
-        return False
-    if not _has_living_mage(world):
+    """Shared scaffolding for single-target spells: ready/Mage check,
+    nearest-target lookup, damage, cooldown, flash. Auto-targets the nearest
+    monster to territory. Silent no-op (no wasted cooldown) if not castable
+    or no monster exists. `on_hit` applies any effect beyond flat damage
+    (e.g. Fire's burn)."""
+    if not _can_cast(world, spell):
         return False
     target = nearest_monster_to_territory(world, monsters)
     if target is None:
@@ -123,13 +130,38 @@ def cast_fire(world: "World", monsters: list["Monster"]) -> bool:
     )
 
 
+def cast_freeze(world: "World", monsters: list["Monster"]) -> bool:
+    """AoE, not single-target, so this doesn't reuse
+    _cast_single_target_spell - targeting selects every monster within a
+    3x3 tile box (FREEZE_RADIUS on each axis) around the nearest threat's
+    tile, not just that one monster. apply_freeze() on each affected monster
+    already refreshes rather than stacks (Monster.apply_freeze overwrites,
+    never adds), so re-hitting an already-frozen monster is safe by
+    construction."""
+    if not _can_cast(world, "Freeze"):
+        return False
+    center = nearest_monster_to_territory(world, monsters)
+    if center is None:
+        return False
+
+    cx, cy = tile_at(center.x, center.y)
+    for monster in monsters:
+        mx, my = tile_at(monster.x, monster.y)
+        if abs(mx - cx) <= FREEZE_RADIUS and abs(my - cy) <= FREEZE_RADIUS:
+            monster.apply_freeze(FREEZE_DURATION)
+
+    world.spellbook.start_cooldown("Freeze", FREEZE_COOLDOWN)
+    world.spellbook.trigger_flash((center.x, center.y), MAGIC_FLASH_DURATION, COLOR_FREEZE_FLASH)
+    return True
+
+
 def _tick_magic(world: "World", dt: float) -> None:
     world.spellbook.tick(dt)
 
 
 def _magic_hud_line(world: "World") -> str:
     parts = []
-    for spell, hotkey in (("Lightning", "W"), ("Fire", "Q")):
+    for spell, hotkey in (("Lightning", "W"), ("Fire", "Q"), ("Freeze", "E")):
         remaining = world.spellbook.remaining(spell)
         status = "ready" if remaining <= 0 else f"{remaining:.0f}s"
         parts.append(f"{spell}: {status} [{hotkey}]")

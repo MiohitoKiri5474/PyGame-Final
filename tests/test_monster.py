@@ -118,6 +118,57 @@ class TestBurn:
         assert monster.burn_ticks_remaining == 1
 
 
+class TestFreeze:
+    def test_apply_freeze_sets_remaining(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_freeze(4.0)
+        assert monster.is_frozen
+        assert monster.frozen_remaining == 4.0
+
+    def test_frozen_monster_does_not_advance_path(self):
+        start_x, start_y = tile_center(0, 0)
+        monster = Monster(x=start_x, y=start_y, speed=1000.0)
+        monster.set_path([(2, 0)])
+        monster.apply_freeze(4.0)
+
+        monster.update(1.0)
+
+        assert (monster.x, monster.y) == (start_x, start_y)
+        assert monster.path  # never consumed while frozen
+
+    def test_monster_resumes_moving_once_freeze_expires(self):
+        start_x, start_y = tile_center(0, 0)
+        monster = Monster(x=start_x, y=start_y, speed=1000.0)
+        monster.set_path([(2, 0)])
+        monster.apply_freeze(1.0)
+
+        monster.update(1.0)  # freeze expires exactly here
+        monster.update(0.1)  # now free to move
+
+        assert monster.x > start_x
+
+    def test_freeze_counts_down_and_expires(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_freeze(4.0)
+        monster.update(1.5)
+        assert monster.frozen_remaining == 2.5
+        assert monster.is_frozen
+        monster.update(2.5)
+        assert monster.frozen_remaining == 0.0
+        assert not monster.is_frozen
+
+    def test_no_freeze_by_default(self):
+        monster = Monster(x=0.0, y=0.0)
+        assert not monster.is_frozen
+
+    def test_reapplying_freeze_refreshes_not_stacks(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_freeze(4.0)
+        monster.update(3.0)  # 1.0 remaining
+        monster.apply_freeze(4.0)  # re-hit while still frozen
+        assert monster.frozen_remaining == 4.0  # refreshed, not 1.0 + 4.0
+
+
 class _Building:
     def __init__(self, type_: str, x: int, y: int):
         self.type = type_

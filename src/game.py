@@ -42,7 +42,7 @@ from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
 from coords import tile_at, tile_center
 from game_over import GameOverState
-from magic import cast_fire, cast_lightning
+from magic import cast_fire, cast_freeze, cast_lightning
 from nest import NestManager, create_initial_nests
 from npc import NPC
 from monster import spawn_monster
@@ -137,6 +137,9 @@ class Game:
                 elif event.key == pygame.K_q:
                     if not self.paused:
                         cast_fire(self.world, self.monsters)
+                elif event.key == pygame.K_e:
+                    if not self.paused:
+                        cast_freeze(self.world, self.monsters)
                 elif event.key in (
                     pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4,
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9,

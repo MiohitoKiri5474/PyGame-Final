@@ -160,3 +160,9 @@ FIRE_BURN_DAMAGE_PER_TICK = 5
 FIRE_BURN_TICKS = 3
 FIRE_BURN_TICK_INTERVAL = 1.0
 COLOR_FIRE_FLASH = (255, 120, 40)
+
+# --- Freeze spell (ticket 20) ---
+FREEZE_COOLDOWN = 25.0
+FREEZE_DURATION = 4.0
+FREEZE_RADIUS = 1  # 3x3 box: center tile +/- this radius on each axis
+COLOR_FREEZE_FLASH = (140, 220, 255)

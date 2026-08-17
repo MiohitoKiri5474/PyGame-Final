@@ -1,15 +1,18 @@
 from constants import (
     COLOR_FIRE_FLASH,
+    COLOR_FREEZE_FLASH,
     COLOR_LIGHTNING_FLASH,
     FIRE_BURN_DAMAGE_PER_TICK,
     FIRE_BURN_TICKS,
     FIRE_COOLDOWN,
     FIRE_DAMAGE,
+    FREEZE_COOLDOWN,
+    FREEZE_DURATION,
     LIGHTNING_COOLDOWN,
     LIGHTNING_DAMAGE,
     ROLE_MAGE,
 )
-from magic import Spellbook, cast_fire, cast_lightning, nearest_monster_to_territory
+from magic import Spellbook, cast_fire, cast_freeze, cast_lightning, nearest_monster_to_territory
 from monster import Monster
 from npc import NPC
 from world import World
@@ -164,3 +167,60 @@ def test_fire_and_lightning_cooldowns_are_independent():
     assert cast_fire(world, [monster]) is True  # not blocked by Lightning's cooldown
     assert not world.spellbook.is_ready("Lightning")
     assert not world.spellbook.is_ready("Fire")
+
+
+def test_cast_freeze_fails_on_cooldown():
+    world = _world_with_mage()
+    monster = Monster(0.0, 0.0)
+    world.spellbook.start_cooldown("Freeze", 5.0)
+    assert cast_freeze(world, [monster]) is False
+
+
+def test_cast_freeze_fails_without_a_living_mage():
+    world = World(npc_count=0)
+    monster = Monster(0.0, 0.0)
+    assert cast_freeze(world, [monster]) is False
+
+
+def test_cast_freeze_fails_with_no_monsters():
+    world = _world_with_mage()
+    assert cast_freeze(world, []) is False
+
+
+def test_cast_freeze_starts_cooldown_and_flash():
+    world = _world_with_mage()
+    from coords import tile_center
+
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    target = Monster(*tile_center(cx + 6, cy))
+
+    assert cast_freeze(world, [target]) is True
+    assert world.spellbook.remaining("Freeze") == FREEZE_COOLDOWN
+    assert world.spellbook.flash_color == COLOR_FREEZE_FLASH
+
+
+def test_cast_freeze_affects_every_monster_inside_the_3x3_box():
+    world = _world_with_mage()
+    from coords import tile_center
+
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    center_tile = (cx + 6, cy)
+    center = Monster(*tile_center(*center_tile))
+    inside = Monster(*tile_center(center_tile[0] + 1, center_tile[1] - 1))  # corner of the 3x3
+    outside = Monster(*tile_center(center_tile[0] + 2, center_tile[1]))  # just past the box
+
+    assert cast_freeze(world, [center, inside, outside]) is True
+    assert center.is_frozen
+    assert inside.is_frozen
+    assert not outside.is_frozen
+    assert center.frozen_remaining == FREEZE_DURATION
+    assert inside.frozen_remaining == FREEZE_DURATION
+
+
+def test_cast_freeze_refreshes_rather_than_stacks_on_an_already_frozen_monster():
+    world = _world_with_mage()
+    monster = Monster(0.0, 0.0)
+    monster.apply_freeze(1.0)  # already frozen, about to expire
+
+    assert cast_freeze(world, [monster]) is True
+    assert monster.frozen_remaining == FREEZE_DURATION  # refreshed, not 1.0 + FREEZE_DURATION
