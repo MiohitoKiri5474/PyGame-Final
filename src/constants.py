@@ -146,3 +146,9 @@ RESOURCE_WEIGHTS = {
     "berries": 0.02,
     "raw_stone": 0.02,
 }
+
+# --- Magic framework + Lightning (ticket 18) ---
+LIGHTNING_DAMAGE = 35
+LIGHTNING_COOLDOWN = 20.0
+MAGIC_FLASH_DURATION = 0.3
+COLOR_LIGHTNING_FLASH = (255, 255, 120)

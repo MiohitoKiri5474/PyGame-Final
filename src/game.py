@@ -42,6 +42,7 @@ from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
 from coords import tile_at, tile_center
 from game_over import GameOverState
+from magic import cast_lightning
 from nest import NestManager, create_initial_nests
 from npc import NPC
 from monster import spawn_monster
@@ -125,6 +126,14 @@ class Game:
                     self._cycle_selected_task_type()
                 elif event.key == pygame.K_p:
                     self.priority_ui.toggle()
+                elif event.key == pygame.K_w:
+                    # Collides with W-pans-camera-up (continuous key-state
+                    # check below, separate from this one-shot keydown) -
+                    # accidental cast attempts while panning are silently
+                    # gated by cooldown/no-Mage/no-monster, same as any
+                    # other no-op cast; arrow keys pan without the overlap.
+                    if not self.paused:  # casting affects sim state, stays frozen with everything else
+                        cast_lightning(self.world, self.monsters)
                 elif event.key in (
                     pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4,
                     pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9,

@@ -18,6 +18,7 @@ def _build_nontrivial_state():
     world.grid.get(6, 6).claimed = False
     world.inventory.add("crop", 7)
     world.buildings.append(Building(type="Wall", x=5, y=5, block=100, attack=0))
+    world.spellbook.start_cooldown("Lightning", 13.5)
 
     idle_task = world.tasks.add("Gather", (6, 6))
 
@@ -104,6 +105,7 @@ def test_round_trip_preserves_specific_field_values(tmp_path):
     assert loaded_monsters[0].health == 17
     assert l_points == 4
     assert l_killed == 3
+    assert loaded_world.spellbook.remaining("Lightning") == 13.5
 
 
 def test_round_trip_preserves_tuple_types_not_lists(tmp_path):

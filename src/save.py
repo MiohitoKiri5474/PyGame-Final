@@ -10,6 +10,7 @@ from day_night import DayNightCycle
 from game_over import GameOverState
 from grid import Grid, Tile
 from inventory import Inventory
+from magic import Spellbook
 from monster import Monster
 from nest import Nest, NestManager
 from npc import NPC
@@ -59,6 +60,7 @@ def dump_state(
         "monsters_killed_this_night": monsters_killed_this_night,
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
+        "spellbook_cooldowns": world.spellbook.cooldowns,
         "buildings": [
             {"type": b.type, "x": b.x, "y": b.y, "block": b.block, "attack": b.attack}
             for b in world.buildings
@@ -130,6 +132,7 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     world.inventory = Inventory()
     for resource, amount in data["inventory"].items():
         world.inventory.add(resource, amount)
+    world.spellbook = Spellbook(cooldowns=data.get("spellbook_cooldowns", {}))
     world.buildings = [
         Building(type=b["type"], x=b["x"], y=b["y"], block=b["block"], attack=b["attack"])
         for b in data["buildings"]

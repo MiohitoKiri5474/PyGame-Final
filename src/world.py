@@ -4,6 +4,7 @@ from constants import STARTING_NPC_COUNT, ROLES
 from coords import tile_center
 from grid import Grid
 from inventory import Inventory
+from magic import Spellbook
 from npc import NPC
 from task import TaskQueue
 
@@ -14,6 +15,7 @@ class World:
         self.inventory = Inventory()
         self.tasks = TaskQueue()
         self.buildings: list = []
+        self.spellbook = Spellbook()
 
         center_x, center_y = self.grid.width // 2, self.grid.height // 2
         # Round-robin over ROLES so the default 3-NPC start is exactly
