@@ -25,9 +25,10 @@ No build/lint/test tooling set up yet — add commands here once they exist.
 
 ## Git Workflow
 
-- No direct commits to `main`. Every change goes through a branch + PR.
+- Branch structure: `main` → `develop` → `feat/*`/`fix/*`. `develop` is the mother branch every feature/fix branch cuts from and merges back into — `main` does not take feature work directly.
+- No direct commits to `develop` or `main` from feature work. Every change goes through a `feat/`/`fix/` branch + PR into `develop`.
 - Branch naming: `type/short-desc` (e.g. `feat/task-queue`, `fix/tile-render`). `type` matches commit types below.
-- One branch = one logical change. Rebase/update from `main` before opening PR if it's gone stale.
+- One branch = one logical change. Rebase/update from `develop` before opening PR if it's gone stale.
 
 ### Commits
 
@@ -36,9 +37,10 @@ No build/lint/test tooling set up yet — add commands here once they exist.
 
 ### PRs
 
-- Open PR from feature branch into `main`, comprehensive summary + test plan (see global `git-workflow.md` for the exact template).
+- After a feature/fix is implemented, open a PR from its branch into `develop` — not `main`. Comprehensive summary + test plan (see global `git-workflow.md` for the exact template).
 - Add Copilot as reviewer on open, and again after every push that addresses feedback. Do not merge with unresolved Copilot comments.
 - Squash or keep history clean per branch before merge — reviewer's call, not enforced here.
+- `develop` → `main` promotion (releases) is a separate, deliberate step, not part of the per-feature PR flow.
 
 ## Scope & Deadline
 
