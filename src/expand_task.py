@@ -17,7 +17,16 @@ def _can_queue(world: "World", tile: "Tile") -> bool:
     t = world.grid.get(x, y)
     if t.claimed:
         return False
-    return not any(task.type == "Expand" and task.target == tile for task in world.tasks.tasks)
+    if any(task.type == "Expand" and task.target == tile for task in world.tasks.tasks):
+        return False
+    # Must be reachable from claimed territory (4-adjacent to a claimed
+    # tile) - otherwise find_path can never reach it and the task would
+    # permanently deadlock the queue (claim_for keeps retrying the
+    # unreachable head-of-queue task, starving everything behind it).
+    return any(
+        world.grid.in_bounds(nx, ny) and world.grid.get(nx, ny).claimed
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+    )
 
 
 def _on_complete(world: "World", task: Task) -> bool:

@@ -37,6 +37,19 @@ def test_can_queue_rejects_out_of_bounds_tile():
     assert not TASK_TYPES["Expand"].can_queue(world, (-1, -1))
 
 
+def test_can_queue_rejects_unclaimed_tile_not_adjacent_to_claimed_land():
+    # A target with no path in from claimed territory would permanently
+    # deadlock the queue (claim_for always retries the unreachable
+    # head-of-queue task, starving every Expand task behind it) - reject it
+    # at queue time instead.
+    world = World(npc_count=0)
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    isolated = (cx + START_CLAIM_RADIUS + 5, cy)
+    assert not world.grid.get(*isolated).claimed
+
+    assert not TASK_TYPES["Expand"].can_queue(world, isolated)
+
+
 def test_full_expand_task_lifecycle_claims_and_reveals_tiles():
     world = World(npc_count=0)
     cx, cy = world.grid.width // 2, world.grid.height // 2
