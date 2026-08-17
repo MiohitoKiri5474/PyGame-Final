@@ -42,7 +42,7 @@ from npc import NPC
 from monster import spawn_monster
 from pathfinding import find_path
 from task import TASK_TYPES, update_npc_tasks
-from extensions import hud_lines, render_overlays
+from extensions import hud_lines, render_overlays, run_ticks
 from world import World
 from priority_ui import PriorityTableUI
 from save import load_checkpoint, save_checkpoint
@@ -175,6 +175,7 @@ class Game:
         if not self.paused and not self.game_over_state.is_over:
             transitioned = self.cycle.update(dt)
             update_npc_tasks(self.world, dt)
+            run_ticks(self.world, dt)
 
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
                 self.monsters.append(spawn_monster(tile, self.world.grid, self.world.buildings))
