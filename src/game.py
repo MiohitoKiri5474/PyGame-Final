@@ -136,10 +136,11 @@ class Game:
         return None
 
     def update(self, dt: float) -> None:
-        keys = pygame.key.get_pressed()
-        dx = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
-        dy = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
-        self.camera.pan(dx, dy, dt)  # camera pans even while paused
+        if not self.priority_ui.visible:
+            keys = pygame.key.get_pressed()
+            dx = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
+            dy = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
+            self.camera.pan(dx, dy, dt)  # camera pans even while paused
 
         if not self.paused and not self.game_over_state.is_over:
             self.cycle.update(dt)
