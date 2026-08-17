@@ -60,7 +60,10 @@ def dump_state(
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
         "buildings": [
-            {"type": b.type, "x": b.x, "y": b.y, "block": b.block, "attack": b.attack}
+            {
+                "type": b.type, "x": b.x, "y": b.y, "block": b.block, "attack": b.attack,
+                "growth_timer": b.growth_timer, "ready": b.ready,
+            }
             for b in world.buildings
         ],
         "tasks": [
@@ -131,7 +134,10 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     for resource, amount in data["inventory"].items():
         world.inventory.add(resource, amount)
     world.buildings = [
-        Building(type=b["type"], x=b["x"], y=b["y"], block=b["block"], attack=b["attack"])
+        Building(
+            type=b["type"], x=b["x"], y=b["y"], block=b["block"], attack=b["attack"],
+            growth_timer=b.get("growth_timer", 0.0), ready=b.get("ready", False),
+        )
         for b in data["buildings"]
     ]
 
