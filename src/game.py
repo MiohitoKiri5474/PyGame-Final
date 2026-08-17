@@ -43,6 +43,7 @@ from task import TASK_TYPES, update_npc_tasks
 from extensions import hud_lines, render_overlays
 from world import World
 from priority_ui import PriorityTableUI
+from save import load_checkpoint, save_checkpoint
 
 
 class Game:
@@ -53,9 +54,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
 
-        self.world = World()
         self.camera = Camera()
-        self.cycle = DayNightCycle()
         self.paused = False
         self.running = True
 
@@ -63,12 +62,18 @@ class Game:
         self.selected_task_type: str | None = next(iter(TASK_TYPES), None)
         self.priority_ui = PriorityTableUI()
 
-        initial_nests = create_initial_nests(
-            self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
-        )
-        self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
-        self.monsters = []
-        self.game_over_state = GameOverState()
+        checkpoint = load_checkpoint()
+        if checkpoint is not None:
+            self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state = checkpoint
+        else:
+            self.world = World()
+            self.cycle = DayNightCycle()
+            initial_nests = create_initial_nests(
+                self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
+            )
+            self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
+            self.monsters = []
+            self.game_over_state = GameOverState()
 
     def run(self) -> None:
         while self.running:
@@ -140,7 +145,7 @@ class Game:
         self.camera.pan(dx, dy, dt)  # camera pans even while paused
 
         if not self.paused and not self.game_over_state.is_over:
-            self.cycle.update(dt)
+            transitioned = self.cycle.update(dt)
             update_npc_tasks(self.world, dt)
 
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
@@ -154,6 +159,11 @@ class Game:
                 self.selected_npc = None
 
             self.game_over_state.check(self.world.npcs, self.cycle.round_number)
+
+            if transitioned:
+                save_checkpoint(
+                    self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state
+                )
 
     def render(self) -> None:
         self.screen.fill(COLOR_BG)

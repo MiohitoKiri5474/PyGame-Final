@@ -4,3 +4,4 @@ __pycache__/
 .claude/
 .agents/
 mcp_config.json
+save.json
