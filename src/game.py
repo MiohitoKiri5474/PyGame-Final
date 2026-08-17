@@ -132,11 +132,11 @@ class Game:
             update_npc_tasks(self.world, dt)
 
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
-                self.monsters.append(spawn_monster(tile, self.world.grid))
+                self.monsters.append(spawn_monster(tile, self.world.grid, self.world.buildings))
             for monster in self.monsters:
                 monster.update(dt)
 
-            resolve_combat(self.world.npcs, self.monsters)
+            resolve_combat(self.world.npcs, self.monsters, self.world.buildings)
             self.world.npcs[:] = [npc for npc in self.world.npcs if not npc.is_dead]
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None

@@ -1,4 +1,13 @@
 from combat import resolve_combat
+from coords import tile_center
+
+
+class _Building:
+    def __init__(self, type_: str, x: int, y: int, attack: int):
+        self.type = type_
+        self.x = x
+        self.y = y
+        self.attack = attack
 
 
 class _Entity:
@@ -54,3 +63,27 @@ def test_npc_at_zero_health_is_removed():
     resolve_combat(npcs, monsters)
     assert npcs == []
     assert monsters == [monster]
+
+
+def test_tower_attacks_monster_within_range_without_adjacency():
+    tower = _Building("Tower", x=0, y=0, attack=15)
+    mx, my = tile_center(3, 0)  # 3 tiles out: beyond COMBAT_RANGE, inside TOWER_RANGE
+    monster = _Entity(mx, my, health=40, attack=10, defense=2)
+    resolve_combat([], [monster], [tower])
+    assert monster.health == 40 - (15 - 2)
+
+
+def test_tower_does_not_attack_monster_outside_its_range():
+    tower = _Building("Tower", x=0, y=0, attack=15)
+    mx, my = tile_center(10, 0)  # well beyond TOWER_RANGE
+    monster = _Entity(mx, my, health=40, attack=10, defense=2)
+    resolve_combat([], [monster], [tower])
+    assert monster.health == 40
+
+
+def test_wall_never_attacks_regardless_of_proximity():
+    wall = _Building("Wall", x=0, y=0, attack=0)
+    mx, my = tile_center(0, 0)  # same tile as the wall - as close as it gets
+    monster = _Entity(mx, my, health=40, attack=10, defense=2)
+    resolve_combat([], [monster], [wall])
+    assert monster.health == 40

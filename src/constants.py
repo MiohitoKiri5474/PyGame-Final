@@ -83,3 +83,6 @@ TOWER_COST = {"crop": 5}
 TOWER_WORK_SECONDS = 5.0
 COLOR_TOWER = (100, 120, 160)
 
+# --- Building combat integration (ticket 07) ---
+TOWER_RANGE = TILE_SIZE * 4  # ranged attack, no adjacency required unlike NPCs
+

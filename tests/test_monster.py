@@ -61,3 +61,26 @@ def test_monster_is_dead_at_zero_health():
     monster = Monster(x=0.0, y=0.0)
     monster.health = 0
     assert monster.is_dead
+
+
+class _Building:
+    def __init__(self, type_: str, x: int, y: int):
+        self.type = type_
+        self.x = x
+        self.y = y
+
+
+def test_spawn_monster_routes_around_a_wall_blocking_the_direct_path():
+    grid = _FakeGrid(3, 3, claimed={(2, 0)})
+    buildings = [_Building("Wall", 1, 0)]  # sits on the straight-line route
+    monster = spawn_monster((0, 0), grid, buildings)
+    assert monster.path
+    assert (1, 0) not in monster.path
+    assert monster.path[-1] == (2, 0)
+
+
+def test_spawn_monster_has_no_path_when_a_wall_blocks_the_only_route():
+    grid = _FakeGrid(1, 3, claimed={(0, 2)})  # 1-tile-wide corridor, no detour possible
+    buildings = [_Building("Wall", 0, 1)]
+    monster = spawn_monster((0, 0), grid, buildings)
+    assert monster.path == []
