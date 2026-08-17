@@ -5,8 +5,11 @@ from constants import (
     WINDOW_HEIGHT,
     FPS,
     TILE_SIZE,
+    GRID_WIDTH,
+    GRID_HEIGHT,
     VIEWPORT_TILES_X,
     VIEWPORT_TILES_Y,
+    NPC_MAX_HUNGER,
     COLOR_BG,
     COLOR_FOG,
     COLOR_UNCLAIMED,
@@ -16,10 +19,14 @@ from constants import (
     COLOR_TEXT,
     COLOR_DAY_BANNER,
     COLOR_NIGHT_BANNER,
+    COLOR_NPC,
+    COLOR_HUNGER_BAR,
+    COLOR_BAR_BG,
 )
 from grid import Grid
 from camera import Camera
 from day_night import DayNightCycle, DAY
+from npc import NPC
 
 
 class Game:
@@ -35,6 +42,16 @@ class Game:
         self.cycle = DayNightCycle()
         self.paused = False
         self.running = True
+
+        # Spawn 3 starting NPCs near the centre of the claimed area
+        self.npcs: list[NPC] = []
+        cx = GRID_WIDTH // 2
+        cy = GRID_HEIGHT // 2
+        offsets = [(-1, 0), (0, 0), (1, 0)]  # spread horizontally
+        for ox, oy in offsets:
+            px = (cx + ox) * TILE_SIZE + TILE_SIZE // 2
+            py = (cy + oy) * TILE_SIZE + TILE_SIZE // 2
+            self.npcs.append(NPC(float(px), float(py)))
 
     def run(self) -> None:
         while self.running:
@@ -62,10 +79,15 @@ class Game:
 
         if not self.paused:
             self.cycle.update(dt)
+            for npc in self.npcs:
+                npc.update(dt)
+            # Remove dead NPCs (starvation or future combat)
+            self.npcs = [n for n in self.npcs if n.alive]
 
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         self.render_grid()
+        self.render_npcs()
         self.render_hud()
         pygame.display.flip()
 
@@ -93,10 +115,45 @@ class Game:
                 pygame.draw.rect(self.screen, color, rect)
                 pygame.draw.rect(self.screen, COLOR_GRID_LINE, rect, 1)
 
+    # ------------------------------------------------------------------
+    # NPC rendering
+    # ------------------------------------------------------------------
+
+    def render_npcs(self) -> None:
+        cam_x, cam_y = self.camera.x, self.camera.y
+        npc_radius = TILE_SIZE // 3
+        bar_w = TILE_SIZE - 4
+        bar_h = 4
+
+        for npc in self.npcs:
+            sx = int(npc.x - cam_x)
+            sy = int(npc.y - cam_y)
+
+            # Body
+            pygame.draw.circle(self.screen, COLOR_NPC, (sx, sy), npc_radius)
+
+            # Hunger bar (above the NPC)
+            bar_x = sx - bar_w // 2
+            bar_y = sy - npc_radius - bar_h - 4
+            hunger_ratio = npc.hunger / NPC_MAX_HUNGER
+            # Background
+            pygame.draw.rect(self.screen, COLOR_BAR_BG,
+                             pygame.Rect(bar_x, bar_y, bar_w, bar_h))
+            # Fill
+            fill_w = max(0, int(bar_w * hunger_ratio))
+            if fill_w > 0:
+                pygame.draw.rect(self.screen, COLOR_HUNGER_BAR,
+                                 pygame.Rect(bar_x, bar_y, fill_w, bar_h))
+
+    # ------------------------------------------------------------------
+    # HUD
+    # ------------------------------------------------------------------
+
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
         lines = [
             f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
+            f"NPCs alive: {len(self.npcs)}",
             "PAUSED" if self.paused else "",
         ]
         y = 8
