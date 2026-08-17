@@ -1,7 +1,17 @@
 from blocking import is_wall_blocked
-from build_task import Building, _can_queue, _on_complete_wall, _blocked_builds_hud_line, _can_perform_wall, _can_perform_tower
+from build_task import (
+    Building,
+    _can_queue,
+    _on_complete_wall,
+    _on_complete_house,
+    _blocked_builds_hud_line,
+    _can_perform_wall,
+    _can_perform_tower,
+    _can_perform_house,
+    population_cap,
+)
 from coords import tile_at, tile_center
-from constants import WALL_COST, TOWER_COST
+from constants import BASE_POPULATION_CAP, HOUSE_COST, WALL_COST, TOWER_COST
 from npc import NPC
 from pathfinding import find_path
 from task import Task, update_npc_tasks
@@ -157,3 +167,52 @@ def test_blocked_builds_hud_line_empty_once_affordable():
         world.inventory.add(res, amount)
 
     assert _blocked_builds_hud_line(world) == ""
+
+
+def test_house_can_queue_same_rule_as_wall_tower():
+    world = World(npc_count=0)
+    world.grid.get(10, 10).claimed = True
+    world.grid.get(10, 10).resource = None
+    assert _can_queue(world, (10, 10))
+
+
+def test_house_can_perform_checks_materials():
+    world = World(npc_count=0)
+    task = Task("BuildHouse", (10, 10))
+    assert not _can_perform_house(world, task)
+    for res, amount in HOUSE_COST.items():
+        world.inventory.add(res, amount)
+    assert _can_perform_house(world, task)
+
+
+def test_house_on_complete_builds_and_spends():
+    world = World(npc_count=0)
+    task = Task("BuildHouse", (10, 10))
+    for res, amount in HOUSE_COST.items():
+        world.inventory.add(res, amount)
+
+    assert _on_complete_house(world, task) is True
+    assert len(world.buildings) == 1
+    assert world.buildings[0].type == "House"
+    for res in HOUSE_COST:
+        assert world.inventory.get(res) == 0
+
+
+def test_population_cap_is_base_with_no_houses():
+    world = World(npc_count=0)
+    assert population_cap(world) == BASE_POPULATION_CAP
+
+
+def test_population_cap_increases_per_house():
+    world = World(npc_count=0)
+    world.buildings.append(Building("House", 1, 1, 0, 0))
+    assert population_cap(world) == BASE_POPULATION_CAP + 1
+    world.buildings.append(Building("House", 2, 2, 0, 0))
+    assert population_cap(world) == BASE_POPULATION_CAP + 2
+
+
+def test_population_cap_ignores_other_building_types():
+    world = World(npc_count=0)
+    world.buildings.append(Building("Wall", 1, 1, 100, 0))
+    world.buildings.append(Building("Tower", 2, 2, 10, 15))
+    assert population_cap(world) == BASE_POPULATION_CAP
