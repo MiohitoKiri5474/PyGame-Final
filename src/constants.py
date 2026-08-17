@@ -32,11 +32,14 @@ COLOR_NPC_SELECTED = (255, 255, 255)
 STARTING_NPC_COUNT = 3
 NPC_RADIUS = TILE_SIZE // 3
 
-# --- Combat (ticket 06) ---
+# --- NPC Stats & Hunger (ticket 08) ---
 NPC_MAX_HEALTH = 100
+NPC_MAX_HUNGER = 100.0
+HUNGER_DECAY_RATE = NPC_MAX_HUNGER / DAY_SECONDS   # hunger points lost per second (~0.833)
 NPC_ATTACK = 12
 NPC_DEFENSE = 4
 
+# --- Combat (ticket 06) ---
 MONSTER_SPEED = 60.0  # pixels/sec, slower than NPC_DEFAULT_SPEED
 MONSTER_MAX_HEALTH = 40
 MONSTER_ATTACK = 10
@@ -54,8 +57,10 @@ NEW_NEST_INTERVAL = 240.0  # seconds between chances for a new nest to appear
 
 COLOR_MONSTER = (200, 60, 60)
 COLOR_NEST = (120, 20, 20)
+COLOR_HEALTH_BAR = (200, 60, 60)
+COLOR_HUNGER_BAR = (220, 160, 40)
+COLOR_BAR_BG = (40, 40, 40)
 
 # --- Gather (ticket 02) ---
 GATHER_WORK_SECONDS = 2.0
 GATHER_YIELD = 1
-
