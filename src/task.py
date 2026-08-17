@@ -103,7 +103,9 @@ def update_npc_tasks(world: "World", dt: float) -> None:
             continue
 
         npc.task_progress += dt
-        if task_type is None or npc.task_progress < task_type.work_seconds:
+        if task_type is None:
+            continue
+        if npc.task_progress < task_type.work_seconds * npc.work_multiplier:
             continue
 
         finished = task_type.on_complete(world, npc.task)

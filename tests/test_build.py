@@ -45,11 +45,13 @@ def test_can_perform_checks_materials():
     assert not _can_perform_wall(world, task_wall)
     assert not _can_perform_tower(world, task_tower)
 
-    world.inventory.add("crop", WALL_COST["crop"])
+    for res, amount in WALL_COST.items():
+        world.inventory.add(res, amount)
     assert _can_perform_wall(world, task_wall)
     assert not _can_perform_tower(world, task_tower)
 
-    world.inventory.add("crop", TOWER_COST["crop"] - WALL_COST["crop"])
+    for res, amount in TOWER_COST.items():
+        world.inventory.add(res, amount)
     assert _can_perform_tower(world, task_tower)
 
 
@@ -82,14 +84,13 @@ def test_on_complete_sufficient_funds():
     for res, amount in WALL_COST.items():
         world.inventory.add(res, amount)
 
-    initial_crop = world.inventory.get("crop")
-
     assert _on_complete_wall(world, task) is True
     assert len(world.buildings) == 1
     assert world.buildings[0].type == "Wall"
     assert world.buildings[0].x == 10
     assert world.buildings[0].y == 10
-    assert world.inventory.get("crop") == initial_crop - WALL_COST["crop"]
+    for res in WALL_COST:
+        assert world.inventory.get(res) == 0
 
 
 def test_building_wall_displaces_npc_to_side_of_wall():
@@ -101,7 +102,8 @@ def test_building_wall_displaces_npc_to_side_of_wall():
     npc = NPC(*tile_center(10, 10))
     world.npcs.append(npc)
 
-    world.inventory.add("crop", WALL_COST["crop"])
+    for res, amount in WALL_COST.items():
+        world.inventory.add(res, amount)
     task = Task("BuildWall", (10, 10), assigned_npc=npc)
 
     assert _on_complete_wall(world, task) is True
@@ -127,12 +129,13 @@ def test_on_complete_insufficient_funds():
     task = Task("BuildWall", (10, 10))
 
     # Ensure inventory has 0 resources
-    initial_crop = world.inventory.get("crop")
-    assert initial_crop < WALL_COST["crop"]
+    for res, amount in WALL_COST.items():
+        assert world.inventory.get(res) < amount
 
     assert _on_complete_wall(world, task) is False
     assert len(world.buildings) == 0
-    assert world.inventory.get("crop") == initial_crop
+    for res in WALL_COST:
+        assert world.inventory.get(res) == 0
 
 
 def test_blocked_builds_hud_line_empty_when_nothing_queued():

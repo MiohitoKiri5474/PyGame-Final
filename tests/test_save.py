@@ -1,4 +1,5 @@
 from build_task import Building
+from constants import ROLE_KNIGHT
 from day_night import DayNightCycle, NIGHT
 from game_over import GameOverState
 from monster import Monster
@@ -20,7 +21,7 @@ def _build_nontrivial_state():
 
     idle_task = world.tasks.add("Gather", (6, 6))
 
-    npc_a = NPC(160.0, 160.0, priority=["Gather", "BuildWall"])
+    npc_a = NPC(160.0, 160.0, priority=["Gather", "BuildWall"], role=ROLE_KNIGHT)
     npc_a.health = 42
     npc_a.hunger = 55.5
     npc_a.attack = 12
@@ -86,6 +87,8 @@ def test_round_trip_preserves_specific_field_values(tmp_path):
 
     npc_a = next(n for n in loaded_world.npcs if n.health == 42)
     assert npc_a.hunger == 55.5
+    assert npc_a.role == ROLE_KNIGHT
+    assert npc_a.max_health == 140  # re-derived from role on load, not just the raw health value
 
     npc_b = next(n for n in loaded_world.npcs if n is not npc_a)
     assert npc_b.task_progress == 1.5

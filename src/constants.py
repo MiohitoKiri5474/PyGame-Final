@@ -76,13 +76,13 @@ EXPAND_REVEAL_RADIUS = 3
 # --- Build (ticket 04) ---
 WALL_BLOCK = 100
 WALL_ATTACK = 0
-WALL_COST = {"crop": 2}
+WALL_COST = {"wood": 4}
 WALL_WORK_SECONDS = 3.0
 COLOR_WALL = (140, 140, 140)
 
 TOWER_BLOCK = 10
 TOWER_ATTACK = 15
-TOWER_COST = {"crop": 5}
+TOWER_COST = {"wood": 2, "bricks": 3}
 TOWER_WORK_SECONDS = 5.0
 COLOR_TOWER = (100, 120, 160)
 
@@ -98,3 +98,51 @@ WAVE_PARTIAL_CLEAR_KILLS_PER_POINT = 5
 
 # --- Game over & scoring (ticket 09) ---
 COLOR_GAME_OVER = (255, 90, 90)
+
+# --- Roles (ticket 12) ---
+ROLE_FARMER = "Farmer"
+ROLE_KNIGHT = "Knight"
+ROLE_MAGE = "Mage"
+ROLES = (ROLE_FARMER, ROLE_KNIGHT, ROLE_MAGE)
+
+MAGE_COMBAT_RANGE = TILE_SIZE * 3  # ranged, unlike the melee-adjacent default
+
+ROLE_STATS = {
+    ROLE_FARMER: {
+        "attack": 8, "defense": 3, "max_health": 100,
+        "combat_range": COMBAT_RANGE, "work_multiplier": 0.6,
+    },
+    ROLE_KNIGHT: {
+        "attack": 18, "defense": 8, "max_health": 140,
+        "combat_range": COMBAT_RANGE, "work_multiplier": 1.0,
+    },
+    ROLE_MAGE: {
+        "attack": 22, "defense": 2, "max_health": 70,
+        "combat_range": MAGE_COMBAT_RANGE, "work_multiplier": 1.0,
+    },
+}
+
+COLOR_ROLE_FARMER = (120, 200, 90)
+COLOR_ROLE_KNIGHT = (170, 190, 210)
+COLOR_ROLE_MAGE = (160, 90, 220)
+
+# --- Material taxonomy (ticket 14) ---
+# None is the "no resource" weight so the whole table sums to 1.0 and a single
+# rng.choices() call per tile replaces the old rng.random() < RESOURCE_CHANCE
+# roll. crop keeps its original 0.12 weight unchanged - task.py's hunger-eat
+# still only consumes crop (generalizing that is ticket 27's job), so
+# shrinking crop's share to make room for the new materials would have
+# quietly made starvation harder. The new materials are added as genuinely
+# new density on top, not carved out of crop's slice. wood/bricks weights are
+# sized so their expected tile count within the starting claim area
+# (121 tiles at START_CLAIM_RADIUS=5) clears WALL_COST/TOWER_COST with
+# comfortable margin (~2x), matching the old design's affordability margin.
+RESOURCE_WEIGHTS = {
+    None: 0.70,
+    "crop": 0.12,
+    "wood": 0.07,
+    "bricks": 0.05,
+    "marble": 0.02,
+    "berries": 0.02,
+    "raw_stone": 0.02,
+}
