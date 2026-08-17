@@ -16,3 +16,6 @@ class Inventory:
             return False
         self._counts[resource] -= amount
         return True
+
+    def items(self) -> dict[str, int]:
+        return dict(self._counts)
