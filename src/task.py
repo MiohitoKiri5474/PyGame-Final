@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, TYPE_CHECKING
 
+from blocking import is_wall_blocked
 from coords import tile_at
 from pathfinding import find_path
 
@@ -96,8 +97,11 @@ def _try_claim_and_path(world: "World", npc: "NPC") -> None:
 
     # A task's own target is always a valid destination even if unclaimed
     # (e.g. Expand's whole point is walking onto not-yet-claimed frontier).
+    # Walls block regardless (ticket 07) - an NPC can't walk onto one even
+    # as its own task target, since build placement already forbids that.
     path = find_path(
-        lambda x, y: world.grid.get(x, y).claimed or (x, y) == task.target,
+        lambda x, y: (world.grid.get(x, y).claimed or (x, y) == task.target)
+        and not is_wall_blocked(world.buildings, x, y),
         world.grid.width,
         world.grid.height,
         tile_at(npc.x, npc.y),
