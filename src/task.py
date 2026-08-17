@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, TYPE_CHECKING
 
 from blocking import is_wall_blocked
+from constants import HUNGER_EAT_THRESHOLD
 from coords import tile_at
 from pathfinding import find_path
 
@@ -71,8 +72,13 @@ class TaskQueue:
 def update_npc_tasks(world: "World", dt: float) -> None:
     """Single per-tick entry point: idle NPCs claim work, assigned NPCs walk
     to and perform it. If a task is blocked (e.g. missing materials), NPCs skip
-    it and work on available tasks."""
+    it and work on available tasks. Hungry NPCs consume food from the colony inventory."""
     for npc in world.npcs:
+        # Colony food consumption: hungry NPCs eat from inventory
+        if npc.hunger <= HUNGER_EAT_THRESHOLD and not npc.is_dead:
+            if world.inventory.spend("crop", 1):
+                npc.eat()
+
         if npc.task is None:
             _try_claim_and_path(world, npc)
             if npc.task is None:

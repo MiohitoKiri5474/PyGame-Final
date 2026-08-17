@@ -11,6 +11,7 @@ from constants import (
     VIEWPORT_TILES_X,
     VIEWPORT_TILES_Y,
     NPC_RADIUS,
+    NPC_MAX_HEALTH,
     NPC_MAX_HUNGER,
     NEST_INITIAL_COUNT,
     COLOR_BG,
@@ -268,6 +269,7 @@ class Game:
 
         building = next((b for b in self.world.buildings if b.x == gx and b.y == gy), None)
         task = next((t for t in self.world.tasks.tasks if t.target == (gx, gy)), None)
+        npc = next((n for n in self.world.npcs if tile_at(n.x, n.y) == (gx, gy)), None)
 
         if building:
             info = f"Building: {building.type} (Block: {building.block}, Attack: {building.attack})"
@@ -278,6 +280,8 @@ class Game:
 
         if task:
             info += f" [Queued Task: {task.type}]"
+        if npc:
+            info += f" | NPC (HP: {int(npc.health)}/{int(NPC_MAX_HEALTH)}, Hunger: {int(npc.hunger)}/{int(NPC_MAX_HUNGER)})"
 
         return f"Tile ({gx}, {gy}): {info}"
 

@@ -36,7 +36,9 @@ NPC_RADIUS = TILE_SIZE // 3
 # --- NPC Stats & Hunger (ticket 08) ---
 NPC_MAX_HEALTH = 100
 NPC_MAX_HUNGER = 100.0
-HUNGER_DECAY_RATE = NPC_MAX_HUNGER / DAY_SECONDS   # hunger points lost per second (~0.833)
+HUNGER_DECAY_RATE = NPC_MAX_HUNGER / (DAY_SECONDS * 2)   # hunger points lost per second (~0.417, lasts 2 full days without food)
+HUNGER_EAT_THRESHOLD = 60.0                              # hunger level at which NPC consumes food from inventory
+HUNGER_RESTORE_PER_CROP = 50.0                           # hunger points restored per crop eaten
 NPC_ATTACK = 12
 NPC_DEFENSE = 4
 
