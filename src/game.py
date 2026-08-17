@@ -11,6 +11,7 @@ from constants import (
     VIEWPORT_TILES_X,
     VIEWPORT_TILES_Y,
     NPC_RADIUS,
+    NPC_MAX_HUNGER,
     NEST_INITIAL_COUNT,
     COLOR_BG,
     COLOR_FOG,
@@ -25,6 +26,8 @@ from constants import (
     COLOR_NPC_SELECTED,
     COLOR_MONSTER,
     COLOR_NEST,
+    COLOR_HUNGER_BAR,
+    COLOR_BAR_BG,
 )
 from camera import Camera
 from combat import resolve_combat
@@ -134,6 +137,7 @@ class Game:
                 monster.update(dt)
 
             resolve_combat(self.world.npcs, self.monsters)
+            self.world.npcs[:] = [npc for npc in self.world.npcs if not npc.is_dead]
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None
 
@@ -148,12 +152,32 @@ class Game:
         pygame.display.flip()
 
     def render_npcs(self) -> None:
+        cam_x, cam_y = self.camera.x, self.camera.y
+        npc_radius = NPC_RADIUS
+        bar_w = TILE_SIZE - 4
+        bar_h = 4
+
         for npc in self.world.npcs:
-            screen_x = int(npc.x - self.camera.x)
-            screen_y = int(npc.y - self.camera.y)
-            pygame.draw.circle(self.screen, COLOR_NPC, (screen_x, screen_y), NPC_RADIUS)
+            sx = int(npc.x - cam_x)
+            sy = int(npc.y - cam_y)
+
+            # Body
+            pygame.draw.circle(self.screen, COLOR_NPC, (sx, sy), npc_radius)
             if npc is self.selected_npc:
-                pygame.draw.circle(self.screen, COLOR_NPC_SELECTED, (screen_x, screen_y), NPC_RADIUS, 2)
+                pygame.draw.circle(self.screen, COLOR_NPC_SELECTED, (sx, sy), npc_radius, 2)
+
+            # Hunger bar (above the NPC)
+            bar_x = sx - bar_w // 2
+            bar_y = sy - npc_radius - bar_h - 4
+            hunger_ratio = max(0.0, min(1.0, npc.hunger / NPC_MAX_HUNGER))
+            # Background
+            pygame.draw.rect(self.screen, COLOR_BAR_BG,
+                             pygame.Rect(bar_x, bar_y, bar_w, bar_h))
+            # Fill
+            fill_w = max(0, int(bar_w * hunger_ratio))
+            if fill_w > 0:
+                pygame.draw.rect(self.screen, COLOR_HUNGER_BAR,
+                                 pygame.Rect(bar_x, bar_y, fill_w, bar_h))
 
     def render_monsters(self) -> None:
         for monster in self.monsters:
@@ -199,6 +223,7 @@ class Game:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
         lines = [
             f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
+            f"NPCs alive: {len(self.world.npcs)}",
             "PAUSED" if self.paused else "",
             f"Selected task: {self.selected_task_type or 'none'}  [Tab to cycle]",
             *hud_lines(self.world),
