@@ -18,7 +18,7 @@ from world import World
 
 SAVE_PATH = Path(__file__).resolve().parent.parent / "save.json"
 
-Checkpoint = tuple[World, DayNightCycle, NestManager, list[Monster], GameOverState]
+Checkpoint = tuple[World, DayNightCycle, NestManager, list[Monster], GameOverState, int, int]
 
 
 def save_checkpoint(
@@ -27,9 +27,14 @@ def save_checkpoint(
     nest_manager: NestManager,
     monsters: list[Monster],
     game_over_state: GameOverState,
+    skill_points_available: int = 0,
+    monsters_killed_this_night: int = 0,
     path: Path = SAVE_PATH,
 ) -> None:
-    data = dump_state(world, cycle, nest_manager, monsters, game_over_state)
+    data = dump_state(
+        world, cycle, nest_manager, monsters, game_over_state,
+        skill_points_available, monsters_killed_this_night,
+    )
     Path(path).write_text(json.dumps(data, indent=2))
 
 
@@ -39,6 +44,8 @@ def dump_state(
     nest_manager: NestManager,
     monsters: list[Monster],
     game_over_state: GameOverState,
+    skill_points_available: int = 0,
+    monsters_killed_this_night: int = 0,
 ) -> dict:
     """Build the plain-dict serialization of a full simulation state. Exposed
     separately from save_checkpoint so a save->load round trip can be
@@ -48,6 +55,8 @@ def dump_state(
         "phase": cycle.phase,
         "phase_timer": cycle.timer,
         "game_over": {"is_over": game_over_state.is_over, "score": game_over_state.score},
+        "skill_points_available": skill_points_available,
+        "monsters_killed_this_night": monsters_killed_this_night,
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
         "buildings": [
@@ -99,9 +108,10 @@ def dump_state(
 
 
 def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
-    """Returns (world, cycle, nest_manager, monsters, game_over_state), or
-    None if no checkpoint file exists or the file is missing/corrupt (e.g.
-    truncated by a crash mid-write) - falls back to a fresh game either way."""
+    """Returns (world, cycle, nest_manager, monsters, game_over_state,
+    skill_points_available, monsters_killed_this_night), or None if no
+    checkpoint file exists or the file is missing/corrupt (e.g. truncated by
+    a crash mid-write) - falls back to a fresh game either way."""
     path = Path(path)
     if not path.exists():
         return None
@@ -179,7 +189,15 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         monster.defense = md["defense"]
         monsters.append(monster)
 
-    return world, cycle, nest_manager, monsters, game_over_state
+    return (
+        world,
+        cycle,
+        nest_manager,
+        monsters,
+        game_over_state,
+        data.get("skill_points_available", 0),
+        data.get("monsters_killed_this_night", 0),
+    )
 
 
 def _dump_grid(grid: Grid) -> dict:

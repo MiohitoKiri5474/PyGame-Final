@@ -50,26 +50,39 @@ def _build_nontrivial_state():
 
     game_over_state = GameOverState()
 
-    return world, cycle, nest_manager, [monster], game_over_state, idle_task
+    skill_points_available = 4
+    monsters_killed_this_night = 3
+
+    return (
+        world, cycle, nest_manager, [monster], game_over_state, idle_task,
+        skill_points_available, monsters_killed_this_night,
+    )
 
 
 def test_dump_state_round_trips_through_save_and_load(tmp_path):
-    world, cycle, nest_manager, monsters, game_over_state, _ = _build_nontrivial_state()
+    world, cycle, nest_manager, monsters, game_over_state, _, points, killed = _build_nontrivial_state()
     path = tmp_path / "save.json"
 
-    dump_before = dump_state(world, cycle, nest_manager, monsters, game_over_state)
-    save_checkpoint(world, cycle, nest_manager, monsters, game_over_state, path=path)
-    loaded_world, loaded_cycle, loaded_nests, loaded_monsters, loaded_game_over = load_checkpoint(path)
-    dump_after = dump_state(loaded_world, loaded_cycle, loaded_nests, loaded_monsters, loaded_game_over)
+    dump_before = dump_state(world, cycle, nest_manager, monsters, game_over_state, points, killed)
+    save_checkpoint(world, cycle, nest_manager, monsters, game_over_state, points, killed, path=path)
+    loaded_world, loaded_cycle, loaded_nests, loaded_monsters, loaded_game_over, l_points, l_killed = (
+        load_checkpoint(path)
+    )
+    dump_after = dump_state(
+        loaded_world, loaded_cycle, loaded_nests, loaded_monsters, loaded_game_over,
+        l_points, l_killed,
+    )
 
     assert dump_before == dump_after
 
 
 def test_round_trip_preserves_specific_field_values(tmp_path):
-    world, cycle, nest_manager, monsters, game_over_state, _ = _build_nontrivial_state()
+    world, cycle, nest_manager, monsters, game_over_state, _, points, killed = _build_nontrivial_state()
     path = tmp_path / "save.json"
-    save_checkpoint(world, cycle, nest_manager, monsters, game_over_state, path=path)
-    loaded_world, loaded_cycle, loaded_nests, loaded_monsters, _ = load_checkpoint(path)
+    save_checkpoint(world, cycle, nest_manager, monsters, game_over_state, points, killed, path=path)
+    loaded_world, loaded_cycle, loaded_nests, loaded_monsters, _, l_points, l_killed = (
+        load_checkpoint(path)
+    )
 
     npc_a = next(n for n in loaded_world.npcs if n.health == 42)
     assert npc_a.hunger == 55.5
@@ -86,13 +99,15 @@ def test_round_trip_preserves_specific_field_values(tmp_path):
     assert loaded_nests.nests[0].spawn_timer == 3.25
     assert loaded_cycle.timer == 12.5
     assert loaded_monsters[0].health == 17
+    assert l_points == 4
+    assert l_killed == 3
 
 
 def test_round_trip_preserves_tuple_types_not_lists(tmp_path):
-    world, cycle, nest_manager, monsters, game_over_state, _ = _build_nontrivial_state()
+    world, cycle, nest_manager, monsters, game_over_state, _, points, killed = _build_nontrivial_state()
     path = tmp_path / "save.json"
-    save_checkpoint(world, cycle, nest_manager, monsters, game_over_state, path=path)
-    loaded_world, _, _, loaded_monsters, _ = load_checkpoint(path)
+    save_checkpoint(world, cycle, nest_manager, monsters, game_over_state, points, killed, path=path)
+    loaded_world, _, _, loaded_monsters, *_ = load_checkpoint(path)
 
     for task in loaded_world.tasks.tasks:
         assert isinstance(task.target, tuple)
@@ -117,7 +132,7 @@ def test_load_dangling_assigned_npc_id_leaves_task_reclaimable(tmp_path):
     world.npcs before the save fired, that NPC's id won't appear in the
     saved npc list. The task must come back unassigned, not permanently
     stuck (same starvation class fixed for Expand in ticket 03)."""
-    world, cycle, nest_manager, monsters, game_over_state, idle_task = _build_nontrivial_state()
+    world, cycle, nest_manager, monsters, game_over_state, idle_task, *_ = _build_nontrivial_state()
     ghost_task = Task(type="Gather", target=(1, 1), assigned_npc=None)
     ghost_task.assigned_npc = type("Ghost", (), {"id": 9999})()
     world.tasks.tasks.append(ghost_task)

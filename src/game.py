@@ -34,13 +34,14 @@ from constants import (
 )
 from camera import Camera
 from combat import resolve_combat
-from day_night import DayNightCycle, DAY
+from day_night import DayNightCycle, DAY, NIGHT
 from coords import tile_at, tile_center
 from game_over import GameOverState
 from nest import NestManager, create_initial_nests
 from npc import NPC
 from monster import spawn_monster
 from pathfinding import find_path
+from settlement import evaluate_wave
 from task import TASK_TYPES, update_npc_tasks
 from extensions import hud_lines, render_overlays
 from world import World
@@ -66,7 +67,12 @@ class Game:
 
         checkpoint = load_checkpoint()
         if checkpoint is not None:
-            self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state = checkpoint
+            (
+                self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
+                self.skill_points_available, self._monsters_killed_this_night,
+            ) = checkpoint
+            if self.skill_points_available > 0:
+                self.paused = True  # restore the auto-pause a full/partial clear set before save
         else:
             self.world = World()
             self.cycle = DayNightCycle()
@@ -76,6 +82,8 @@ class Game:
             self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
             self.monsters = []
             self.game_over_state = GameOverState()
+            self.skill_points_available = 0
+            self._monsters_killed_this_night = 0
 
     def run(self) -> None:
         while self.running:
@@ -174,6 +182,9 @@ class Game:
 
         if not self.paused and not self.game_over_state.is_over:
             transitioned = self.cycle.update(dt)
+            if transitioned and self.cycle.phase == NIGHT:
+                self._monsters_killed_this_night = 0
+
             update_npc_tasks(self.world, dt)
 
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
@@ -181,16 +192,30 @@ class Game:
             for monster in self.monsters:
                 monster.update(dt)
 
+            monster_count_before_combat = len(self.monsters)
             resolve_combat(self.world.npcs, self.monsters, self.world.buildings)
+            self._monsters_killed_this_night += monster_count_before_combat - len(self.monsters)
             self.world.npcs[:] = [npc for npc in self.world.npcs if not npc.is_dead]
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None
 
             self.game_over_state.check(self.world.npcs, self.cycle.round_number)
 
+            if transitioned and self.cycle.phase == DAY:
+                # Full clear is judged by no monster being alive at day start
+                # (not by matching this night's spawn/kill counts - monsters
+                # never despawn, so a leftover from an earlier night would
+                # otherwise let killing it wrongly earn a false full-clear).
+                self.skill_points_available += evaluate_wave(
+                    len(self.monsters) == 0, self._monsters_killed_this_night
+                )
+                if self.skill_points_available > 0:
+                    self.paused = True
+
             if transitioned:
                 save_checkpoint(
-                    self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state
+                    self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
+                    self.skill_points_available, self._monsters_killed_this_night,
                 )
 
     def render(self) -> None:
@@ -334,6 +359,7 @@ class Game:
         lines = [
             f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
             f"NPCs alive: {len(self.world.npcs)}",
+            f"Skill points available: {self.skill_points_available}" if self.skill_points_available else "",
             "PAUSED" if self.paused else "",
             f"Tasks: {options_str}  [Keys 1-{len(TASK_TYPES)} / Tab, P for Priority]",
             hover_info,

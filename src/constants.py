@@ -92,5 +92,9 @@ DESTROY_WORK_SECONDS = 2.0
 # --- Building combat integration (ticket 07) ---
 TOWER_RANGE = TILE_SIZE * 4  # ranged attack, no adjacency required unlike NPCs
 
+# --- Wave settlement & skill points (ticket 22) ---
+WAVE_FULL_CLEAR_POINTS = 2
+WAVE_PARTIAL_CLEAR_KILLS_PER_POINT = 5
+
 # --- Game over & scoring (ticket 09) ---
 COLOR_GAME_OVER = (255, 90, 90)
