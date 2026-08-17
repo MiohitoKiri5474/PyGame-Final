@@ -9,3 +9,4 @@ import expand_task  # noqa: F401
 import build_task  # noqa: F401
 import render_buildings  # noqa: F401
 import destroy_task  # noqa: F401
+import wildlife  # noqa: F401

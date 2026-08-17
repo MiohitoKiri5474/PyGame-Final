@@ -5,6 +5,7 @@ to JSON so the game can resume across sessions/machines from a save file."""
 import json
 from pathlib import Path
 
+from animal import Animal
 from build_task import Building
 from day_night import DayNightCycle
 from game_over import GameOverState
@@ -54,6 +55,20 @@ def dump_state(
             {"type": b.type, "x": b.x, "y": b.y, "block": b.block, "attack": b.attack}
             for b in world.buildings
         ],
+        "animals": [
+            {
+                "x": a.x,
+                "y": a.y,
+                "species": a.species,
+                "speed": a.speed,
+                "dangerous": a.dangerous,
+                "health": a.health,
+                "is_hostile": a.is_hostile,
+                "path": [list(p) for p in a.path],
+            }
+            for a in world.animals
+        ],
+        "animal_spawn_timer": world.animal_spawn_timer,
         "tasks": [
             {
                 "type": t.type,
@@ -123,6 +138,16 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         Building(type=b["type"], x=b["x"], y=b["y"], block=b["block"], attack=b["attack"])
         for b in data["buildings"]
     ]
+    world.animals = []
+    for ad in data.get("animals", []):
+        animal = Animal(
+            ad["x"], ad["y"], species=ad["species"], speed=ad["speed"],
+            dangerous=ad["dangerous"], health=ad["health"],
+        )
+        animal.is_hostile = ad["is_hostile"]
+        animal.path = [tuple(p) for p in ad["path"]]
+        world.animals.append(animal)
+    world.animal_spawn_timer = data.get("animal_spawn_timer", 0.0)
 
     tasks = [Task(type=t["type"], target=tuple(t["target"])) for t in data["tasks"]]
     world.tasks = TaskQueue()

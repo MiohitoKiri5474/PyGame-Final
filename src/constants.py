@@ -115,3 +115,21 @@ RESOURCE_WEIGHTS = {
     "berries": 0.02,
     "raw_stone": 0.02,
 }
+
+# --- Wildlife / animal fauna (ticket 24) ---
+ANIMAL_INITIAL_COUNT = 10
+ANIMAL_MAX_COUNT = 20
+ANIMAL_SPAWN_INTERVAL = 30.0  # seconds between top-up spawn attempts while under cap
+
+# species -> (speed px/s, dangerous, health)
+ANIMAL_SPECIES = {
+    "FlyingSquirrel": (100.0, False, 10),
+    "Fish": (60.0, False, 10),
+    "WildBoar": (70.0, False, 30),
+    "Horse": (140.0, False, 40),
+    "Wolf": (90.0, True, 35),
+    "Bear": (50.0, True, 60),
+}
+
+COLOR_ANIMAL = (150, 190, 90)
+COLOR_ANIMAL_DANGEROUS = (200, 140, 60)
