@@ -48,6 +48,17 @@ def test_spellbook_tick_never_goes_negative():
     assert book.remaining("Lightning") == 0.0
 
 
+def test_spellbook_trigger_flash_accumulates_and_expires_independently():
+    book = Spellbook()
+    book.trigger_flash((0.0, 0.0), 0.5, COLOR_FIRE_FLASH)
+    book.trigger_flash((1.0, 1.0), 2.0, COLOR_LIGHTNING_FLASH)
+    assert len(book.flashes) == 2
+
+    book.tick(1.0)  # first flash's 0.5s duration has elapsed, second hasn't
+    assert len(book.flashes) == 1
+    assert book.flashes[0]["color"] == COLOR_LIGHTNING_FLASH
+
+
 def test_nearest_monster_to_territory_picks_the_closer_one():
     world = World(npc_count=0)
     cx, cy = world.grid.width // 2, world.grid.height // 2
@@ -101,7 +112,7 @@ def test_cast_lightning_succeeds_damages_nearest_and_starts_cooldown():
     assert near.health == start_health - LIGHTNING_DAMAGE
     assert far.health == far.health  # untouched
     assert world.spellbook.remaining("Lightning") == LIGHTNING_COOLDOWN
-    assert world.spellbook.flash_color == COLOR_LIGHTNING_FLASH
+    assert any(f["color"] == COLOR_LIGHTNING_FLASH for f in world.spellbook.flashes)
 
 
 def test_cast_lightning_ignores_dead_mage():
@@ -144,7 +155,7 @@ def test_cast_fire_deals_immediate_damage_and_applies_burn():
     assert target.burn_ticks_remaining == FIRE_BURN_TICKS
     assert target.burn_damage_per_tick == FIRE_BURN_DAMAGE_PER_TICK
     assert world.spellbook.remaining("Fire") == FIRE_COOLDOWN
-    assert world.spellbook.flash_color == COLOR_FIRE_FLASH
+    assert any(f["color"] == COLOR_FIRE_FLASH for f in world.spellbook.flashes)
 
 
 def test_cast_fire_total_damage_includes_burn_dot():
@@ -196,7 +207,7 @@ def test_cast_freeze_starts_cooldown_and_flash():
 
     assert cast_freeze(world, [target]) is True
     assert world.spellbook.remaining("Freeze") == FREEZE_COOLDOWN
-    assert world.spellbook.flash_color == COLOR_FREEZE_FLASH
+    assert any(f["color"] == COLOR_FREEZE_FLASH for f in world.spellbook.flashes)
 
 
 def test_cast_freeze_affects_every_monster_inside_the_3x3_box():
@@ -215,6 +226,8 @@ def test_cast_freeze_affects_every_monster_inside_the_3x3_box():
     assert not outside.is_frozen
     assert center.frozen_remaining == FREEZE_DURATION
     assert inside.frozen_remaining == FREEZE_DURATION
+    # one flash per affected monster, not a single shared slot
+    assert len(world.spellbook.flashes) == 2
 
 
 def test_cast_freeze_refreshes_rather_than_stacks_on_an_already_frozen_monster():

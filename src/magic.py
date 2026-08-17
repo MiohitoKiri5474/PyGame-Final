@@ -34,9 +34,11 @@ class Spellbook:
 
     def __init__(self, cooldowns: dict[str, float] | None = None):
         self.cooldowns: dict[str, float] = dict(cooldowns) if cooldowns else {}
-        self.flash_position: tuple[float, float] | None = None
-        self.flash_timer: float = 0.0
-        self.flash_color: tuple[int, int, int] | None = None
+        # A list, not a single slot: Freeze hits every monster in its 3x3 box
+        # at once, so one shared flash would only ever show the last one.
+        # Each entry: {"position", "timer", "duration", "color"}. Ephemeral
+        # render state, deliberately not persisted through save.py.
+        self.flashes: list[dict] = []
 
     def remaining(self, spell: str) -> float:
         return self.cooldowns.get(spell, 0.0)
@@ -50,15 +52,14 @@ class Spellbook:
     def trigger_flash(
         self, position: tuple[float, float], duration: float, color: tuple[int, int, int]
     ) -> None:
-        self.flash_position = position
-        self.flash_timer = duration
-        self.flash_color = color
+        self.flashes.append({"position": position, "timer": duration, "duration": duration, "color": color})
 
     def tick(self, dt: float) -> None:
         for spell in list(self.cooldowns):
             self.cooldowns[spell] = max(0.0, self.cooldowns[spell] - dt)
-        if self.flash_timer > 0:
-            self.flash_timer = max(0.0, self.flash_timer - dt)
+        for flash in self.flashes:
+            flash["timer"] = max(0.0, flash["timer"] - dt)
+        self.flashes = [f for f in self.flashes if f["timer"] > 0]
 
 
 def nearest_monster_to_territory(world: "World", monsters: list["Monster"]) -> "Monster | None":
@@ -149,9 +150,9 @@ def cast_freeze(world: "World", monsters: list["Monster"]) -> bool:
         mx, my = tile_at(monster.x, monster.y)
         if abs(mx - cx) <= FREEZE_RADIUS and abs(my - cy) <= FREEZE_RADIUS:
             monster.apply_freeze(FREEZE_DURATION)
+            world.spellbook.trigger_flash((monster.x, monster.y), MAGIC_FLASH_DURATION, COLOR_FREEZE_FLASH)
 
     world.spellbook.start_cooldown("Freeze", FREEZE_COOLDOWN)
-    world.spellbook.trigger_flash((center.x, center.y), MAGIC_FLASH_DURATION, COLOR_FREEZE_FLASH)
     return True
 
 
@@ -161,7 +162,7 @@ def _tick_magic(world: "World", dt: float) -> None:
 
 def _magic_hud_line(world: "World") -> str:
     parts = []
-    for spell, hotkey in (("Lightning", "W"), ("Fire", "Q"), ("Freeze", "E")):
+    for spell, hotkey in (("Fire", "F1"), ("Lightning", "F2"), ("Freeze", "F3")):
         remaining = world.spellbook.remaining(spell)
         status = "ready" if remaining <= 0 else f"{remaining:.0f}s"
         parts.append(f"{spell}: {status} [{hotkey}]")

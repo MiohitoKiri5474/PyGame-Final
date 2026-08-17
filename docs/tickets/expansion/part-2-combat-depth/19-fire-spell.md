@@ -1,6 +1,6 @@
 # 19 — Fire spell
 
-**What to build:** `Q`, 15s cooldown, deals immediate damage to the nearest monster to territory plus a 3-second burn damage-over-time.
+**What to build:** `F1`, 15s cooldown, deals immediate damage to the nearest monster to territory plus a 3-second burn damage-over-time.
 
 **Blocked by:** 18 — Magic framework + Lightning spell.
 

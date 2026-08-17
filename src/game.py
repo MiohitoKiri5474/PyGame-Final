@@ -126,18 +126,13 @@ class Game:
                     self._cycle_selected_task_type()
                 elif event.key == pygame.K_p:
                     self.priority_ui.toggle()
-                elif event.key == pygame.K_w:
-                    # Collides with W-pans-camera-up (continuous key-state
-                    # check below, separate from this one-shot keydown) -
-                    # accidental cast attempts while panning are silently
-                    # gated by cooldown/no-Mage/no-monster, same as any
-                    # other no-op cast; arrow keys pan without the overlap.
+                elif event.key == pygame.K_F1:
                     if not self.paused:  # casting affects sim state, stays frozen with everything else
-                        cast_lightning(self.world, self.monsters)
-                elif event.key == pygame.K_q:
-                    if not self.paused:
                         cast_fire(self.world, self.monsters)
-                elif event.key == pygame.K_e:
+                elif event.key == pygame.K_F2:
+                    if not self.paused:
+                        cast_lightning(self.world, self.monsters)
+                elif event.key == pygame.K_F3:
                     if not self.paused:
                         cast_freeze(self.world, self.monsters)
                 elif event.key in (

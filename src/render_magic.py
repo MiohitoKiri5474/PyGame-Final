@@ -4,16 +4,14 @@ from extensions import register_overlay
 
 
 def draw_magic_fx(surface: pygame.Surface, world, camera) -> None:
-    spellbook = world.spellbook
-    # flash_color is always co-assigned with flash_position/flash_timer in
-    # Spellbook.trigger_flash (the only place any of the three are set) - no
-    # separate None-check needed for a state that can't actually occur.
-    if spellbook.flash_timer <= 0 or spellbook.flash_position is None:
-        return
-    x, y = spellbook.flash_position
-    screen_x = int(x - camera.x)
-    screen_y = int(y - camera.y)
-    pygame.draw.circle(surface, spellbook.flash_color, (screen_x, screen_y), 20, 3)
+    for flash in world.spellbook.flashes:
+        x, y = flash["position"]
+        screen_x = int(x - camera.x)
+        screen_y = int(y - camera.y)
+        alpha = int(255 * (flash["timer"] / flash["duration"]))
+        fx = pygame.Surface((48, 48), pygame.SRCALPHA)
+        pygame.draw.circle(fx, (*flash["color"], alpha), (24, 24), 20, 3)
+        surface.blit(fx, (screen_x - 24, screen_y - 24))
 
 
 register_overlay(draw_magic_fx)

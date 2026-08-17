@@ -1,13 +1,13 @@
 # 18 — Magic framework + Lightning spell
 
-**What to build:** Colony-wide spell casting: hotkey-castable whenever the spell is off-cooldown and a living Mage exists, regardless of that Mage's position, auto-targeting the nearest monster to territory. This ticket establishes cooldown tracking, the targeting helper, HUD cooldown display, and VFX flash — reused by Fire (19) and Freeze (20). Lightning itself: `W`, instant burst damage, 20s cooldown.
+**What to build:** Colony-wide spell casting: hotkey-castable whenever the spell is off-cooldown and a living Mage exists, regardless of that Mage's position, auto-targeting the nearest monster to territory. This ticket establishes cooldown tracking, the targeting helper, HUD cooldown display, and VFX flash — reused by Fire (19) and Freeze (20). Lightning itself: `F2`, instant burst damage, 20s cooldown.
 
 **Blocked by:** 13 — Per-tick simulation hook, 12 — NPC Role System (casting requires a living Mage).
 
 **Status:** done
 
 - [x] New `magic.py` (pygame-free): spellbook/cooldown state, `nearest_monster_to_territory(world, monsters)` helper, `cast_lightning(world, monsters)`
-- [x] `W` casts Lightning if off-cooldown, at least one living Mage exists, and at least one monster exists — silent no-op otherwise (no error, no wasted cooldown)
+- [x] `F2` casts Lightning if off-cooldown, at least one living Mage exists, and at least one monster exists — silent no-op otherwise (no error, no wasted cooldown)
 - [x] Successful cast damages the nearest monster to territory and starts a 20s cooldown, ticked down via `extensions.register_tick`
 - [x] Cooldown remaining is visible on the HUD (`extensions.register_hud_line`)
 - [x] New `render_magic.py` (pygame-coupled, registered via `extensions.register_overlay`) draws a brief VFX flash on cast
@@ -18,4 +18,4 @@
 
 Flash VFX state (`flash_position`/`flash_timer`) is deliberately NOT persisted through `save.py` — same scope call as camera/selection/pause state from ticket 11: a mid-animation flash has no meaningful "resume" state, it just won't be showing at the moment of a reload, which is fine.
 
-**Known UX quirk, not fixed:** `W` collides with the existing camera-pan-up binding (`keys[pygame.K_w]`, continuous key-state check in `update()`, separate mechanism from this ticket's one-shot `KEYDOWN` handler). Holding W to pan up also fires a Lightning-cast *attempt* on the initial press. Harmless in practice — the attempt is silently gated by cooldown/no-Mage/no-monster exactly like any other no-op cast, so at most it wastes one legitimate cast per session (the very first W-press after a Mage exists, if off-cooldown) — but it's non-obvious behavior worth flagging rather than silently shipping. Arrow keys pan without the overlap. Rebinding camera-up away from W to fully avoid this was judged out of scope: a bigger, more disruptive change to already-established controls for a minor and mostly-harmless conflict.
+**Superseded design note:** the original implementation bound Lightning/Fire/Freeze to `W`/`Q`/`E`, which collided with the `W` camera-pan-up binding (harmless — gated by cooldown/no-Mage/no-monster same as any no-op cast — but non-obvious). Rebound to `F2`/`F1`/`F3` during the ticket 18-21 reconciliation with a teammate's parallel `feat/combat-depth` branch, which avoided the collision entirely by using function keys. No overlap with any existing binding remains.
