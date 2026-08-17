@@ -7,6 +7,7 @@ from typing import Any, Callable
 # project's test seam - it only ever forwards these values, never inspects them.
 _hud_line_providers: list[Callable[..., str]] = []
 _overlay_renderers: list[Callable[..., None]] = []
+_tick_callbacks: list[Callable[..., None]] = []
 
 
 def register_hud_line(provider: Callable[..., str]) -> None:
@@ -24,3 +25,12 @@ def register_overlay(renderer: Callable[..., None]) -> None:
 def render_overlays(surface: Any, world: Any, camera: Any) -> None:
     for renderer in _overlay_renderers:
         renderer(surface, world, camera)
+
+
+def register_tick(callback: Callable[..., None]) -> None:
+    _tick_callbacks.append(callback)
+
+
+def run_ticks(world: Any, dt: float) -> None:
+    for callback in _tick_callbacks:
+        callback(world, dt)
