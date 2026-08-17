@@ -28,6 +28,7 @@ COLOR_DAY_BANNER = (255, 214, 100)
 COLOR_NIGHT_BANNER = (120, 140, 255)
 COLOR_NPC = (220, 220, 60)
 COLOR_NPC_SELECTED = (255, 255, 255)
+COLOR_HOVER_BORDER = (100, 220, 255)
 
 STARTING_NPC_COUNT = 3
 NPC_RADIUS = TILE_SIZE // 3
@@ -88,4 +89,3 @@ TOWER_RANGE = TILE_SIZE * 4  # ranged attack, no adjacency required unlike NPCs
 
 # --- Game over & scoring (ticket 09) ---
 COLOR_GAME_OVER = (255, 90, 90)
-

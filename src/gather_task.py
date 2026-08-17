@@ -18,6 +18,11 @@ def _can_queue(world: "World", tile: "Tile") -> bool:
     return not any(task.type == "Gather" and task.target == tile for task in world.tasks.tasks)
 
 
+def _can_perform(world: "World", task: Task) -> bool:
+    x, y = task.target
+    return world.grid.in_bounds(x, y) and world.grid.get(x, y).resource is not None
+
+
 def _on_complete(world: "World", task: Task) -> bool:
     x, y = task.target
     tile = world.grid.get(x, y)
@@ -29,5 +34,10 @@ def _on_complete(world: "World", task: Task) -> bool:
 
 register_task_type(
     "Gather",
-    TaskType(work_seconds=GATHER_WORK_SECONDS, can_queue=_can_queue, on_complete=_on_complete),
+    TaskType(
+        work_seconds=GATHER_WORK_SECONDS,
+        can_queue=_can_queue,
+        on_complete=_on_complete,
+        can_perform=_can_perform,
+    ),
 )

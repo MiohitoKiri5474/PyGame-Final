@@ -26,10 +26,10 @@ class TaskType:
     work_seconds: float
     can_queue: Callable[["World", Tile], bool]
     # Returns True once the task has actually finished (removes it from the
-    # queue and frees the NPC). Returning False keeps it queued and the NPC
-    # assigned/waiting - e.g. ticket 04's insufficient-funds case - and it's
-    # retried after another work_seconds instead of every single frame.
+    # queue and frees the NPC). Returning False keeps it queued (unassigns the
+    # NPC so it can skip to other work rather than getting permanently stuck).
     on_complete: Callable[["World", Task], bool]
+    can_perform: Callable[["World", Task], bool] | None = None
 
 
 TASK_TYPES: dict[str, TaskType] = {}
@@ -48,11 +48,15 @@ class TaskQueue:
         self.tasks.append(task)
         return task
 
-    def claim_for(self, npc: "NPC") -> Task | None:
+    def claim_for(self, npc: "NPC", world: "World | None" = None) -> Task | None:
         order = npc.priority or list(TASK_TYPES.keys())
-        for task_type in order:
+        for task_type_name in order:
+            task_type = TASK_TYPES.get(task_type_name)
             for task in self.tasks:
-                if task.type == task_type and task.assigned_npc is None:
+                if task.type == task_type_name and task.assigned_npc is None:
+                    if world is not None and task_type and task_type.can_perform is not None:
+                        if not task_type.can_perform(world, task):
+                            continue
                     task.assigned_npc = npc
                     return task
         return None
@@ -66,50 +70,71 @@ class TaskQueue:
 
 def update_npc_tasks(world: "World", dt: float) -> None:
     """Single per-tick entry point: idle NPCs claim work, assigned NPCs walk
-    to and perform it. This is the one place NPC/task state changes each
-    tick — task-type modules extend behavior via TASK_TYPES, not by editing
-    this function."""
+    to and perform it. If a task is blocked (e.g. missing materials), NPCs skip
+    it and work on available tasks."""
     for npc in world.npcs:
         if npc.task is None:
             _try_claim_and_path(world, npc)
-            continue
+            if npc.task is None:
+                npc.update(dt)
+                continue
+
+        task_type = TASK_TYPES.get(npc.task.type)
+        if task_type is not None and task_type.can_perform is not None:
+            if not task_type.can_perform(world, npc.task):
+                # Task became blocked in-progress; skip and try other work
+                npc.task.assigned_npc = None
+                npc.task = None
+                npc.task_progress = 0.0
+                npc.set_path([])
+                _try_claim_and_path(world, npc)
+                if npc.task is None:
+                    npc.update(dt)
+                continue
 
         npc.update(dt)
         if not npc.has_arrived:
             continue
 
         npc.task_progress += dt
-        task_type = TASK_TYPES[npc.task.type]
-        if npc.task_progress < task_type.work_seconds:
+        if task_type is None or npc.task_progress < task_type.work_seconds:
             continue
 
         finished = task_type.on_complete(world, npc.task)
         if finished:
             world.tasks.remove(npc.task)
-            npc.task = None
+        else:
+            # Task could not be completed (e.g. missing materials); unassign NPC so
+            # it skips to other available tasks instead of staying stuck
+            npc.task.assigned_npc = None
+        npc.task = None
         npc.task_progress = 0.0
 
 
 def _try_claim_and_path(world: "World", npc: "NPC") -> None:
-    task = world.tasks.claim_for(npc)
-    if task is None:
-        return
+    order = npc.priority or list(TASK_TYPES.keys())
+    for task_type_name in order:
+        task_type = TASK_TYPES.get(task_type_name)
+        if task_type is None:
+            continue
+        for task in world.tasks.tasks:
+            if task.type != task_type_name or task.assigned_npc is not None:
+                continue
+            if task_type.can_perform is not None and not task_type.can_perform(world, task):
+                continue
 
-    # A task's own target is always a valid destination even if unclaimed
-    # (e.g. Expand's whole point is walking onto not-yet-claimed frontier).
-    # Walls block regardless (ticket 07) - an NPC can't walk onto one even
-    # as its own task target, since build placement already forbids that.
-    path = find_path(
-        lambda x, y: (world.grid.get(x, y).claimed or (x, y) == task.target)
-        and not is_wall_blocked(world.buildings, x, y),
-        world.grid.width,
-        world.grid.height,
-        tile_at(npc.x, npc.y),
-        task.target,
-    )
-    if path is None:
-        task.assigned_npc = None
-        return
+            path = find_path(
+                lambda x, y: (world.grid.get(x, y).claimed or (x, y) == task.target)
+                and not is_wall_blocked(world.buildings, x, y),
+                world.grid.width,
+                world.grid.height,
+                tile_at(npc.x, npc.y),
+                task.target,
+            )
+            if path is None:
+                continue
 
-    npc.task = task
-    npc.set_path(path)
+            task.assigned_npc = npc
+            npc.task = task
+            npc.set_path(path)
+            return
