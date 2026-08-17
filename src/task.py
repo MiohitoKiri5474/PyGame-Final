@@ -131,7 +131,7 @@ def _try_claim_and_path(world: "World", npc: "NPC") -> None:
 
             path = find_path(
                 lambda x, y: (world.grid.get(x, y).claimed or (x, y) == task.target)
-                and not is_wall_blocked(world.buildings, x, y),
+                and (not is_wall_blocked(world.buildings, x, y) or (x, y) == task.target),
                 world.grid.width,
                 world.grid.height,
                 tile_at(npc.x, npc.y),

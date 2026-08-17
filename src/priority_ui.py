@@ -22,7 +22,7 @@ from constants import (
     WINDOW_HEIGHT,
     COLOR_TEXT,
 )
-from task import TASK_TYPES
+import task as task_module
 
 if TYPE_CHECKING:
     from npc import NPC
@@ -58,135 +58,153 @@ class PriorityTableUI:
             self.selected_npc_index = 0
             self.selected_task_index = 0
 
-    def handle_key(self, key: int, npcs: list["NPC"]) -> bool:
-        """Handle a keypress while the overlay is open.
-        Returns True if the key was consumed (so Game doesn't process it further)."""
-        if not self.visible or not npcs:
-            return False
+    def handle_key(self, key: int, npcs: list["NPC"]) -> None:
+        """Process a key event when the UI is visible."""
+        if not npcs:
+            if key in (pygame.K_p, pygame.K_ESCAPE):
+                self.visible = False
+            return
+
+        alive_npcs = [n for n in npcs if not n.is_dead]
+        if not alive_npcs:
+            if key in (pygame.K_p, pygame.K_ESCAPE):
+                self.visible = False
+            return
+
+        self.selected_npc_index = self._clamped_npc_index(alive_npcs)
+        npc = alive_npcs[self.selected_npc_index]
+        priority = self._ensure_priority(npc)
 
         if key in (pygame.K_p, pygame.K_ESCAPE):
             self.visible = False
-            return True
 
-        # Switch NPC
-        if key == pygame.K_TAB:
-            self.selected_npc_index = (self.selected_npc_index + 1) % len(npcs)
-            self.selected_task_index = 0
-            return True
+        elif key == pygame.K_TAB:
+            # Switch to next alive NPC
+            self.selected_npc_index = (self.selected_npc_index + 1) % len(alive_npcs)
+            # Re-ensure priority for the newly selected NPC
+            new_npc = alive_npcs[self.selected_npc_index]
+            new_pri = self._ensure_priority(new_npc)
+            self.selected_task_index = min(self.selected_task_index, len(new_pri) - 1)
 
-        npc = npcs[self._clamped_npc_index(npcs)]
-        priority = self._ensure_priority(npc)
-        task_count = len(priority)
-        if task_count == 0:
-            return False
+        elif key == pygame.K_UP:
+            if priority:
+                self.selected_task_index = (self.selected_task_index - 1) % len(priority)
 
-        # Navigate task rows
-        if key == pygame.K_UP:
-            self.selected_task_index = (self.selected_task_index - 1) % task_count
-            return True
-        if key == pygame.K_DOWN:
-            self.selected_task_index = (self.selected_task_index + 1) % task_count
-            return True
+        elif key == pygame.K_DOWN:
+            if priority:
+                self.selected_task_index = (self.selected_task_index + 1) % len(priority)
 
-        # Move task priority (Left/Right or -/+)
-        if key in (pygame.K_LEFT, pygame.K_MINUS, pygame.K_KP_MINUS):
-            self._swap_priority(priority, self.selected_task_index, -1)
-            npc.priority = priority
-            return True
-        if key in (pygame.K_RIGHT, pygame.K_PLUS, pygame.K_KP_PLUS,
-                   pygame.K_EQUALS):  # = key (unshifted +)
-            self._swap_priority(priority, self.selected_task_index, +1)
-            npc.priority = priority
-            return True
+        elif key in (pygame.K_LEFT, pygame.K_MINUS, pygame.K_KP_MINUS):
+            # Decrease priority / move down in list
+            if priority and 0 <= self.selected_task_index < len(priority):
+                self._swap_priority(priority, self.selected_task_index, +1)
+                self.selected_task_index = (self.selected_task_index + 1) % len(priority)
 
-        return False
+        elif key in (pygame.K_RIGHT, pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
+            # Increase priority / move up in list
+            if priority and 0 <= self.selected_task_index < len(priority):
+                self._swap_priority(priority, self.selected_task_index, -1)
+                self.selected_task_index = (self.selected_task_index - 1) % len(priority)
 
-    def render(self, surface: pygame.Surface, font: pygame.font.Font,
-               npcs: list["NPC"]) -> None:
-        """Draw the priority table overlay."""
-        if not self.visible or not npcs:
+    def render(
+        self,
+        surface: pygame.Surface,
+        font: pygame.font.Font,
+        npcs: list["NPC"],
+    ) -> None:
+        """Draw the priority overlay centered on screen."""
+        if not self.visible:
             return
 
-        # Semi-transparent background
-        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-        overlay.fill(_BG)
-        surface.blit(overlay, (0, 0))
+        alive_npcs = [n for n in npcs if not n.is_dead]
 
-        # Layout constants
-        panel_w = 440
-        panel_h = min(500, WINDOW_HEIGHT - 40)
+        # Panel geometry
+        panel_w = 480
+        panel_h = 360
         panel_x = (WINDOW_WIDTH - panel_w) // 2
         panel_y = (WINDOW_HEIGHT - panel_h) // 2
+
+        # Draw semi-transparent panel background
+        overlay = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        overlay.fill(_BG)
+        surface.blit(overlay, (panel_x, panel_y))
+        pygame.draw.rect(surface, _HEADER_COLOR, pygame.Rect(panel_x, panel_y, panel_w, panel_h), 2)
+
         pad = 16
-        row_h = 28
-
-        # Panel border
-        panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
-        pygame.draw.rect(surface, (30, 32, 40), panel_rect)
-        pygame.draw.rect(surface, (80, 80, 90), panel_rect, 1)
-
+        row_h = 24
         y = panel_y + pad
 
-        # Title
-        title = font.render("NPC Priority Table  [P to close]", True, _HEADER_COLOR)
-        surface.blit(title, (panel_x + pad, y))
-        y += title.get_height() + 12
-
-        # NPC tabs
-        npc_idx = self._clamped_npc_index(npcs)
-        tab_x = panel_x + pad
-        for i, npc in enumerate(npcs):
-            label = f"NPC {npc.id}"
-            color = _NPC_ACTIVE if i == npc_idx else _NPC_INACTIVE
-            tab_surf = font.render(label, True, color)
-            if i == npc_idx:
-                # Underline active tab
-                underline_rect = pygame.Rect(
-                    tab_x, y + tab_surf.get_height() + 1,
-                    tab_surf.get_width(), 2
-                )
-                pygame.draw.rect(surface, _NPC_ACTIVE, underline_rect)
-            surface.blit(tab_surf, (tab_x, y))
-            tab_x += tab_surf.get_width() + 20
-
+        # Header title
+        title_surf = font.render("NPC Priority Table", True, _HEADER_COLOR)
+        surface.blit(title_surf, (panel_x + pad, y))
         y += row_h + 8
 
-        # Column headers
-        header = font.render("Rank    Task Type                  ◄ ► to reorder", True, _HINT_TEXT)
-        surface.blit(header, (panel_x + pad, y))
-        y += row_h
+        if not alive_npcs:
+            empty_surf = font.render("No alive NPCs", True, COLOR_TEXT)
+            surface.blit(empty_surf, (panel_x + pad, y))
+            return
 
-        # Task rows
-        npc = npcs[npc_idx]
-        priority = self._ensure_priority(npc)
+        self.selected_npc_index = self._clamped_npc_index(alive_npcs)
 
-        for rank, task_name in enumerate(priority):
-            is_selected = (rank == self.selected_task_index)
+        # NPC tabs
+        tab_x = panel_x + pad
+        for i, npc in enumerate(alive_npcs):
+            is_active = i == self.selected_npc_index
+            label = f"NPC #{npc.id}"
+            color = _NPC_ACTIVE if is_active else _NPC_INACTIVE
+            tab_surf = font.render(label, True, color)
+            if is_active:
+                # Underline active NPC
+                tab_rect = tab_surf.get_rect(topleft=(tab_x, y))
+                pygame.draw.rect(
+                    surface,
+                    _NPC_ACTIVE,
+                    pygame.Rect(tab_rect.left, tab_rect.bottom + 2, tab_rect.width, 2),
+                )
+            surface.blit(tab_surf, (tab_x, y))
+            tab_x += tab_surf.get_width() + 16
 
-            # Row background
-            row_rect = pygame.Rect(panel_x + 4, y, panel_w - 8, row_h)
-            if is_selected:
+        y += row_h + 12
+
+        # Separator line
+        pygame.draw.line(
+            surface,
+            _ROW_HOVER,
+            (panel_x + pad, y),
+            (panel_x + panel_w - pad, y),
+        )
+        y += 8
+
+        # Task list for active NPC
+        active_npc = alive_npcs[self.selected_npc_index]
+        priority = self._ensure_priority(active_npc)
+
+        for rank, task_type in enumerate(priority, start=1):
+            is_row_selected = rank - 1 == self.selected_task_index
+            row_rect = pygame.Rect(panel_x + pad, y, panel_w - pad * 2, row_h)
+
+            if is_row_selected:
                 pygame.draw.rect(surface, _ROW_SELECTED, row_rect)
                 pygame.draw.rect(surface, _NPC_ACTIVE, row_rect, 1)
-            elif rank % 2 == 1:
+            elif rank % 2 == 0:
                 pygame.draw.rect(surface, _ROW_HOVER, row_rect)
 
-            # Rank number
-            rank_text = font.render(f"  {rank + 1}.", True, _RANK_TEXT)
-            surface.blit(rank_text, (panel_x + pad, y + 4))
+            rank_surf = font.render(f"#{rank}", True, _RANK_TEXT)
+            task_surf = font.render(task_type, True, _TASK_TEXT)
 
-            # Task name
-            task_text = font.render(task_name, True, _TASK_TEXT)
-            surface.blit(task_text, (panel_x + pad + 60, y + 4))
+            surface.blit(rank_surf, (panel_x + pad + 8, y + 2))
+            surface.blit(task_surf, (panel_x + pad + 48, y + 2))
 
-            # Selection indicator
-            if is_selected:
-                arrow = font.render("▸", True, _NPC_ACTIVE)
-                surface.blit(arrow, (panel_x + 6, y + 4))
+            if is_row_selected:
+                arrows_surf = font.render("[<- Higher]  [Lower ->]", True, _NPC_ACTIVE)
+                surface.blit(
+                    arrows_surf,
+                    (panel_x + panel_w - pad - arrows_surf.get_width() - 8, y + 2),
+                )
 
-            y += row_h
+            y += row_h + 4
 
-        # Bottom hints
+        # Footer hints
         y = panel_y + panel_h - row_h - pad
         hints = "[Tab] switch NPC   [↑↓] select task   [←→] change priority"
         hint_surf = font.render(hints, True, _HINT_TEXT)
@@ -208,7 +226,7 @@ class PriorityTableUI:
         TaskQueue.claim_for() uses, but materialized so the UI has a
         concrete list to display and reorder."""
         if npc.priority is None:
-            npc.priority = list(TASK_TYPES.keys())
+            npc.priority = list(task_module.TASK_TYPES.keys())
         return npc.priority
 
     @staticmethod
