@@ -1,6 +1,6 @@
 import plugins  # noqa: F401  # side effect: populates task.TASK_TYPES via plugins.py
 
-from constants import STARTING_NPC_COUNT
+from constants import STARTING_NPC_COUNT, ROLES
 from coords import tile_center
 from grid import Grid
 from inventory import Inventory
@@ -16,6 +16,9 @@ class World:
         self.buildings: list = []
 
         center_x, center_y = self.grid.width // 2, self.grid.height // 2
+        # Round-robin over ROLES so the default 3-NPC start is exactly
+        # 1 Farmer/1 Knight/1 Mage, not random.
         self.npcs: list[NPC] = [
-            NPC(*tile_center(center_x + i - npc_count // 2, center_y)) for i in range(npc_count)
+            NPC(*tile_center(center_x + i - npc_count // 2, center_y), role=ROLES[i % len(ROLES)])
+            for i in range(npc_count)
         ]

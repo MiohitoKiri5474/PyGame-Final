@@ -11,7 +11,6 @@ from constants import (
     VIEWPORT_TILES_X,
     VIEWPORT_TILES_Y,
     NPC_RADIUS,
-    NPC_MAX_HEALTH,
     NPC_MAX_HUNGER,
     NEST_INITIAL_COUNT,
     COLOR_BG,
@@ -31,6 +30,12 @@ from constants import (
     COLOR_HUNGER_BAR,
     COLOR_BAR_BG,
     COLOR_GAME_OVER,
+    ROLE_FARMER,
+    ROLE_KNIGHT,
+    ROLE_MAGE,
+    COLOR_ROLE_FARMER,
+    COLOR_ROLE_KNIGHT,
+    COLOR_ROLE_MAGE,
 )
 from camera import Camera
 from combat import resolve_combat
@@ -46,6 +51,16 @@ from extensions import hud_lines, render_overlays
 from world import World
 from priority_ui import PriorityTableUI
 from save import load_checkpoint, save_checkpoint
+
+_ROLE_COLORS = {
+    ROLE_FARMER: COLOR_ROLE_FARMER,
+    ROLE_KNIGHT: COLOR_ROLE_KNIGHT,
+    ROLE_MAGE: COLOR_ROLE_MAGE,
+}
+
+
+def _role_color(role: str | None) -> tuple[int, int, int]:
+    return _ROLE_COLORS.get(role, COLOR_NPC)
 
 
 class Game:
@@ -215,8 +230,8 @@ class Game:
             sx = int(npc.x - cam_x)
             sy = int(npc.y - cam_y)
 
-            # Body
-            pygame.draw.circle(self.screen, COLOR_NPC, (sx, sy), npc_radius)
+            # Body, color-coded by role
+            pygame.draw.circle(self.screen, _role_color(npc.role), (sx, sy), npc_radius)
             if npc is self.selected_npc:
                 pygame.draw.circle(self.screen, COLOR_NPC_SELECTED, (sx, sy), npc_radius, 2)
 
@@ -317,7 +332,11 @@ class Game:
         if task:
             info += f" [Queued Task: {task.type}]"
         if npc:
-            info += f" | NPC (HP: {int(npc.health)}/{int(NPC_MAX_HEALTH)}, Hunger: {int(npc.hunger)}/{int(NPC_MAX_HUNGER)})"
+            role_str = f" [{npc.role}]" if npc.role else ""
+            info += (
+                f" | NPC{role_str} (HP: {int(npc.health)}/{int(npc.max_health)}, "
+                f"Hunger: {int(npc.hunger)}/{int(NPC_MAX_HUNGER)})"
+            )
 
         return f"Tile ({gx}, {gy}): {info}"
 

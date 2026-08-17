@@ -76,6 +76,7 @@ def dump_state(
                 "defense": npc.defense,
                 "priority": npc.priority,
                 "task_progress": npc.task_progress,
+                "role": npc.role,
             }
             for npc in world.npcs
         ],
@@ -131,7 +132,7 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     npcs = []
     max_id = -1
     for nd in data["npcs"]:
-        npc = NPC(nd["x"], nd["y"], speed=nd["speed"], priority=nd["priority"])
+        npc = NPC(nd["x"], nd["y"], speed=nd["speed"], priority=nd["priority"], role=nd.get("role"))
         npc.id = nd["id"]
         max_id = max(max_id, npc.id)
         npc.path = [tuple(p) for p in nd["path"]]

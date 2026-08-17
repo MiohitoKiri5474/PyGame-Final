@@ -1,4 +1,5 @@
 from combat import resolve_combat
+from constants import COMBAT_RANGE
 from coords import tile_center
 
 
@@ -11,12 +12,13 @@ class _Building:
 
 
 class _Entity:
-    def __init__(self, x: float, y: float, health: int, attack: int, defense: int):
+    def __init__(self, x: float, y: float, health: int, attack: int, defense: int, combat_range: float = COMBAT_RANGE):
         self.x = x
         self.y = y
         self.health = health
         self.attack = attack
         self.defense = defense
+        self.combat_range = combat_range  # only read when used as the NPC side of a pair
 
     @property
     def is_dead(self) -> bool:
@@ -79,6 +81,18 @@ def test_tower_does_not_attack_monster_outside_its_range():
     monster = _Entity(mx, my, health=40, attack=10, defense=2)
     resolve_combat([], [monster], [tower])
     assert monster.health == 40
+
+
+def test_npc_uses_its_own_combat_range_not_the_flat_constant():
+    # ticket 12: Mages fight from range; a monster beyond COMBAT_RANGE but
+    # within the NPC's own (larger) combat_range should still trade damage.
+    mage_range = COMBAT_RANGE * 3
+    npc = _Entity(0, 0, health=100, attack=12, defense=4, combat_range=mage_range)
+    mx, my = tile_center(2, 0)  # beyond flat COMBAT_RANGE, inside mage_range
+    monster = _Entity(mx, my, health=40, attack=10, defense=2)
+    resolve_combat([npc], [monster])
+    assert monster.health == 40 - (12 - 2)
+    assert npc.health == 100 - (10 - 4)
 
 
 def test_wall_never_attacks_regardless_of_proximity():
