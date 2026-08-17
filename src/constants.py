@@ -14,7 +14,8 @@ CAMERA_PAN_SPEED = 400  # pixels/sec
 DAY_SECONDS = 120
 NIGHT_SECONDS = 60
 
-START_REVEAL_RADIUS = 5  # tiles claimed/revealed around start, before any Expand task exists
+START_CLAIM_RADIUS = 5  # buildable tiles around start
+START_REVEAL_RADIUS = 8  # fog cleared further out than claimed, giving Expand a frontier to target
 
 COLOR_BG = (18, 18, 24)
 COLOR_FOG = (10, 10, 14)
@@ -53,4 +54,8 @@ NEW_NEST_INTERVAL = 240.0  # seconds between chances for a new nest to appear
 
 COLOR_MONSTER = (200, 60, 60)
 COLOR_NEST = (120, 20, 20)
+
+# --- Gather (ticket 02) ---
+GATHER_WORK_SECONDS = 2.0
+GATHER_YIELD = 1
 

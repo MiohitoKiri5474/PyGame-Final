@@ -4,7 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-Ticket 01 (NPC entity + pathfinding + render) implemented. See `docs/tickets/core-loop/` for the remaining tickets and their blocking order.
+Tickets 01-02 (NPC/pathfinding/render, task queue + Gather) implemented. See `docs/tickets/core-loop/` for the remaining tickets and their blocking order.
+
+### Extending the task/render system without touching game.py
+
+Tickets 03/04/10 (Expand, Build+buildings, HUD) each add a task type and/or
+render output. To keep them merge-conflict-free with each other, `game.py`
+exposes exactly three extension points and should not otherwise change for
+this kind of work:
+
+- New task type: create `<name>_task.py` (see `gather_task.py`), call
+  `task.register_task_type(name, TaskType(work_seconds, can_queue, on_complete))`
+  at module import time, add one `import <name>_task` line to `plugins.py`.
+  It's immediately selectable in-game via Tab-cycling (`game.py` builds that
+  list from `task.TASK_TYPES` automatically) and gets NPC pathing/work/
+  completion for free from `task.update_npc_tasks`.
+- New map-drawn overlay (e.g. buildings): call
+  `extensions.register_overlay(fn)` where `fn(surface, world, camera)` draws
+  onto the given surface; it's invoked from `game.py`'s single
+  `render_overlays()` call site.
+- New HUD text line: call `extensions.register_hud_line(fn)` where
+  `fn(world) -> str`; appended automatically after the built-in lines.
+
+`World` (`world.py`) is the pygame-free bundle of `grid`/`inventory`/`npcs`/
+`tasks` — task-type `can_queue`/`on_complete` callbacks take `(world, tile)`
+/ `(world, task)`, never `Game`.
 
 ## Environment
 
@@ -67,6 +91,6 @@ Resolved via grilling session, not yet all implemented — check `Project Status
 
 **Art**: primitive shapes + color coding via `pygame.draw`, no sprite assets. Keep all drawing centralized so swapping in real sprites later doesn't touch game logic.
 
-**Test seam**: `grid.py`, `camera.py`, `day_night.py`, `coords.py`, `pathfinding.py`, `npc.py` are pygame-free pure Python — unit tested directly with pytest. `game.py` is the pygame-coupled integration shell (window, event loop, rendering, click handling) — not unit tested, verified via `tests/smoke_render.py` (headless, `SDL_VIDEODRIVER=dummy`) plus manual play. Keep new simulation modules (tasks, buildings, combat, save) on the pygame-free side of this line.
+**Test seam**: `grid.py`, `camera.py`, `day_night.py`, `coords.py`, `pathfinding.py`, `npc.py`, `inventory.py`, `task.py`, `gather_task.py`, `world.py`, `extensions.py`, `plugins.py` are pygame-free pure Python — unit tested directly with pytest. `game.py` is the pygame-coupled integration shell (window, event loop, rendering, click handling) — not unit tested, verified via `tests/smoke_render.py` (headless, `SDL_VIDEODRIVER=dummy`) plus manual play. Keep new simulation modules (tasks, buildings, combat, save) on the pygame-free side of this line.
 
-**Not yet built** (source doesn't exist for these): task queue, buildings, combat, magic, taming, skills, save/load. NPC entity + A* pathfinding + click-to-select/move exist (ticket 01).
+**Not yet built** (source doesn't exist for these): buildings, combat, magic, taming, skills, save/load. NPC entity + A* pathfinding, task queue + per-NPC priority claim + Gather task, click-to-select-NPC + click-to-queue-task (Tab cycles task type) exist (tickets 01-02).
