@@ -31,3 +31,13 @@ def test_spend_never_goes_negative_on_missing_resource():
     inv = Inventory()
     assert inv.spend("wood", 1) is False
     assert inv.get("wood") == 0
+
+
+def test_items_returns_nonzero_counts():
+    inv = Inventory()
+    inv.add("crop", 3)
+    inv.add("wood", 0)
+    inv.add("stone", 1)
+    
+    items = sorted(inv.items())
+    assert items == [("crop", 3), ("stone", 1)]

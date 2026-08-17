@@ -11,6 +11,7 @@ class NPC:
         y: float,
         speed: float = DEFAULT_SPEED,
         priority: list[str] | None = None,
+        id: int = 0,
     ):
         self.x = x
         self.y = y
@@ -20,6 +21,7 @@ class NPC:
         self.attack = NPC_ATTACK
         self.defense = NPC_DEFENSE
         self.priority = priority  # None = fall back to task-type registration order
+        self.id = id  # stable across the NPC's life, unlike its position in world.npcs (which combat.py splices on death)
         self.task = None  # set by task.update_npc_tasks; typed loosely to avoid a task.py<->npc.py import cycle
         self.task_progress = 0.0
 

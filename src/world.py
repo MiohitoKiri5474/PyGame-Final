@@ -16,5 +16,5 @@ class World:
 
         center_x, center_y = self.grid.width // 2, self.grid.height // 2
         self.npcs: list[NPC] = [
-            NPC(*tile_center(center_x + i - npc_count // 2, center_y)) for i in range(npc_count)
+            NPC(*tile_center(center_x + i - npc_count // 2, center_y), id=i) for i in range(npc_count)
         ]

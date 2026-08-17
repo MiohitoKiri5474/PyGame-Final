@@ -16,3 +16,6 @@ class Inventory:
             return False
         self._counts[resource] -= amount
         return True
+
+    def items(self) -> list[tuple[str, int]]:
+        return [(res, count) for res, count in self._counts.items() if count > 0]

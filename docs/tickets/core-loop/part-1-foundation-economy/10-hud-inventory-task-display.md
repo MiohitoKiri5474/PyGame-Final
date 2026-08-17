@@ -4,8 +4,14 @@
 
 **Blocked by:** 02 — Task queue + Gather task
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] HUD displays current inventory totals per resource type, updating live as inventory changes
-- [ ] HUD displays each NPC's current task type, or "idle" if it has none, updating live as NPCs claim/complete tasks
-- [ ] Verification: manual play — no unit tests needed for this presentational layer (game.py/rendering stays integration-only per the confirmed test seam); the underlying inventory/task state it reads is already covered by ticket 02's tests
+- [x] HUD displays current inventory totals per resource type, updating live as inventory changes
+- [x] HUD displays each NPC's current task type, or "idle" if it has none, updating live as NPCs claim/complete tasks
+- [x] Verification: manual play — no unit tests needed for this presentational layer (game.py/rendering stays integration-only per the confirmed test seam); the underlying inventory/task state it reads is already covered by ticket 02's tests
+
+## Implementation notes
+Added `items()` method to `Inventory` to enumerate resources with nonzero counts.
+Created `hud_display.py` which registers two HUD line providers via `extensions.py`: one for inventory totals and one for NPC tasks.
+Registered `hud_display` in `plugins.py` to hook into the import chain.
+Added unit tests for the HUD line formatting logic and `Inventory.items()`.
