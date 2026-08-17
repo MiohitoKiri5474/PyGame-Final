@@ -31,3 +31,26 @@ COLOR_NPC_SELECTED = (255, 255, 255)
 STARTING_NPC_COUNT = 3
 NPC_RADIUS = TILE_SIZE // 3
 
+# --- Combat (ticket 06) ---
+NPC_MAX_HEALTH = 100
+NPC_ATTACK = 12
+NPC_DEFENSE = 4
+
+MONSTER_SPEED = 60.0  # pixels/sec, slower than NPC_DEFAULT_SPEED
+MONSTER_MAX_HEALTH = 40
+MONSTER_ATTACK = 10
+MONSTER_DEFENSE = 2
+
+COMBAT_RANGE = TILE_SIZE * 1.1  # "adjacent" threshold for auto-engage
+COMBAT_MIN_DAMAGE = 1  # damage floor so attack <= defense still chips away
+
+NEST_INITIAL_COUNT = 3
+NEST_MAX_COUNT = 8
+NEST_BASE_SPAWN_INTERVAL = 15.0  # seconds between spawns at round 1
+NEST_SPAWN_RAMP_PER_ROUND = 1.0  # interval shrinks by this much per round
+NEST_MIN_SPAWN_INTERVAL = 4.0  # floor so late rounds don't spawn every tick
+NEW_NEST_INTERVAL = 240.0  # seconds between chances for a new nest to appear
+
+COLOR_MONSTER = (200, 60, 60)
+COLOR_NEST = (120, 20, 20)
+

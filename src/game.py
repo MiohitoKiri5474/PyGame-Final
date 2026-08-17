@@ -1,4 +1,5 @@
 import math
+import random
 
 import pygame
 
@@ -11,6 +12,7 @@ from constants import (
     VIEWPORT_TILES_Y,
     STARTING_NPC_COUNT,
     NPC_RADIUS,
+    NEST_INITIAL_COUNT,
     COLOR_BG,
     COLOR_FOG,
     COLOR_UNCLAIMED,
@@ -22,12 +24,17 @@ from constants import (
     COLOR_NIGHT_BANNER,
     COLOR_NPC,
     COLOR_NPC_SELECTED,
+    COLOR_MONSTER,
+    COLOR_NEST,
 )
 from grid import Grid
 from camera import Camera
+from combat import resolve_combat
 from day_night import DayNightCycle, DAY
 from coords import tile_at, tile_center
+from nest import NestManager, create_initial_nests
 from npc import NPC
+from monster import spawn_monster
 from pathfinding import find_path
 
 
@@ -51,6 +58,12 @@ class Game:
             for i in range(STARTING_NPC_COUNT)
         ]
         self.selected_npc: NPC | None = None
+
+        initial_nests = create_initial_nests(
+            self.grid.width, self.grid.height, NEST_INITIAL_COUNT, random.Random()
+        )
+        self.nest_manager = NestManager(self.grid.width, self.grid.height, initial_nests)
+        self.monsters = []
 
     def run(self) -> None:
         while self.running:
@@ -115,10 +128,21 @@ class Game:
             for npc in self.npcs:
                 npc.update(dt)
 
+            for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
+                self.monsters.append(spawn_monster(tile, self.grid))
+            for monster in self.monsters:
+                monster.update(dt)
+
+            resolve_combat(self.npcs, self.monsters)
+            if self.selected_npc is not None and self.selected_npc.is_dead:
+                self.selected_npc = None
+
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         self.render_grid()
+        self.render_nests()
         self.render_npcs()
+        self.render_monsters()
         self.render_hud()
         pygame.display.flip()
 
@@ -129,6 +153,21 @@ class Game:
             pygame.draw.circle(self.screen, COLOR_NPC, (screen_x, screen_y), NPC_RADIUS)
             if npc is self.selected_npc:
                 pygame.draw.circle(self.screen, COLOR_NPC_SELECTED, (screen_x, screen_y), NPC_RADIUS, 2)
+
+    def render_monsters(self) -> None:
+        for monster in self.monsters:
+            screen_x = int(monster.x - self.camera.x)
+            screen_y = int(monster.y - self.camera.y)
+            pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
+
+    def render_nests(self) -> None:
+        for nest in self.nest_manager.nests:
+            if not self.grid.get(nest.x, nest.y).revealed:
+                continue
+            screen_x = nest.x * TILE_SIZE - self.camera.x
+            screen_y = nest.y * TILE_SIZE - self.camera.y
+            rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
+            pygame.draw.rect(self.screen, COLOR_NEST, rect)
 
     def render_grid(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y
