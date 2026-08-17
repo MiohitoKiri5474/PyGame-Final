@@ -25,3 +25,6 @@ class Inventory:
         for res, amount in costs.items():
             self._counts[res] -= amount
         return True
+
+    def items(self) -> dict[str, int]:
+        return dict(self._counts)
