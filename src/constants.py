@@ -98,14 +98,20 @@ COLOR_GAME_OVER = (255, 90, 90)
 # --- Material taxonomy (ticket 14) ---
 # None is the "no resource" weight so the whole table sums to 1.0 and a single
 # rng.choices() call per tile replaces the old rng.random() < RESOURCE_CHANCE
-# roll. Non-None weights sum to 0.12, matching the old flat RESOURCE_CHANCE so
-# overall tile density is unchanged - only the resource mix got richer.
+# roll. crop keeps its original 0.12 weight unchanged - task.py's hunger-eat
+# still only consumes crop (generalizing that is ticket 27's job), so
+# shrinking crop's share to make room for the new materials would have
+# quietly made starvation harder. The new materials are added as genuinely
+# new density on top, not carved out of crop's slice. wood/bricks weights are
+# sized so their expected tile count within the starting claim area
+# (121 tiles at START_CLAIM_RADIUS=5) clears WALL_COST/TOWER_COST with
+# comfortable margin (~2x), matching the old design's affordability margin.
 RESOURCE_WEIGHTS = {
-    None: 0.88,
-    "crop": 0.03,
-    "wood": 0.03,
-    "marble": 0.015,
-    "bricks": 0.015,
-    "berries": 0.015,
-    "raw_stone": 0.015,
+    None: 0.70,
+    "crop": 0.12,
+    "wood": 0.07,
+    "bricks": 0.05,
+    "marble": 0.02,
+    "berries": 0.02,
+    "raw_stone": 0.02,
 }
