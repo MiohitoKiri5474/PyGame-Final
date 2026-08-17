@@ -1,3 +1,5 @@
+import math
+
 import pygame
 
 from constants import (
@@ -7,6 +9,8 @@ from constants import (
     TILE_SIZE,
     VIEWPORT_TILES_X,
     VIEWPORT_TILES_Y,
+    STARTING_NPC_COUNT,
+    NPC_RADIUS,
     COLOR_BG,
     COLOR_FOG,
     COLOR_UNCLAIMED,
@@ -16,10 +20,15 @@ from constants import (
     COLOR_TEXT,
     COLOR_DAY_BANNER,
     COLOR_NIGHT_BANNER,
+    COLOR_NPC,
+    COLOR_NPC_SELECTED,
 )
 from grid import Grid
 from camera import Camera
 from day_night import DayNightCycle, DAY
+from coords import tile_at, tile_center
+from npc import NPC
+from pathfinding import find_path
 
 
 class Game:
@@ -28,13 +37,20 @@ class Game:
         pygame.display.set_caption("Colony Defense (WIP)")
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.SysFont(None, 24)
+        self.font = pygame.font.Font(None, 24)
 
         self.grid = Grid()
         self.camera = Camera()
         self.cycle = DayNightCycle()
         self.paused = False
         self.running = True
+
+        center = (self.grid.width // 2, self.grid.height // 2)
+        self.npcs = [
+            NPC(*tile_center(center[0] + i - STARTING_NPC_COUNT // 2, center[1]))
+            for i in range(STARTING_NPC_COUNT)
+        ]
+        self.selected_npc: NPC | None = None
 
     def run(self) -> None:
         while self.running:
@@ -53,6 +69,40 @@ class Game:
                     self.running = False
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                self.handle_click(event.pos)
+
+    def handle_click(self, screen_pos: tuple[int, int]) -> None:
+        world_x = screen_pos[0] + self.camera.x
+        world_y = screen_pos[1] + self.camera.y
+
+        clicked_npc = self._npc_at_world_pos(world_x, world_y)
+        if clicked_npc is not None:
+            self.selected_npc = clicked_npc
+            return
+
+        gx, gy = tile_at(world_x, world_y)
+        if not self.grid.in_bounds(gx, gy):
+            return
+        if self.selected_npc is None or not self.grid.get(gx, gy).claimed:
+            return
+
+        start = tile_at(self.selected_npc.x, self.selected_npc.y)
+        path = find_path(
+            lambda x, y: self.grid.get(x, y).claimed,
+            self.grid.width,
+            self.grid.height,
+            start,
+            (gx, gy),
+        )
+        if path:
+            self.selected_npc.set_path(path)
+
+    def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
+        for npc in self.npcs:
+            if math.hypot(npc.x - wx, npc.y - wy) <= NPC_RADIUS * 1.5:
+                return npc
+        return None
 
     def update(self, dt: float) -> None:
         keys = pygame.key.get_pressed()
@@ -62,12 +112,23 @@ class Game:
 
         if not self.paused:
             self.cycle.update(dt)
+            for npc in self.npcs:
+                npc.update(dt)
 
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         self.render_grid()
+        self.render_npcs()
         self.render_hud()
         pygame.display.flip()
+
+    def render_npcs(self) -> None:
+        for npc in self.npcs:
+            screen_x = int(npc.x - self.camera.x)
+            screen_y = int(npc.y - self.camera.y)
+            pygame.draw.circle(self.screen, COLOR_NPC, (screen_x, screen_y), NPC_RADIUS)
+            if npc is self.selected_npc:
+                pygame.draw.circle(self.screen, COLOR_NPC_SELECTED, (screen_x, screen_y), NPC_RADIUS, 2)
 
     def render_grid(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y
