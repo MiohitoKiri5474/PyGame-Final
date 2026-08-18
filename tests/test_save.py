@@ -1,5 +1,5 @@
 from build_task import Building
-from constants import MONSTER_ZOMBIE, ROLE_KNIGHT
+from constants import MONSTER_ZOMBIE, ROLE_KNIGHT, SKILL_DEFENSE_ABILITY
 from day_night import DayNightCycle, NIGHT
 from game_over import GameOverState
 from monster import Monster
@@ -19,6 +19,7 @@ def _build_nontrivial_state():
     world.inventory.add("crop", 7)
     world.buildings.append(Building(type="Wall", x=5, y=5, block=100, attack=0))
     world.spellbook.start_cooldown("Lightning", 13.5)
+    world.skills[SKILL_DEFENSE_ABILITY] = 2
     world.buildings.append(
         Building(type="Farmland", x=8, y=8, block=0, attack=0, growth_timer=9.5, ready=False)
     )
@@ -27,6 +28,7 @@ def _build_nontrivial_state():
 
     npc_a = NPC(160.0, 160.0, priority=["Gather", "BuildWall"], role=ROLE_KNIGHT)
     npc_a.health = 42
+    npc_a.max_health = 150  # simulates one Defense Ability level's +10 bonus on top of role base 140
     npc_a.hunger = 55.5
     npc_a.attack = 12
     npc_a.defense = 4
@@ -107,7 +109,9 @@ def test_round_trip_preserves_specific_field_values(tmp_path):
     npc_a = next(n for n in loaded_world.npcs if n.health == 42)
     assert npc_a.hunger == 55.5
     assert npc_a.role == ROLE_KNIGHT
-    assert npc_a.max_health == 140  # re-derived from role on load, not just the raw health value
+    # Explicit field, not re-derived from role: a Defense Ability bonus (150,
+    # not the role base 140) must survive a save/load round trip.
+    assert npc_a.max_health == 150
 
     npc_b = next(n for n in loaded_world.npcs if n is not npc_a)
     assert npc_b.task_progress == 1.5
@@ -128,6 +132,7 @@ def test_round_trip_preserves_specific_field_values(tmp_path):
     assert l_points == 4
     assert l_killed == 3
     assert loaded_world.spellbook.remaining("Lightning") == 13.5
+    assert loaded_world.skills[SKILL_DEFENSE_ABILITY] == 2
 
     farmland = next(b for b in loaded_world.buildings if b.type == "Farmland")
     assert farmland.growth_timer == 9.5

@@ -9,11 +9,11 @@ from typing import TYPE_CHECKING
 
 from constants import (
     HUNT_WORK_SECONDS,
-    KNIGHT_CRIT_CHANCE,
     KNIGHT_CRIT_MULTIPLIER,
     ROLE_KNIGHT,
 )
 from coords import tile_at
+from skills import hunting_crit_chance
 from task import register_task_type, TaskType
 
 if TYPE_CHECKING:
@@ -58,9 +58,10 @@ def on_complete_hunt(world: "World", task: "Task", rng: random.Random | None = N
     base_attack = getattr(npc, "attack", 12) if npc else 12
     npc_role = getattr(npc, "role", None) if npc else None
 
-    # Knight gets a critical-hit-chance bonus against fauna specifically
+    # Knight gets a critical-hit-chance bonus against fauna specifically,
+    # boosted further by the Hunting Accuracy skill (ticket 23)
     damage = float(base_attack)
-    if npc_role == ROLE_KNIGHT and rng.random() < KNIGHT_CRIT_CHANCE:
+    if npc_role == ROLE_KNIGHT and rng.random() < hunting_crit_chance(world):
         damage *= KNIGHT_CRIT_MULTIPLIER
 
     animal.take_damage(damage)

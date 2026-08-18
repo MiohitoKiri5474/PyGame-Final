@@ -147,15 +147,6 @@ RESOURCE_WEIGHTS = {
     "raw_stone": 0.02,
 }
 
-# --- House & population cap (ticket 15) ---
-BASE_POPULATION_CAP = 3
-HOUSE_BLOCK = 0
-HOUSE_ATTACK = 0
-HOUSE_COST = {"wood": 4, "bricks": 2}
-HOUSE_WORK_SECONDS = 4.0
-COLOR_HOUSE = (180, 140, 90)
-COLOR_UNKNOWN_BUILDING = (255, 0, 255)  # unmistakable "missing render mapping" marker
-
 # --- Magic framework + Lightning (ticket 18) ---
 LIGHTNING_DAMAGE = 35
 LIGHTNING_COOLDOWN = 20.0
@@ -188,6 +179,15 @@ MONSTER_STATS = {
 }
 
 MONSTER_SPAWN_WEIGHTS = {MONSTER_WEREWOLF: 4, MONSTER_VAMPIRE: 3, MONSTER_ZOMBIE: 3}
+
+# --- House & population cap (ticket 15) ---
+BASE_POPULATION_CAP = 3
+HOUSE_BLOCK = 0
+HOUSE_ATTACK = 0
+HOUSE_COST = {"wood": 4, "bricks": 2}
+HOUSE_WORK_SECONDS = 4.0
+COLOR_HOUSE = (180, 140, 90)
+COLOR_UNKNOWN_BUILDING = (255, 0, 255)  # unmistakable "missing render mapping" marker
 
 # --- Farmland (ticket 17) ---
 FARMLAND_BLOCK = 0
@@ -261,3 +261,23 @@ FOOD_SHELF_LIFE = {
     "mushrooms": RAW_FOOD_SHELF_LIFE,
     "berries": PROCESSED_FOOD_SHELF_LIFE,
 }
+
+# --- Skill Upgrade UI & Tree (ticket 23) ---
+SKILL_GATHER_SPEED = "Gather Speed"
+SKILL_HUNTING_ACCURACY = "Hunting Accuracy"
+SKILL_TAMING_ABILITY = "Taming Ability"
+SKILL_DEFENSE_ABILITY = "Defense Ability"
+SKILL_MAGIC_ATTACK = "Magic Attack"
+SKILL_AOE_ATTACK = "AoE Attack"
+SKILL_NAMES = (
+    SKILL_GATHER_SPEED, SKILL_HUNTING_ACCURACY, SKILL_TAMING_ABILITY,
+    SKILL_DEFENSE_ABILITY, SKILL_MAGIC_ATTACK, SKILL_AOE_ATTACK,
+)
+
+GATHER_SPEED_REDUCTION_PER_LEVEL = 0.10  # 10% less Gather work-seconds/level, stacks with role multiplier
+HUNTING_ACCURACY_CRIT_BONUS_PER_LEVEL = 0.10  # +10pp Knight crit chance vs fauna, per level
+TAMING_SUCCESS_BONUS_PER_LEVEL = 0.10  # +10pp tame success rate, per level
+DEFENSE_BONUS_PER_LEVEL = 2  # flat defense, on top of role-based base
+HEALTH_BONUS_PER_LEVEL = 10  # flat max_health (and current health), on top of role-based base
+MAGIC_DAMAGE_MULTIPLIER_PER_LEVEL = 0.15  # +15% spell damage, per level
+AOE_RADIUS_BONUS_PER_LEVEL = 1  # +1 tile to Freeze's 3x3 box radius, per level

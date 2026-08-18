@@ -158,6 +158,26 @@ def test_cast_fire_deals_immediate_damage_and_applies_burn():
     assert any(f["color"] == COLOR_FIRE_FLASH for f in world.spellbook.flashes)
 
 
+def test_cast_fire_scales_burn_damage_by_magic_attack_skill():
+    # ticket 23: Magic Attack's per-level multiplier must scale Fire's DoT
+    # too, not just its direct hit - otherwise Fire's total damage gains
+    # proportionally less per level than Lightning/Freeze's single hit.
+    from constants import SKILL_MAGIC_ATTACK
+    from coords import tile_center
+    from skills import spend_point
+
+    world = _world_with_mage()
+    spend_point(world, 1, SKILL_MAGIC_ATTACK)  # level 1: +15%
+
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    target = Monster(*tile_center(cx + 6, cy))
+
+    cast_fire(world, [target])
+
+    assert target.burn_damage_per_tick == max(1, round(FIRE_BURN_DAMAGE_PER_TICK * 1.15))
+    assert target.burn_damage_per_tick > FIRE_BURN_DAMAGE_PER_TICK
+
+
 def test_cast_fire_total_damage_includes_burn_dot():
     world = _world_with_mage()
     monster = Monster(0.0, 0.0)

@@ -31,6 +31,7 @@ from constants import (
 )
 from coords import tile_at, tile_center
 from extensions import register_tick
+from skills import taming_success_bonus
 from task import register_task_type, Task, TaskType
 
 if TYPE_CHECKING:
@@ -83,10 +84,11 @@ def on_complete_tame(world: "World", task: "Task", rng: random.Random | None = N
     npc = task.assigned_npc
     is_farmer = (getattr(npc, "role", None) == ROLE_FARMER)
 
-    # Farmer gets 1.5x success rate bonus
+    # Farmer gets 1.5x success rate bonus, plus a flat Taming Ability bonus (ticket 23)
     success_rate = BASE_TAME_SUCCESS_RATE
     if is_farmer:
-        success_rate = min(1.0, success_rate * FARMER_TAME_SUCCESS_MULTIPLIER)
+        success_rate *= FARMER_TAME_SUCCESS_MULTIPLIER
+    success_rate = min(1.0, success_rate + taming_success_bonus(world))
 
     if rng.random() < success_rate:
         animal.is_tamed = True
