@@ -50,7 +50,7 @@ from skill_ui import SkillUI
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
-from title_screen import TitleScreen, TITLE, PLAYING
+from title_screen import ConfirmOverwriteDialog, TitleScreen, TITLE, PLAYING, CONFIRM_OVERWRITE
 
 
 class Game:
@@ -73,6 +73,7 @@ class Game:
         self.state = TITLE
         self.save_exists = SAVE_PATH.exists()
         self.title_screen = TitleScreen()
+        self.confirm_dialog = ConfirmOverwriteDialog()
 
     def _start_new_game(self) -> None:
         self.world = World()
@@ -115,11 +116,23 @@ class Game:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     action = self.title_screen.handle_click(event.pos, self.save_exists)
                     if action == "start":
-                        self._start_new_game()
+                        if self.save_exists:
+                            self.state = CONFIRM_OVERWRITE
+                        else:
+                            self._start_new_game()
                     elif action == "continue":
                         self._continue_game()
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     self.running = False
+            elif self.state == CONFIRM_OVERWRITE:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    action = self.confirm_dialog.handle_click(event.pos)
+                    if action == "yes":
+                        self._start_new_game()
+                    elif action == "no":
+                        self.state = TITLE
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.state = TITLE
             elif event.type == pygame.KEYDOWN:
                 # Priority UI and Skill UI intercept keys when open
                 if self.priority_ui.visible:
@@ -272,6 +285,10 @@ class Game:
         self.screen.fill(COLOR_BG)
         if self.state == TITLE:
             self.title_screen.render(self.screen, self.font, self.save_exists)
+            pygame.display.flip()
+            return
+        if self.state == CONFIRM_OVERWRITE:
+            self.confirm_dialog.render(self.screen, self.font)
             pygame.display.flip()
             return
         self.render_grid()
