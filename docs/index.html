@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>《午夜要塞：破曉之役》MIDNIGHT'S BASTION — 官方遊戲發表</title>
-  <meta name="description" content="白天拓荒建設，黑夜萬獸破曉。掌控魔法、馴化野獸、抵禦無盡屍潮！2026 暗黑奇幻像素殖民地生存策略遊戲。" />
+  <title>《Medievil》中世紀要塞：破曉之役 — 官方遊戲發表</title>
+  <meta name="description" content="《Medievil》2026 暗黑奇幻像素殖民地生存策略遊戲。白天拓荒建設、馴服萬獸，黑夜抵禦屍潮與狼人進犯！" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #0a0b10;
-      --bg-surface: rgba(18, 20, 29, 0.85);
-      --bg-surface-elevated: rgba(28, 32, 48, 0.95);
-      --border-subtle: rgba(255, 215, 120, 0.15);
-      --border-glow: rgba(255, 190, 60, 0.4);
+      --bg-dark: #07080c;
+      --bg-surface: rgba(15, 17, 26, 0.88);
+      --bg-surface-elevated: rgba(24, 28, 42, 0.95);
+      --border-subtle: rgba(245, 197, 66, 0.18);
+      --border-glow: rgba(245, 197, 66, 0.45);
       --gold-primary: #f5c542;
-      --gold-bright: #ffe680;
+      --gold-bright: #ffe885;
       --gold-deep: #b8860b;
       --crimson: #e63946;
       --cyan-frost: #56ccf2;
@@ -45,8 +45,8 @@
     }
 
     body.day-mode {
-      --bg-dark: #0f1715;
-      --bg-surface: rgba(22, 34, 30, 0.88);
+      --bg-dark: #0d1612;
+      --bg-surface: rgba(20, 32, 26, 0.92);
       --border-subtle: rgba(120, 200, 100, 0.25);
       --text-muted: #a2b8ad;
     }
@@ -68,13 +68,13 @@
       top: 0;
       z-index: 100;
       backdrop-filter: blur(16px);
-      background: rgba(10, 11, 16, 0.85);
+      background: rgba(7, 8, 12, 0.85);
       border-bottom: 1px solid var(--border-subtle);
       transition: all 0.3s ease;
     }
 
     .nav-container {
-      max-width: 1280px;
+      max-width: 1320px;
       margin: 0 auto;
       padding: 1rem 2rem;
       display: flex;
@@ -85,9 +85,9 @@
     .logo {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.85rem;
       font-family: var(--font-cinzel);
-      font-size: 1.35rem;
+      font-size: 1.5rem;
       font-weight: 900;
       letter-spacing: 2px;
       color: var(--gold-primary);
@@ -95,16 +95,12 @@
       text-decoration: none;
     }
 
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, var(--gold-primary), var(--ember-orange));
-      border-radius: 6px;
-      display: grid;
-      place-items: center;
-      color: #000;
-      font-weight: 900;
-      box-shadow: 0 0 15px rgba(255, 123, 0, 0.5);
+    .logo-img {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 10px rgba(245, 197, 66, 0.6));
     }
 
     .nav-links {
@@ -130,21 +126,21 @@
     .nav-actions {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.8rem;
     }
 
     .btn-toggle {
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--border-subtle);
       color: var(--text-main);
-      padding: 0.5rem 1rem;
+      padding: 0.5rem 0.9rem;
       border-radius: 9999px;
       font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.45rem;
       transition: all 0.25s;
     }
 
@@ -178,11 +174,11 @@
     .hero {
       position: relative;
       z-index: 1;
-      max-width: 1280px;
+      max-width: 1320px;
       margin: 0 auto;
       padding: 4rem 2rem 5rem;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1.1fr 0.9fr;
       gap: 3.5rem;
       align-items: center;
     }
@@ -205,13 +201,13 @@
 
     .hero-title {
       font-family: var(--font-cinzel);
-      font-size: 3.8rem;
+      font-size: 4.2rem;
       font-weight: 900;
-      line-height: 1.1;
-      letter-spacing: 2px;
+      line-height: 1.05;
+      letter-spacing: 3px;
       color: #fff;
       margin-bottom: 1.2rem;
-      text-shadow: 0 4px 25px rgba(0, 0, 0, 0.8);
+      text-shadow: 0 4px 30px rgba(0, 0, 0, 0.9);
     }
 
     .hero-title span {
@@ -258,9 +254,9 @@
 
     .hero-preview-wrapper {
       position: relative;
-      border-radius: 16px;
+      border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(245, 197, 66, 0.15);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(245, 197, 66, 0.2);
       border: 1px solid var(--border-subtle);
       transition: transform 0.5s ease;
     }
@@ -281,7 +277,7 @@
       bottom: 1.5rem;
       left: 1.5rem;
       right: 1.5rem;
-      background: rgba(10, 12, 18, 0.85);
+      background: rgba(10, 12, 18, 0.88);
       backdrop-filter: blur(12px);
       border: 1px solid var(--border-subtle);
       border-radius: 12px;
@@ -310,14 +306,14 @@
     section {
       position: relative;
       z-index: 1;
-      max-width: 1280px;
+      max-width: 1320px;
       margin: 0 auto;
       padding: 5rem 2rem;
     }
 
     .section-header {
       text-align: center;
-      max-width: 760px;
+      max-width: 780px;
       margin: 0 auto 3.5rem;
     }
 
@@ -346,7 +342,7 @@
       font-size: 1.05rem;
     }
 
-    /* Feature Grid */
+    /* Card & Sprite Styling */
     .feature-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -356,64 +352,94 @@
     .card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 2.2rem;
       transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
       position: relative;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     .card:hover {
       transform: translateY(-6px);
       border-color: var(--border-glow);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
     }
 
-    .card-icon {
-      width: 54px;
-      height: 54px;
+    .card-sprite-header {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .sprite-avatar {
+      width: 64px;
+      height: 64px;
       border-radius: 12px;
-      display: grid;
-      place-items: center;
-      font-size: 1.8rem;
-      margin-bottom: 1.4rem;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border-subtle);
+      padding: 6px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     }
 
     .card-title {
       font-family: var(--font-cinzel);
-      font-size: 1.4rem;
-      font-weight: 700;
+      font-size: 1.35rem;
+      font-weight: 800;
       color: #fff;
-      margin-bottom: 0.75rem;
+    }
+
+    .card-subtitle {
+      font-size: 0.8rem;
+      color: var(--gold-bright);
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .card-text {
       color: var(--text-muted);
       font-size: 0.95rem;
       line-height: 1.65;
+      margin-bottom: 1.2rem;
+      flex-grow: 1;
     }
 
-    .card-badge {
-      display: inline-block;
-      margin-top: 1.2rem;
-      padding: 0.3rem 0.8rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
+    .card-stats-table {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .stat-num {
+      font-family: var(--font-cinzel);
       font-weight: 800;
-      letter-spacing: 0.5px;
+      color: var(--gold-bright);
+      font-size: 1.05rem;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
       text-transform: uppercase;
     }
 
-    /* Day / Night Interactive Banner */
+    /* Dual Cycle Showcase */
     .cycle-showcase {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: 24px;
       padding: 3rem;
       display: grid;
-      grid-template-columns: 1.2fr 1fr;
+      grid-template-columns: 1.1fr 0.9fr;
       gap: 3rem;
       align-items: center;
     }
@@ -443,17 +469,17 @@
     }
 
     .cycle-btn.active {
-      background: linear-gradient(135deg, rgba(245, 197, 66, 0.2), rgba(255, 123, 0, 0.2));
+      background: linear-gradient(135deg, rgba(245, 197, 66, 0.25), rgba(255, 123, 0, 0.25));
       border-color: var(--gold-primary);
       color: var(--gold-bright);
-      box-shadow: 0 0 25px rgba(245, 197, 66, 0.2);
+      box-shadow: 0 0 25px rgba(245, 197, 66, 0.25);
     }
 
     .cycle-visual {
       position: relative;
-      border-radius: 16px;
+      border-radius: 18px;
       overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
       aspect-ratio: 16/9;
     }
 
@@ -466,7 +492,7 @@
 
     /* Spell Arsenal Playground */
     .spell-playground {
-      background: radial-gradient(circle at center, rgba(30, 20, 50, 0.7), var(--bg-surface-elevated));
+      background: radial-gradient(circle at center, rgba(30, 20, 50, 0.75), var(--bg-surface-elevated));
       border: 1px solid var(--border-subtle);
       border-radius: 24px;
       padding: 3rem;
@@ -477,45 +503,45 @@
       display: flex;
       justify-content: center;
       gap: 2rem;
-      margin: 2.5rem 0;
+      margin: 2rem 0;
       flex-wrap: wrap;
     }
 
     .spell-card {
-      background: rgba(10, 11, 18, 0.7);
+      background: rgba(10, 11, 18, 0.8);
       border: 2px solid var(--border-subtle);
       border-radius: 16px;
-      padding: 1.8rem 1.4rem;
-      width: 220px;
+      padding: 1.6rem 1.4rem;
+      width: 230px;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
       position: relative;
     }
 
     .spell-card:hover {
-      transform: translateY(-8px) scale(1.05);
+      transform: translateY(-8px) scale(1.04);
     }
 
     .spell-card.fire:hover, .spell-card.fire.active {
       border-color: var(--ember-orange);
-      box-shadow: 0 0 35px rgba(255, 123, 0, 0.45);
+      box-shadow: 0 0 35px rgba(255, 123, 0, 0.5);
     }
 
     .spell-card.lightning:hover, .spell-card.lightning.active {
       border-color: var(--gold-primary);
-      box-shadow: 0 0 35px rgba(245, 197, 66, 0.45);
+      box-shadow: 0 0 35px rgba(245, 197, 66, 0.5);
     }
 
     .spell-card.freeze:hover, .spell-card.freeze.active {
       border-color: var(--cyan-frost);
-      box-shadow: 0 0 35px rgba(86, 204, 242, 0.45);
+      box-shadow: 0 0 35px rgba(86, 204, 242, 0.5);
     }
 
     .spell-hotkey {
       position: absolute;
       top: -12px;
       right: 14px;
-      background: #111;
+      background: #0d0e14;
       border: 1px solid var(--gold-primary);
       color: var(--gold-bright);
       font-size: 0.75rem;
@@ -527,7 +553,7 @@
 
     .spell-icon {
       font-size: 2.8rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.8rem;
       display: block;
     }
 
@@ -547,12 +573,12 @@
     #spell-canvas-container {
       position: relative;
       width: 100%;
-      height: 280px;
+      height: 320px;
       background: #06070a;
       border-radius: 16px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      margin-top: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 1.5rem;
     }
 
     #spell-canvas {
@@ -567,11 +593,64 @@
       left: 50%;
       transform: translateX(-50%);
       font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.6);
-      background: rgba(0, 0, 0, 0.6);
-      padding: 0.4rem 1rem;
+      color: rgba(255, 255, 255, 0.8);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 0.4rem 1.2rem;
       border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
       pointer-events: none;
+    }
+
+    /* Sound Effects Audio Deck */
+    .sfx-deck {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 3rem;
+    }
+
+    .sfx-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.2rem;
+      margin-top: 2rem;
+    }
+
+    .sfx-btn {
+      background: rgba(10, 12, 18, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      cursor: pointer;
+      transition: all 0.25s;
+      text-align: left;
+    }
+
+    .sfx-btn:hover {
+      background: rgba(245, 197, 66, 0.12);
+      border-color: var(--gold-primary);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(245, 197, 66, 0.2);
+    }
+
+    .sfx-icon {
+      font-size: 1.8rem;
+    }
+
+    .sfx-title {
+      font-family: var(--font-cinzel);
+      font-size: 1rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .sfx-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
     }
 
     /* Interactive Skill Tree Calculator */
@@ -607,7 +686,7 @@
 
     .skill-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
       gap: 1.5rem;
     }
 
@@ -679,9 +758,59 @@
       box-shadow: 0 0 15px rgba(255, 123, 0, 0.6);
     }
 
+    /* Building & Blueprint Showcase */
+    .building-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .building-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .building-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--gold-primary);
+    }
+
+    .building-img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      margin-bottom: 1rem;
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
+    }
+
+    .building-name {
+      font-family: var(--font-cinzel);
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+
+    .building-cost {
+      font-size: 0.85rem;
+      color: var(--gold-bright);
+      margin-bottom: 0.6rem;
+    }
+
+    .building-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
     /* Launch Command Section */
     .launch-cta {
-      background: linear-gradient(180deg, rgba(245, 197, 66, 0.08) 0%, rgba(10, 11, 18, 0.95) 100%);
+      background: linear-gradient(180deg, rgba(245, 197, 66, 0.08) 0%, rgba(7, 8, 12, 0.95) 100%);
       border: 1px solid var(--border-subtle);
       border-radius: 24px;
       padding: 4rem 2rem;
@@ -690,10 +819,10 @@
     }
 
     .command-box {
-      max-width: 680px;
+      max-width: 700px;
       margin: 2rem auto 0;
-      background: #08090d;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #040508;
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 12px;
       padding: 1rem 1.5rem;
       display: flex;
@@ -749,7 +878,7 @@
         grid-template-columns: 1fr;
       }
       .hero-title {
-        font-size: 2.8rem;
+        font-size: 3rem;
       }
       .nav-links {
         display: none;
@@ -765,17 +894,22 @@
   <header>
     <div class="nav-container">
       <a href="#" class="logo">
-        <div class="logo-icon">⚔</div>
-        <span>MIDNIGHT'S BASTION</span>
+        <img src="../assets/player/knight.png" alt="Medievil Logo" class="logo-img" onerror="this.style.display='none'" />
+        <span>MEDIEVIL</span>
       </a>
       <ul class="nav-links">
         <li><a href="#cycle">日夜生死循環</a></li>
         <li><a href="#heroes">英雄三職業</a></li>
         <li><a href="#magic">魔法神殿</a></li>
+        <li><a href="#sfx">音效試聽</a></li>
         <li><a href="#skills">天賦加點器</a></li>
+        <li><a href="#buildings">建築藍圖</a></li>
         <li><a href="#bestiary">萬獸圖鑑</a></li>
       </ul>
       <div class="nav-actions">
+        <button id="bgm-toggle" class="btn-toggle" style="border-color: rgba(245, 197, 66, 0.45); background: rgba(245, 197, 66, 0.12);" title="播放/暫停白天背景音樂">
+          <span id="bgm-icon">🎵</span> <span id="bgm-status">日間配樂 播放</span>
+        </button>
         <button id="sfx-toggle" class="btn-toggle" title="切換遊戲音效">
           <span>🔊</span> <span id="sfx-status">音效 ON</span>
         </button>
@@ -790,28 +924,29 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="hero-content">
-      <div class="hero-badge">✦ 2026 年度暗黑奇幻像素殖民地生存神作 ✦</div>
+      <div class="hero-badge">✦ 2026 年度暗黑奇幻像素殖民地生存策略神作 ✦</div>
       <h1 class="hero-title">
-        午夜要塞<br>
-        <span>破曉之役</span>
+        MEDIEVIL<br>
+        <span>中世紀要塞：破曉之役</span>
       </h1>
       <p class="hero-desc">
-        在迷霧覆蓋的古老荒野中建立你的最後領地。白天探索拓荒、採集建城、馴服百獸；黑夜降臨之時，抵禦狂暴狼人、吸血鬼與屍潮的無盡圍攻。掌控奧術魔法，生存直到黎明！
+        白天在未知的迷霧荒野中拓荒建設、採集資源、耕種農田、馴服野獸；黑夜血月降臨之時，抵禦狂暴狼人、吸血鬼與巨型殭屍的無盡圍攻。引導奧術天罰，帶領你的殖民者生存直到破曉黎明！
       </p>
       <div class="hero-cta">
         <a href="#launch" class="btn-primary" style="font-size: 1.1rem; padding: 0.85rem 2rem;">⚡ 啟動遊戲</a>
-        <a href="#magic" class="btn-secondary">🔮 試玩魔法模擬器</a>
+        <a href="#magic" class="btn-secondary">🔮 魔法模擬器試玩</a>
+        <a href="#sfx" class="btn-secondary">🎧 原生音效試聽</a>
       </div>
     </div>
     <div class="hero-preview-wrapper">
-      <img id="hero-banner-img" src="assets/hero_banner.jpg" alt="Midnight's Bastion Hero Banner" class="hero-preview-img" />
+      <img id="hero-banner-img" src="assets/hero_banner.jpg" alt="Medievil Hero Banner" class="hero-preview-img" />
       <div class="hero-stats-badge">
         <div>
           <div class="hero-stat-val">27/27</div>
-          <div class="hero-stat-label">完整功能已上線</div>
+          <div class="hero-stat-label">完整模組全上線</div>
         </div>
         <div>
-          <div class="hero-stat-val">280+</div>
+          <div class="hero-stat-val">293+</div>
           <div class="hero-stat-label">自動化驗證測試</div>
         </div>
         <div>
@@ -827,7 +962,7 @@
     <div class="section-header">
       <span class="section-tag">THE DUAL CYCLE</span>
       <h2 class="section-title">日夜生死輪替機制</h2>
-      <p class="section-desc">時間是你最殘酷的敵人。白天是建立防禦與擴張資源的唯一機會，夜晚則是血與火的試煉。</p>
+      <p class="section-desc">時間是你最殘酷的敵人。白天是建立防禦與擴張資源的唯一機會，夜晚則是血與火的極限生存。</p>
     </div>
 
     <div class="cycle-showcase">
@@ -846,12 +981,12 @@
             🌙 黑夜守城：抵禦血月侵襲
           </h3>
           <p id="cycle-info-desc" style="color: var(--text-muted); line-height: 1.7; margin-bottom: 1.5rem;">
-            地圖邊緣的巢穴將隨時間加速湧出狼人、吸血鬼與巨型殭屍。防禦塔將自動進行遠程齊射，法師可施放殖民地天罰法術，全殲當晚所有怪物可獲得 2 點全域技能天賦點數！
+            地圖邊緣的巢穴將隨時間加速湧出狼人、吸血鬼與巨型殭屍。防禦塔將自動進行遠程齊射，法師可施放全圖天罰法術，全殲當晚所有怪物可獲得 2 點全域技能天賦點數！
           </p>
           <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.95rem; color: var(--gold-bright);">
-            <li>✓ 自動集火防禦塔阻擊</li>
+            <li>✓ 自動集火防禦塔阻擊（4格射程，15點傷害）</li>
             <li>✓ <kbd>F1</kbd>/<kbd>F2</kbd>/<kbd>F3</kbd> 全圖法術即時支援</li>
-            <li>✓ 波次結算技能點數獎勵（Full Clear +2 點）</li>
+            <li>✓ 每晚完美清場獎勵 2 技能點，全域加點天賦</li>
           </ul>
         </div>
       </div>
@@ -865,37 +1000,64 @@
   <!-- Section 2: Heroes & Roles -->
   <section id="heroes">
     <div class="section-header">
-      <span class="section-tag">COLONY ROLES</span>
+      <span class="section-tag">HERO ROLES</span>
       <h2 class="section-title">三大傳奇職業體系</h2>
-      <p class="section-desc">每一位殖民者都有其獨特天命。農夫、騎士與法師相互扶持，構築堅不可摧的生存鏈。</p>
+      <p class="section-desc">每一位殖民者都有其天賦與職責。農夫、騎士與法師相互扶持，構築堅不可摧的生存鏈。</p>
     </div>
 
     <div class="feature-grid">
       <div class="card">
-        <div class="card-icon" style="color: #78c85a;">🌾</div>
-        <h3 class="card-title">農夫 (Farmer)</h3>
+        <div class="card-sprite-header">
+          <img src="../assets/player/villager.png" alt="Farmer" class="sprite-avatar" onerror="this.src='../assets/plant/tomato.png'" />
+          <div>
+            <h3 class="card-title">農夫 (Farmer)</h3>
+            <div class="card-subtitle">經濟核心 • 馴化專家</div>
+          </div>
+        </div>
         <p class="card-text">
-          殖民地的生命線。擁有 0.6x 工作時間倍率，負責農田播種、生長維護與小麥採收。具備 1.5 倍野生動物馴服成功率，是建立獸欄畜牧業的關鍵。
+          殖民地的生命線。自帶 <strong>0.6x 工作時間倍率</strong>（工作速度快 40%），負責農田播種、生長維護與小麥採收。具備 <strong>1.5 倍野生動物馴服成功率（75% 起跳）</strong>，是建立獸欄畜牧業的關鍵。
         </p>
-        <span class="card-badge" style="background: rgba(120, 200, 90, 0.15); color: #9be080;">經濟核心 • 馴化專家</span>
+        <div class="card-stats-table">
+          <div><div class="stat-num">100</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">8 / 3</div><div class="stat-label">攻 / 防</div></div>
+          <div><div class="stat-num">0.6x</div><div class="stat-label">工作時間</div></div>
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-icon" style="color: #aabed2;">⚔️</div>
-        <h3 class="card-title">騎士 (Knight)</h3>
+        <div class="card-sprite-header">
+          <img src="../assets/player/knight.png" alt="Knight" class="sprite-avatar" />
+          <div>
+            <h3 class="card-title">騎士 (Knight)</h3>
+            <div class="card-subtitle">銅牆鐵壁 • 狩獵暴擊</div>
+          </div>
+        </div>
         <p class="card-text">
-          重裝前線守護者。具備高達 140 生命值、18 點物理攻擊與 8 點護甲。在狩獵野生動物時享有 50% 機率的致命一擊（200% 暴擊傷害）特權。
+          重裝前線守護者。具備高達 <strong>140 生命值、18 點物理攻擊與 8 點高護甲</strong>。在狩獵野生動物時享有 <strong>50% 機率致命一擊（200% 暴擊傷害 = 36 點）</strong>，是前線阻擊怪獸的最佳肉盾。
         </p>
-        <span class="card-badge" style="background: rgba(170, 190, 210, 0.15); color: #d0e0f0;">銅牆鐵壁 • 狩獵暴擊</span>
+        <div class="card-stats-table">
+          <div><div class="stat-num">140</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">18 / 8</div><div class="stat-label">攻 / 防</div></div>
+          <div><div class="stat-num">50%</div><div class="stat-label">狩獵暴擊</div></div>
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-icon" style="color: #a05adc;">🔮</div>
-        <h3 class="card-title">法師 (Mage)</h3>
+        <div class="card-sprite-header">
+          <img src="../assets/player/magician.png" alt="Mage" class="sprite-avatar" />
+          <div>
+            <h3 class="card-title">法師 (Mage)</h3>
+            <div class="card-subtitle">遠程轟殺 • 奧術共鳴</div>
+          </div>
+        </div>
         <p class="card-text">
-          掌控元素真理的奧術大師。普通攻擊具備 3 格超遠攻擊距離，更是全殖民地天罰魔法的唯一引導者，存活時才能召喚火焰、閃電與極地冰霜。
+          掌控元素真理的奧術大師。普通攻擊具備 <strong>3 格超遠攻擊距離（22 點攻擊）</strong>，更是全殖民地天罰魔法的唯一引導者，存活時才能召喚全圖火焰、閃電與極地冰霜打擊。
         </p>
-        <span class="card-badge" style="background: rgba(160, 90, 220, 0.15); color: #d5a0ff;">遠程轟殺 • 奧術共鳴</span>
+        <div class="card-stats-table">
+          <div><div class="stat-num">70</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">22 / 2</div><div class="stat-label">攻 / 防</div></div>
+          <div><div class="stat-num">3 格</div><div class="stat-label">普攻距離</div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -905,7 +1067,7 @@
     <div class="section-header">
       <span class="section-tag">ARCANE ARSENAL</span>
       <h2 class="section-title">全圖魔法打擊模擬器</h2>
-      <p class="section-desc">只要殖民地有存活的法師，即可不限位置對領地威脅發動天罰。點擊下方按鈕或按下熱鍵親自體驗！</p>
+      <p class="section-desc">只要殖民地有存活的法師，即可不限距離對領地威脅發動天罰。點擊下方卡片或按下鍵盤熱鍵親自體驗！</p>
     </div>
 
     <div class="spell-playground">
@@ -914,14 +1076,14 @@
           <div class="spell-hotkey">F1</div>
           <span class="spell-icon">🔥</span>
           <div class="spell-name">火焰術 (Fire)</div>
-          <div class="spell-meta">15 爆發 + 3s 燃燒 DoT<br>冷卻：15 秒</div>
+          <div class="spell-meta">25 直接 + 15 燃燒 DoT<br>冷卻：15 秒</div>
         </div>
 
         <div class="spell-card lightning active" onclick="castSpell('lightning')">
           <div class="spell-hotkey">F2</div>
           <span class="spell-icon">⚡</span>
           <div class="spell-name">閃電術 (Lightning)</div>
-          <div class="spell-meta">30 點超高瞬間爆發<br>冷卻：20 秒</div>
+          <div class="spell-meta">35 點超高瞬間爆發<br>冷卻：20 秒</div>
         </div>
 
         <div class="spell-card freeze" onclick="castSpell('freeze')">
@@ -934,17 +1096,118 @@
 
       <div id="spell-canvas-container">
         <canvas id="spell-canvas"></canvas>
-        <div class="spell-hint">💡 點擊上方卡片或在畫布內點擊怪物，施放毀滅魔法！</div>
+        <div class="spell-hint">💡 點擊上方卡片或在畫布內點擊怪物，施放遊戲真實打擊音效與粒子法術！</div>
       </div>
     </div>
   </section>
 
-  <!-- Section 4: Interactive Skill Tree Builder -->
+  <!-- Section 4: Sound Effects Audio Deck -->
+  <section id="sfx">
+    <div class="section-header">
+      <span class="section-tag">AUDIO IMMERSION</span>
+      <h2 class="section-title">遊戲原生 WAV 音效 ＆ 主題曲試聽</h2>
+      <p class="section-desc">包含日夜專屬主題曲與 9 大高音質音效已完整整合！點擊下方按鈕即可即時試聽遊戲內的真實音效反饋。</p>
+    </div>
+
+    <div class="sfx-deck">
+      <div class="sfx-grid">
+        <div class="sfx-btn" style="border-color: rgba(245, 197, 66, 0.45); background: rgba(245, 197, 66, 0.08);" onclick="playGameAudio('day_bgm')">
+          <div class="sfx-icon">☀️🎵</div>
+          <div>
+            <div class="sfx-title">日間拓荒主題曲 (Day BGM)</div>
+            <div class="sfx-desc">白天擴張領地與耕種時的悠揚中世紀配樂</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" style="border-color: rgba(230, 57, 70, 0.45); background: rgba(230, 57, 70, 0.08);" onclick="playGameAudio('night_bgm')">
+          <div class="sfx-icon">🌙⚔️</div>
+          <div>
+            <div class="sfx-title">夜間守城主題曲 (Night BGM)</div>
+            <div class="sfx-desc">黑夜萬獸進攻與血月防守時的熱血戰鬥曲</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('chop')">
+          <div class="sfx-icon">🪓</div>
+          <div>
+            <div class="sfx-title">砍樹音效 (Chop)</div>
+            <div class="sfx-desc">小人砍伐木材時沉穩揮砍聲 (0.9s 間隔)</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('gather')">
+          <div class="sfx-icon">🌾</div>
+          <div>
+            <div class="sfx-title">採集音效 (Gather)</div>
+            <div class="sfx-desc">小人採摘作物、野莓時連續細碎聲</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('mine')">
+          <div class="sfx-icon">⛏️</div>
+          <div>
+            <div class="sfx-title">採礦音效 (Mine)</div>
+            <div class="sfx-desc">開採原石、石磚、大理石時清脆鑿石聲</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('build')">
+          <div class="sfx-icon">🔨</div>
+          <div>
+            <div class="sfx-title">建造音效 (Build)</div>
+            <div class="sfx-desc">建造石牆、箭塔、民房、獸欄時敲擊聲</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('lightning')">
+          <div class="sfx-icon">⚡</div>
+          <div>
+            <div class="sfx-title">閃電術 (Lightning)</div>
+            <div class="sfx-desc">按下 F2 施放 35 點爆發天雷轟鳴聲</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('fire')">
+          <div class="sfx-icon">🔥</div>
+          <div>
+            <div class="sfx-title">火焰術 (Fire)</div>
+            <div class="sfx-desc">按下 F1 施放 40 點火球爆裂與燃燒聲</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('freeze')">
+          <div class="sfx-icon">🧊</div>
+          <div>
+            <div class="sfx-title">凍結術 (Freeze)</div>
+            <div class="sfx-desc">按下 F3 施放 3x3 範圍冰晶定身聲</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('night_howl')">
+          <div class="sfx-icon">🐺</div>
+          <div>
+            <div class="sfx-title">黑夜降臨 (Night Howl)</div>
+            <div class="sfx-desc">夜幕降臨、萬獸進攻時的警報狼嚎聲</div>
+          </div>
+        </div>
+
+        <div class="sfx-btn" onclick="playGameAudio('dawn')">
+          <div class="sfx-icon">🌅</div>
+          <div>
+            <div class="sfx-title">破曉晨光 (Dawn)</div>
+            <div class="sfx-desc">守城成功、天亮進入新回合時的晨鐘聲</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5: Interactive Skill Tree Builder -->
   <section id="skills">
     <div class="section-header">
       <span class="section-tag">TALENT TREE CALCULATOR</span>
       <h2 class="section-title">全域天賦樹加點模擬器</h2>
-      <p class="section-desc">黑夜完美清場可奪得珍貴的技能點數。按 <kbd>K</kbd> 鍵隨時開啟技能面板，打造你的專屬殖民地派系！</p>
+      <p class="section-desc">黑夜完美清場可奪得 2 點全域技能點數。按 <kbd>K</kbd> 鍵隨時開啟技能面板，打造專屬派系！</p>
     </div>
 
     <div class="skill-tree-box">
@@ -997,7 +1260,7 @@
         <div class="skill-item">
           <div class="skill-info">
             <h4>🛡️ 銅牆鐵壁 (Defense Ability)</h4>
-            <p>全員永久提升 +2 防禦力 / +10 最大生命值</p>
+            <p>全員永久提升 +2 防禦力 / +10 最大生命值 (加點時回血)</p>
           </div>
           <div class="skill-controls">
             <span class="skill-lvl-counter" id="lvl-def">Lv. 0</span>
@@ -1019,7 +1282,7 @@
         <div class="skill-item">
           <div class="skill-info">
             <h4>❄️ 絕對零度 (AoE Attack)</h4>
-            <p>擴大凍結術半徑與定身時長 (額外擴散波及)</p>
+            <p>擴大凍結術半徑與定身時長 (由 3×3 擴大為 5×5 範圍)</p>
           </div>
           <div class="skill-controls">
             <span class="skill-lvl-counter" id="lvl-aoe">Lv. 0</span>
@@ -1030,72 +1293,178 @@
     </div>
   </section>
 
-  <!-- Section 5: Bestiary -->
-  <section id="bestiary">
+  <!-- Section 6: Buildings & Blueprints -->
+  <section id="buildings">
     <div class="section-header">
-      <span class="section-tag">CREATURE DATABASE</span>
-      <h2 class="section-title">萬獸圖鑑與夜行者</h2>
-      <p class="section-desc">知己知彼，百戰不殆。了解荒野上的危險掠食者與可馴化生態夥伴。</p>
+      <span class="section-tag">COLONY INFRASTRUCTURE</span>
+      <h2 class="section-title">五大核心建築藍圖</h2>
+      <p class="section-desc">開墾荒地、築起石牆防禦塔、建造民房與獸欄，打造自給自足的中世紀堅固堡壘。</p>
     </div>
 
-    <div class="feature-grid">
-      <div class="card" style="border-left: 4px solid var(--crimson);">
-        <h3 class="card-title">🐺 狼人 (Werewolf)</h3>
-        <p class="card-text">
-          速度高達 80 px/s 的狂暴突進者。在黑夜中會以最快速度直衝農田與未設防民房，需第一時間以凍結術阻斷！
-        </p>
-        <span class="card-badge" style="background: rgba(230, 57, 70, 0.15); color: #ff6b77;">高速突襲 • 50 HP</span>
+    <div class="building-grid">
+      <div class="building-card">
+        <img src="../assets/building/wall.png" alt="Wall" class="building-img" />
+        <div class="building-name">城牆 (Wall)</div>
+        <div class="building-cost">🪵 4 木材 • 3.0s</div>
+        <div class="building-desc">阻擋怪物直線行進路線（Block: 100），迫使怪物繞路進入防禦塔射程。</div>
       </div>
 
-      <div class="card" style="border-left: 4px solid var(--arcane-purple);">
-        <h3 class="card-title">🧛 吸血鬼 (Vampire)</h3>
-        <p class="card-text">
-          邪惡的夜行貴族（70 px/s）。攻擊命中 NPC 時會發動<strong>生命偷取（Life-Steal）</strong>回復自身生命，必須以閃電術高爆發快速集火斬殺。
-        </p>
-        <span class="card-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">攻擊吸血 • 40 HP</span>
+      <div class="building-card">
+        <img src="../assets/building/tower.png" alt="Tower" class="building-img" />
+        <div class="building-name">防禦塔 (Tower)</div>
+        <div class="building-cost">🪵 2 木材 + 🧱 3 石磚 • 5.0s</div>
+        <div class="building-desc">攻擊力 15、射程 4 格。夜間全自動遠程齊射，不扣損血量。</div>
       </div>
 
-      <div class="card" style="border-left: 4px solid #888;">
-        <h3 class="card-title">🧟 殭屍 (Zombie)</h3>
-        <p class="card-text">
-          速度緩慢（40 px/s）但擁有驚人的 90 點巨額生命值與 4 點護甲。防禦塔的天然肉盾，適合以火焰術進行持續燃燒輸出。
-        </p>
-        <span class="card-badge" style="background: rgba(255, 255, 255, 0.1); color: #ddd;">攻城坦克 • 90 HP</span>
+      <div class="building-card">
+        <img src="../assets/building/house.png" alt="House" class="building-img" />
+        <div class="building-name">民房 (House)</div>
+        <div class="building-cost">🪵 4 木材 + 🧱 2 石磚 • 4.0s</div>
+        <div class="building-desc">每棟提供 +1 人口上限，使第 3/6/9 回合天亮能誕生新角色。</div>
       </div>
 
-      <div class="card" style="border-left: 4px solid var(--emerald);">
-        <h3 class="card-title">🐎 靈駒 (Horse)</h3>
-        <p class="card-text">
-          荒野中最珍貴的中立生物。被農夫馴服並安置於獸欄後，能為全體殖民者賦予 <strong>+30 px/s 永久移動加速</strong>光環！
-        </p>
-        <span class="card-badge" style="background: rgba(46, 196, 182, 0.15); color: #48cae4;">馴養增益 • 全員加速</span>
+      <div class="building-card">
+        <img src="../assets/building/farmland_ready.png" alt="Farmland" class="building-img" />
+        <div class="building-name">農田 (Farmland)</div>
+        <div class="building-cost">🪵 2 木材 + 🌾 1 作物 • 3.0s</div>
+        <div class="building-desc">每 20 秒自然成熟，採收獲得 +3 作物並自動重置循環生長。</div>
       </div>
 
-      <div class="card" style="border-left: 4px solid var(--ember-orange);">
-        <h3 class="card-title">🐗 野豬 (Wild Boar)</h3>
-        <p class="card-text">
-          漫遊於前線森林。可由騎士狩獵獲得 3 單位肉品，或由農夫馴化入住獸欄，每 30 秒自動被動產出新鮮肉品儲備！
-        </p>
-        <span class="card-badge" style="background: rgba(255, 123, 0, 0.15); color: #ffb703;">生態經濟 • 肉品產出</span>
-      </div>
-
-      <div class="card" style="border-left: 4px solid var(--gold-primary);">
-        <h3 class="card-title">🐻 狂暴巨熊 (Bear)</h3>
-        <p class="card-text">
-          危險中立野獸（60 HP）。平時被動漫遊不主動攻擊，但一旦遭受攻擊會立刻進入狂暴反擊狀態，擊殺可獲得 5 份高額肉品。
-        </p>
-        <span class="card-badge" style="background: rgba(245, 197, 66, 0.15); color: #ffe680;">反擊野獸 • 60 HP</span>
+      <div class="building-card">
+        <img src="../assets/building/animal_pen.png" alt="Animal Pen" class="building-img" />
+        <div class="building-name">獸欄 (Animal Pen)</div>
+        <div class="building-cost">🪵 4 木材 + 🪨 2 原石 • 4.0s</div>
+        <div class="building-desc">收容馴服動物。野豬每 30s 產肉；靈駒賦予全體 +30 px/s 移動加速！</div>
       </div>
     </div>
   </section>
 
-  <!-- Section 6: Launch Game Command -->
+  <!-- Section 7: Bestiary & Wildlife -->
+  <section id="bestiary">
+    <div class="section-header">
+      <span class="section-tag">CREATURE DATABASE</span>
+      <h2 class="section-title">萬獸圖鑑與夜行者</h2>
+      <p class="section-desc">知己知彼，百戰不殆。了解荒野上的掠食者與可馴化生態夥伴。</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card" style="border-left: 4px solid var(--crimson);">
+        <div class="card-sprite-header">
+          <img src="../assets/monster/werewolf.png" alt="Werewolf" class="sprite-avatar" />
+          <div>
+            <h3 class="card-title">狼人 (Werewolf)</h3>
+            <div class="card-subtitle">高速突襲 • 80 px/s</div>
+          </div>
+        </div>
+        <p class="card-text">
+          移動速度高達 80 px/s 的狂暴突進者。在黑夜中會以最快速度直衝農田與未設防民房，需第一時間以 <kbd>F3</kbd> 凍結術阻斷！
+        </p>
+        <div class="card-stats-table">
+          <div><div class="stat-num">50</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">14 / 2</div><div class="stat-label">攻 / 防</div></div>
+          <div><div class="stat-num">80</div><div class="stat-label">移動速度</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--arcane-purple);">
+        <div class="card-sprite-header">
+          <img src="../assets/monster/vampire.png" alt="Vampire" class="sprite-avatar" />
+          <div>
+            <h3 class="card-title">吸血鬼 (Vampire)</h3>
+            <div class="card-subtitle">攻擊吸血 • 70 px/s</div>
+          </div>
+        </div>
+        <p class="card-text">
+          邪惡的夜行貴族。攻擊命中 NPC 時會發動<strong>生命偷取（Life-Steal）</strong>回復自身血量，必須以 <kbd>F2</kbd> 閃電術高爆發快速集火斬殺。
+        </p>
+        <div class="card-stats-table">
+          <div><div class="stat-num">40</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">12 / 3</div><div class="stat-label">攻 / 防</div></div>
+          <div><div class="stat-num">吸血</div><div class="stat-label">生命偷取</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 4px solid #888;">
+        <div class="card-sprite-header">
+          <img src="../assets/monster/zombie.png" alt="Zombie" class="sprite-avatar" />
+          <div>
+            <h3 class="card-title">殭屍 (Zombie)</h3>
+            <div class="card-subtitle">攻城坦克 • 40 px/s</div>
+          </div>
+        </div>
+        <p class="card-text">
+          速度緩慢（40 px/s）但擁有驚人的 <strong>90 點巨額生命值與 4 點護甲</strong>。天然肉盾，適合以 <kbd>F1</kbd> 火焰術進行持續燃燒輸出。
+        </p>
+        <div class="card-stats-table">
+          <div><div class="stat-num">90</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">8 / 4</div><div class="stat-label">攻 / 防</div></div>
+          <div><div class="stat-num">40</div><div class="stat-label">移動速度</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--emerald);">
+        <div class="card-sprite-header">
+          <img src="../assets/hunt/horse.png" alt="Horse" class="sprite-avatar" />
+          <div>
+            <h3 class="card-title">靈駒 (Horse)</h3>
+            <div class="card-subtitle">馴養增益 • 全員加速</div>
+          </div>
+        </div>
+        <p class="card-text">
+          荒野中最珍貴的中立生物。被農夫馴服並安置於獸欄後，能為全體殖民者賦予 <strong>+30 px/s 永久移動加速</strong>光環！
+        </p>
+        <div class="card-stats-table">
+          <div><div class="stat-num">40</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">140</div><div class="stat-label">奔跑速度</div></div>
+          <div><div class="stat-num">+30</div><div class="stat-label">移速光環</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--ember-orange);">
+        <div class="card-sprite-header">
+          <img src="../assets/hunt/boar.png" alt="Wild Boar" class="sprite-avatar" />
+          <div>
+            <h3 class="card-title">野豬 (Wild Boar)</h3>
+            <div class="card-subtitle">生態經濟 • 肉品產出</div>
+          </div>
+        </div>
+        <p class="card-text">
+          漫遊於前線森林。可由騎士狩獵獲得 3 單位肉品，或由農夫馴化入住獸欄，每 30 秒自動被動產出新鮮肉品儲備！
+        </p>
+        <div class="card-stats-table">
+          <div><div class="stat-num">30</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">3 肉</div><div class="stat-label">狩獵產量</div></div>
+          <div><div class="stat-num">30s</div><div class="stat-label">被動產肉</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--gold-primary);">
+        <div class="card-sprite-header">
+          <img src="../assets/hunt/bear.png" alt="Bear" class="sprite-avatar" />
+          <div>
+            <h3 class="card-title">狂暴巨熊 (Bear)</h3>
+            <div class="card-subtitle">反擊野獸 • 60 HP</div>
+          </div>
+        </div>
+        <p class="card-text">
+          危險中立野獸（60 HP）。平時被動漫遊不主動攻擊，但一旦遭受攻擊會立刻進入狂暴反擊狀態，擊殺可獲得 5 份高額肉品。
+        </p>
+        <div class="card-stats-table">
+          <div><div class="stat-num">60</div><div class="stat-label">生命值</div></div>
+          <div><div class="stat-num">18</div><div class="stat-label">反擊攻擊</div></div>
+          <div><div class="stat-num">5 肉</div><div class="stat-label">狩獵收穫</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 8: Launch Game Command -->
   <section id="launch">
     <div class="launch-cta">
       <div class="hero-badge">✦ 立即進入戰場 ✦</div>
-      <h2 class="section-title">準備好捍衛你的殖民地了嗎？</h2>
-      <p class="section-desc" style="max-width: 600px; margin: 0 auto;">
-        在終端機中貼上以下指令，即刻啟動 Python PyGame 原生引擎，體驗最純粹的暗黑奇幻生存！
+      <h2 class="section-title">準備好捍衛你的《Medievil》殖民地了嗎？</h2>
+      <p class="section-desc" style="max-width: 650px; margin: 0 auto;">
+        在 PowerShell 終端機中貼上以下指令，即刻啟動 Python PyGame 原生引擎，體驗最純粹的暗黑奇幻生存！
       </p>
 
       <div class="command-box">
@@ -1104,7 +1473,8 @@
       </div>
 
       <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;">
-        <span style="color: var(--text-muted); font-size: 0.9rem;">⌨️ 操作：<kbd style="background:#222; padding:2px 6px; border-radius:4px;">P</kbd> 工作排程</span>
+        <span style="color: var(--text-muted); font-size: 0.9rem;">⌨️ 任務：<kbd style="background:#222; padding:2px 6px; border-radius:4px;">1~8 / Tab</kbd> 選任務</span>
+        <span style="color: var(--text-muted); font-size: 0.9rem;">⌨️ 排程：<kbd style="background:#222; padding:2px 6px; border-radius:4px;">P</kbd> 工作優先級</span>
         <span style="color: var(--text-muted); font-size: 0.9rem;">⌨️ 魔法：<kbd style="background:#222; padding:2px 6px; border-radius:4px;">F1</kbd> 火焰 / <kbd style="background:#222; padding:2px 6px; border-radius:4px;">F2</kbd> 閃電 / <kbd style="background:#222; padding:2px 6px; border-radius:4px;">F3</kbd> 冰凍</span>
         <span style="color: var(--text-muted); font-size: 0.9rem;">⌨️ 天賦：<kbd style="background:#222; padding:2px 6px; border-radius:4px;">K</kbd> 技能樹</span>
       </div>
@@ -1113,15 +1483,84 @@
 
   <!-- Footer -->
   <footer>
-    <p>© 2026 《午夜要塞：破曉之役》MIDNIGHT'S BASTION. Built with Pygame & HTML5 Canvas.</p>
+    <p>© 2026 《Medievil》（中世紀要塞：破曉之役）. Built with Pygame & HTML5 Canvas.</p>
   </footer>
 
-  <!-- Web Audio & Interactive Script -->
+  <!-- Audio Engine & Interactive Simulation Script -->
   <script>
-    // ── Web Audio Synthesizer (Zero Assets Audio Engine) ───────────
-    let audioCtx = null;
-    let sfxEnabled = true;
+    // ── Dedicated BGM Player for Showcase (Daytime Music) ───────
+    let bgmPlaying = false;
+    const bgmAudio = new Audio('../assets/sfx/day_bgm.m4a');
+    bgmAudio.loop = true;
+    bgmAudio.volume = 0.35;
 
+    const bgmToggle = document.getElementById('bgm-toggle');
+    bgmToggle.addEventListener('click', () => {
+      if (!bgmPlaying) {
+        bgmAudio.play().then(() => {
+          bgmPlaying = true;
+          document.getElementById('bgm-icon').textContent = '⏸️';
+          document.getElementById('bgm-status').textContent = '日間配樂 暫停';
+          bgmToggle.style.background = 'rgba(245, 197, 66, 0.35)';
+        }).catch(e => {
+          bgmAudio.src = '../assets/sfx/day_bgm.wav';
+          bgmAudio.play().then(() => {
+            bgmPlaying = true;
+            document.getElementById('bgm-icon').textContent = '⏸️';
+            document.getElementById('bgm-status').textContent = '日間配樂 暫停';
+            bgmToggle.style.background = 'rgba(245, 197, 66, 0.35)';
+          });
+        });
+      } else {
+        bgmAudio.pause();
+        bgmPlaying = false;
+        document.getElementById('bgm-icon').textContent = '🎵';
+        document.getElementById('bgm-status').textContent = '日間配樂 播放';
+        bgmToggle.style.background = 'rgba(245, 197, 66, 0.12)';
+      }
+    });
+
+    // ── Real WAV Audio Engine with Synthesizer Fallback ────────────
+    let sfxEnabled = true;
+    const audioCache = {};
+
+    function getAudioElement(name) {
+      if (!audioCache[name]) {
+        let path = `../assets/sfx/${name}.wav`;
+        if (name === 'day_bgm' || name === 'night_bgm') {
+          path = `../assets/sfx/${name}.m4a`;
+        }
+        const audio = new Audio(path);
+        audio.preload = 'auto';
+        audioCache[name] = audio;
+      }
+      return audioCache[name];
+    }
+
+    function playGameAudio(name) {
+      if (!sfxEnabled && name !== 'day_bgm' && name !== 'night_bgm') return;
+      try {
+        const audio = getAudioElement(name);
+        audio.currentTime = 0;
+        audio.volume = (name === 'lightning' || name === 'fire' || name === 'freeze' || name === 'night_howl' || name === 'dawn') ? 0.6 : 0.35;
+        const promise = audio.play();
+        if (promise !== undefined) {
+          promise.catch(() => {
+            if (name === 'day_bgm' || name === 'night_bgm') {
+              audio.src = `../assets/sfx/${name}.wav`;
+              audio.play().catch(() => playSynthSound(name));
+            } else {
+              playSynthSound(name);
+            }
+          });
+        }
+      } catch (e) {
+        playSynthSound(name);
+      }
+    }
+
+    // Web Audio Synthesizer Fallback
+    let audioCtx = null;
     function getAudioContext() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1132,73 +1571,69 @@
       return audioCtx;
     }
 
-    function playSound(type) {
-      if (!sfxEnabled) return;
+    function playSynthSound(type) {
       try {
         const ctx = getAudioContext();
         const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
 
-        if (type === 'click') {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(600, now);
-          osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.08);
+        if (type === 'click' || type === 'gather' || type === 'chop' || type === 'mine' || type === 'build') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(type === 'chop' ? 180 : (type === 'mine' ? 700 : 400), now);
+          osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.1);
         } else if (type === 'lightning') {
-          // Thunder zap + noise
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
           osc.type = 'sawtooth';
           osc.frequency.setValueAtTime(120, now);
           osc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
-          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.setValueAtTime(0.5, now);
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.35);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.35);
         } else if (type === 'fire') {
-          // Flame whoosh
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
           osc.type = 'triangle';
-          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.setValueAtTime(240, now);
           osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
-          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.setValueAtTime(0.4, now);
           gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.3);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.3);
         } else if (type === 'freeze') {
-          // Ice chime
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
           osc.type = 'sine';
           osc.frequency.setValueAtTime(880, now);
           osc.frequency.exponentialRampToValueAtTime(1760, now + 0.25);
-          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.setValueAtTime(0.35, now);
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.25);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.25);
+        } else if (type === 'night_howl') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(550, now + 0.5);
+          osc.frequency.exponentialRampToValueAtTime(180, now + 1.2);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 1.2);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 1.2);
+        } else if (type === 'dawn') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.8);
         }
-      } catch (e) {
-        console.log("Audio not allowed yet:", e);
-      }
+      } catch (e) {}
     }
 
     document.getElementById('sfx-toggle').addEventListener('click', () => {
       sfxEnabled = !sfxEnabled;
       document.getElementById('sfx-status').textContent = sfxEnabled ? "音效 ON" : "音效 OFF";
-      playSound('click');
+      playGameAudio('chop');
     });
 
     // ── Day / Night Mode Toggle ──────────────────────────────────
@@ -1220,6 +1655,7 @@
 
         document.getElementById('cycle-info-title').textContent = '☀️ 白天拓荒：繁榮與擴張領地';
         document.getElementById('cycle-info-desc').textContent = '陽光驅散暗夜迷霧。指派農夫在農田栽種小麥、拓荒者擴張邊境、伐木工儲備建材、建造堅固石牆與民房擴充人口上限，並馴服荒野靈駒！';
+        playGameAudio('dawn');
       } else {
         document.body.classList.remove('day-mode');
         document.getElementById('theme-icon').textContent = '🌙';
@@ -1231,8 +1667,8 @@
 
         document.getElementById('cycle-info-title').textContent = '🌙 黑夜守城：抵禦血月侵襲';
         document.getElementById('cycle-info-desc').textContent = '地圖邊緣的巢穴將隨時間加速湧出狼人、吸血鬼與巨型殭屍。防禦塔將自動進行遠程齊射，法師可施放殖民地天罰法術，全殲當晚所有怪物可獲得 2 點全域技能天賦點數！';
+        playGameAudio('night_howl');
       }
-      playSound('click');
     }
 
     themeBtn.addEventListener('click', () => setCycleMode(!isDay));
@@ -1264,8 +1700,6 @@
 
     function renderAmbient() {
       ambCtx.clearRect(0, 0, ambCanvas.width, ambCanvas.height);
-      ambCtx.fillStyle = isDay ? 'rgba(255, 220, 100, ' : 'rgba(245, 197, 66, ';
-
       particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
@@ -1282,11 +1716,20 @@
     }
     renderAmbient();
 
-    // ── Interactive Spell Playground Canvas ──────────────────────
+    // ── Interactive Spell Playground with Actual Sprites ────────
     const spellCanvas = document.getElementById('spell-canvas');
     const spellCtx = spellCanvas.getContext('2d');
     let spellEffects = [];
     let targets = [];
+
+    const monsterSprites = {
+      werewolf: new Image(),
+      vampire: new Image(),
+      zombie: new Image()
+    };
+    monsterSprites.werewolf.src = '../assets/monster/werewolf.png';
+    monsterSprites.vampire.src = '../assets/monster/vampire.png';
+    monsterSprites.zombie.src = '../assets/monster/zombie.png';
 
     function resizeSpellCanvas() {
       const container = document.getElementById('spell-canvas-container');
@@ -1296,12 +1739,13 @@
     window.addEventListener('resize', resizeSpellCanvas);
     resizeSpellCanvas();
 
-    // Spawn animated mock monsters
+    const monsterTypes = ['werewolf', 'vampire', 'zombie', 'werewolf', 'zombie'];
     for (let i = 0; i < 5; i++) {
       targets.push({
-        x: 100 + i * 160,
-        y: 140 + (i % 2) * 30,
-        type: i % 3 === 0 ? 'Werewolf 🐺' : (i % 3 === 1 ? 'Vampire 🧛' : 'Zombie 🧟'),
+        x: 120 + i * 160,
+        y: 160 + (i % 2) * 30,
+        type: monsterTypes[i],
+        name: monsterTypes[i] === 'werewolf' ? '狼人 (Werewolf)' : (monsterTypes[i] === 'vampire' ? '吸血鬼 (Vampire)' : '殭屍 (Zombie)'),
         hp: 100,
         frozen: 0,
         burning: 0
@@ -1309,7 +1753,7 @@
     }
 
     function castSpell(type) {
-      playSound(type);
+      playGameAudio(type);
       const target = targets[Math.floor(Math.random() * targets.length)];
 
       if (type === 'fire') {
@@ -1318,11 +1762,11 @@
           x: target.x,
           y: target.y,
           radius: 10,
-          maxRadius: 70,
+          maxRadius: 75,
           alpha: 1.0,
-          color: 'rgba(255, 100, 20,'
+          color: 'rgba(255, 120, 20,'
         });
-        target.hp = Math.max(0, target.hp - 25);
+        target.hp = Math.max(0, target.hp - 35);
         target.burning = 180;
       } else if (type === 'lightning') {
         spellEffects.push({
@@ -1331,27 +1775,26 @@
           y: target.y,
           alpha: 1.0
         });
-        target.hp = Math.max(0, target.hp - 40);
+        target.hp = Math.max(0, target.hp - 45);
       } else if (type === 'freeze') {
         spellEffects.push({
           type: 'freeze',
           x: target.x,
           y: target.y,
           radius: 15,
-          maxRadius: 100,
+          maxRadius: 110,
           alpha: 1.0,
           color: 'rgba(86, 204, 242,'
         });
         targets.forEach(t => {
-          if (Math.hypot(t.x - target.x, t.y - target.y) < 140) {
+          if (Math.hypot(t.x - target.x, t.y - target.y) < 150) {
             t.frozen = 240;
-            t.hp = Math.max(0, t.hp - 10);
+            t.hp = Math.max(0, t.hp - 15);
           }
         });
       }
     }
 
-    // Keyboard Hotkey Listener (F1, F2, F3)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'F1') { e.preventDefault(); castSpell('fire'); }
       if (e.key === 'F2') { e.preventDefault(); castSpell('lightning'); }
@@ -1362,7 +1805,6 @@
       const rect = spellCanvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      // Find closest target
       let closest = targets[0];
       let minD = Infinity;
       targets.forEach(t => {
@@ -1376,7 +1818,6 @@
       spellCtx.fillStyle = '#06070a';
       spellCtx.fillRect(0, 0, spellCanvas.width, spellCanvas.height);
 
-      // Grid Lines
       spellCtx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
       for (let x = 0; x < spellCanvas.width; x += 40) {
         spellCtx.beginPath(); spellCtx.moveTo(x, 0); spellCtx.lineTo(x, spellCanvas.height); spellCtx.stroke();
@@ -1385,54 +1826,68 @@
         spellCtx.beginPath(); spellCtx.moveTo(0, y); spellCtx.lineTo(spellCanvas.width, y); spellCtx.stroke();
       }
 
-      // Draw Monsters
       targets.forEach(t => {
         if (t.hp <= 0) {
-          t.hp = 100; // revive loop for demo
+          t.hp = 100;
         }
         if (t.frozen > 0) t.frozen--;
         if (t.burning > 0) t.burning--;
 
-        // Draw Entity Box
         spellCtx.save();
-        spellCtx.fillStyle = t.frozen > 0 ? '#48cae4' : (t.burning > 0 ? '#ff7b00' : '#e63946');
-        spellCtx.beginPath();
-        spellCtx.roundRect(t.x - 25, t.y - 25, 50, 50, 8);
-        spellCtx.fill();
+        const img = monsterSprites[t.type];
+        if (img && img.complete && img.naturalWidth > 0) {
+          if (t.frozen > 0) {
+            spellCtx.filter = 'hue-rotate(180deg) brightness(1.2)';
+          } else if (t.burning > 0) {
+            spellCtx.filter = 'hue-rotate(-40deg) saturate(2)';
+          }
+          spellCtx.drawImage(img, t.x - 30, t.y - 30, 60, 60);
+          spellCtx.filter = 'none';
+        } else {
+          spellCtx.fillStyle = t.frozen > 0 ? '#48cae4' : (t.burning > 0 ? '#ff7b00' : '#e63946');
+          spellCtx.beginPath();
+          spellCtx.roundRect(t.x - 25, t.y - 25, 50, 50, 8);
+          spellCtx.fill();
+        }
 
-        // Label
+        if (t.frozen > 0) {
+          spellCtx.strokeStyle = '#56ccf2';
+          spellCtx.lineWidth = 3;
+          spellCtx.beginPath();
+          spellCtx.arc(t.x, t.y, 34, 0, Math.PI * 2);
+          spellCtx.stroke();
+        }
+
         spellCtx.fillStyle = '#fff';
         spellCtx.font = '12px "Plus Jakarta Sans"';
         spellCtx.textAlign = 'center';
-        spellCtx.fillText(t.type, t.x, t.y + 5);
+        spellCtx.fillText(t.name, t.x, t.y + 42);
 
-        // HP bar
-        spellCtx.fillStyle = 'rgba(0,0,0,0.6)';
-        spellCtx.fillRect(t.x - 25, t.y - 35, 50, 6);
+        spellCtx.fillStyle = 'rgba(0,0,0,0.65)';
+        spellCtx.fillRect(t.x - 25, t.y - 42, 50, 6);
         spellCtx.fillStyle = '#2ec4b6';
-        spellCtx.fillRect(t.x - 25, t.y - 35, (t.hp / 100) * 50, 6);
+        spellCtx.fillRect(t.x - 25, t.y - 42, (t.hp / 100) * 50, 6);
         spellCtx.restore();
       });
 
-      // Render VFX
-      spellEffects.forEach((fx, idx) => {
+      spellEffects.forEach((fx) => {
         fx.alpha -= 0.03;
         if (fx.type === 'lightning') {
           spellCtx.save();
           spellCtx.strokeStyle = `rgba(255, 245, 180, ${fx.alpha})`;
-          spellCtx.lineWidth = 6;
+          spellCtx.lineWidth = 7;
           spellCtx.beginPath();
           spellCtx.moveTo(fx.x + (Math.random() - 0.5) * 30, 0);
           spellCtx.lineTo(fx.x, fx.y);
           spellCtx.stroke();
 
-          spellCtx.fillStyle = `rgba(255, 255, 255, ${fx.alpha * 0.8})`;
+          spellCtx.fillStyle = `rgba(255, 255, 255, ${fx.alpha * 0.9})`;
           spellCtx.beginPath();
-          spellCtx.arc(fx.x, fx.y, 35, 0, Math.PI * 2);
+          spellCtx.arc(fx.x, fx.y, 40, 0, Math.PI * 2);
           spellCtx.fill();
           spellCtx.restore();
         } else if (fx.type === 'fire' || fx.type === 'freeze') {
-          fx.radius += 3;
+          fx.radius += 3.5;
           spellCtx.save();
           spellCtx.fillStyle = `${fx.color} ${fx.alpha * 0.4})`;
           spellCtx.beginPath();
@@ -1461,7 +1916,7 @@
         skills[name]++;
         document.getElementById(`lvl-${name}`).textContent = `Lv. ${skills[name]}`;
         document.getElementById('skill-points-display').textContent = availablePoints;
-        playSound('click');
+        playGameAudio('build');
       }
     }
 
@@ -1472,15 +1927,15 @@
         document.getElementById(`lvl-${k}`).textContent = 'Lv. 0';
       }
       document.getElementById('skill-points-display').textContent = availablePoints;
-      playSound('click');
+      playGameAudio('mine');
     }
 
     // ── Copy Command ───────────────────────────────────────────
     function copyLaunchCommand() {
       const cmd = document.getElementById('cmd-text').innerText;
       navigator.clipboard.writeText(cmd).then(() => {
-        alert("已成功複製遊戲啟動指令！請在 PowerShell 終端機貼上執行。");
-        playSound('click');
+        alert("已成功複製《Medievil》遊戲啟動指令！請在 PowerShell 終端機貼上執行。");
+        playGameAudio('chop');
       });
     }
   </script>
