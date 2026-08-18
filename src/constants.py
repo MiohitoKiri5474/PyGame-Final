@@ -166,3 +166,62 @@ FARMLAND_YIELD = 3
 HARVEST_FARMLAND_WORK_SECONDS = 2.0
 COLOR_FARMLAND = (100, 160, 60)
 COLOR_FARMLAND_READY = (220, 190, 60)
+
+# --- Wildlife / animal fauna (ticket 24) ---
+ANIMAL_INITIAL_COUNT = 10
+ANIMAL_MAX_COUNT = 20
+ANIMAL_SPAWN_INTERVAL = 30.0  # seconds between top-up spawn attempts while under cap
+
+# species -> (speed px/s, dangerous, health)
+ANIMAL_SPECIES = {
+    "FlyingSquirrel": (100.0, False, 10),
+    "Fish": (60.0, False, 10),
+    "WildBoar": (70.0, False, 30),
+    "Horse": (140.0, False, 40),
+    "Wolf": (90.0, True, 35),
+    "Bear": (50.0, True, 60),
+}
+
+COLOR_ANIMAL = (150, 190, 90)
+COLOR_ANIMAL_DANGEROUS = (200, 140, 60)
+
+# --- Hunt Task (ticket 25) ---
+HUNT_WORK_SECONDS = 2.0
+KNIGHT_CRIT_CHANCE = 0.50
+KNIGHT_CRIT_MULTIPLIER = 2.0
+
+# --- Post-Hunt & Taming (ticket 26) ---
+ANIMAL_MEAT_YIELD = {
+    "FlyingSquirrel": 1,
+    "Fish": 1,
+    "WildBoar": 3,
+    "Horse": 3,
+    "Wolf": 2,
+    "Bear": 5,
+}
+
+BASE_TAME_SUCCESS_RATE = 0.50
+FARMER_TAME_SUCCESS_MULTIPLIER = 1.50
+TAME_WORK_SECONDS = 3.0
+FARMER_TAME_WORK_MULTIPLIER = 0.67  # 1.5x speed
+
+ANIMAL_PEN_WORK_SECONDS = 4.0
+ANIMAL_PEN_COST = {"wood": 4, "raw_stone": 2}
+ANIMAL_PEN_BLOCK = 20
+ANIMAL_PEN_ATTACK = 0
+COLOR_ANIMAL_PEN = (160, 130, 90)
+
+PEN_PRODUCTION_INTERVAL = 30.0  # seconds between food production ticks
+HORSE_SPEED_BONUS = 30.0  # travel speed buff for colony NPCs when horse is penned
+
+# --- Food Spoilage (ticket 27) ---
+DAY_NIGHT_CYCLE_SECONDS = DAY_SECONDS + NIGHT_SECONDS  # 180s per game day
+RAW_FOOD_SHELF_LIFE = 3.0 * DAY_NIGHT_CYCLE_SECONDS     # 540s (3 game days)
+PROCESSED_FOOD_SHELF_LIFE = 5.0 * DAY_NIGHT_CYCLE_SECONDS  # 900s (5 game days)
+
+FOOD_SHELF_LIFE = {
+    "crop": RAW_FOOD_SHELF_LIFE,
+    "meat": RAW_FOOD_SHELF_LIFE,
+    "mushrooms": RAW_FOOD_SHELF_LIFE,
+    "berries": PROCESSED_FOOD_SHELF_LIFE,
+}

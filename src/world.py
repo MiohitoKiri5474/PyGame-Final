@@ -1,11 +1,12 @@
 import plugins  # noqa: F401  # side effect: populates task.TASK_TYPES via plugins.py
 
-from constants import STARTING_NPC_COUNT, ROLES
+from constants import ANIMAL_INITIAL_COUNT, ROLES, STARTING_NPC_COUNT
 from coords import tile_center
 from grid import Grid
 from inventory import Inventory
 from npc import NPC
 from task import TaskQueue
+from wildlife import create_initial_animals
 
 
 class World:
@@ -14,6 +15,8 @@ class World:
         self.inventory = Inventory()
         self.tasks = TaskQueue()
         self.buildings: list = []
+        self.animals = create_initial_animals(self.grid, ANIMAL_INITIAL_COUNT)
+        self.animal_spawn_timer = 0.0
 
         center_x, center_y = self.grid.width // 2, self.grid.height // 2
         # Round-robin over ROLES so the default 3-NPC start is exactly

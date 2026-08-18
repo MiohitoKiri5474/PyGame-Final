@@ -38,6 +38,19 @@ def _build_nontrivial_state():
     assigned_task.assigned_npc = npc_b
     npc_b.task = assigned_task
 
+    # World(npc_count=0) already auto-spawns initial wildlife; pin one to
+    # known values instead of relying on its random species/position
+    animal = world.animals[0]
+    animal.species = "Bear"
+    animal.dangerous = True
+    animal.health = 45
+    animal.is_hostile = True
+    animal.set_path([(8, 8)])
+    world.animal_spawn_timer = 17.5
+
+    hunt_task = world.tasks.add("Hunt", (8, 8), target_animal_id=animal.id)
+
+
     cycle = DayNightCycle()
     cycle.round_number = 3
     cycle.phase = NIGHT
@@ -112,6 +125,14 @@ def test_round_trip_preserves_specific_field_values(tmp_path):
     assert farmland.growth_timer == 9.5
     assert farmland.ready is False
 
+    loaded_bear = next(a for a in loaded_world.animals if a.species == "Bear")
+    assert loaded_bear.dangerous is True
+    assert loaded_bear.health == 45
+    assert loaded_bear.is_hostile is True
+    assert loaded_bear.path == [(8, 8)]
+    assert len(loaded_world.animals) == len(world.animals)
+    assert loaded_world.animal_spawn_timer == 17.5
+
 
 def test_round_trip_preserves_tuple_types_not_lists(tmp_path):
     world, cycle, nest_manager, monsters, game_over_state, _, points, killed = _build_nontrivial_state()
@@ -125,6 +146,8 @@ def test_round_trip_preserves_tuple_types_not_lists(tmp_path):
         assert all(isinstance(p, tuple) for p in npc.path)
     for monster in loaded_monsters:
         assert all(isinstance(p, tuple) for p in monster.path)
+    for animal in loaded_world.animals:
+        assert all(isinstance(p, tuple) for p in animal.path)
 
 
 def test_load_with_no_file_returns_none(tmp_path):

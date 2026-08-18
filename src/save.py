@@ -5,11 +5,12 @@ to JSON so the game can resume across sessions/machines from a save file."""
 import json
 from pathlib import Path
 
+from animal import Animal
 from build_task import Building
 from day_night import DayNightCycle
 from game_over import GameOverState
 from grid import Grid, Tile
-from inventory import Inventory
+from inventory import Inventory, PerishableBatch
 from monster import Monster
 from nest import Nest, NestManager
 from npc import NPC
@@ -59,18 +60,42 @@ def dump_state(
         "monsters_killed_this_night": monsters_killed_this_night,
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
+        "inventory_ledger": [
+            {"resource": b.resource, "expires_in": b.expires_in, "amount": b.amount}
+            for b in world.inventory.ledger
+        ],
         "buildings": [
             {
                 "type": b.type, "x": b.x, "y": b.y, "block": b.block, "attack": b.attack,
                 "growth_timer": b.growth_timer, "ready": b.ready,
+                "assigned_animal_id": getattr(b, "assigned_animal_id", None),
             }
             for b in world.buildings
         ],
+        "animals": [
+            {
+                "id": a.id,
+                "x": a.x,
+                "y": a.y,
+                "species": a.species,
+                "speed": a.speed,
+                "dangerous": a.dangerous,
+                "health": a.health,
+                "is_hostile": a.is_hostile,
+                "is_tamed": getattr(a, "is_tamed", False),
+                "pen_tile": list(a.pen_tile) if getattr(a, "pen_tile", None) else None,
+                "path": [list(p) for p in a.path],
+            }
+            for a in world.animals
+        ],
+        "animal_spawn_timer": world.animal_spawn_timer,
+        "pen_production_timer": getattr(world, "pen_production_timer", 0.0),
         "tasks": [
             {
                 "type": t.type,
                 "target": list(t.target),
                 "assigned_npc_id": t.assigned_npc.id if t.assigned_npc else None,
+                "target_animal_id": getattr(t, "target_animal_id", None),
             }
             for t in world.tasks.tasks
         ],
@@ -132,18 +157,49 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     world.grid = _load_grid(data["grid"])
     world.inventory = Inventory()
     for resource, amount in data["inventory"].items():
-        world.inventory.add(resource, amount)
-    world.buildings = [
-        Building(
-            type=b["type"], x=b["x"], y=b["y"], block=b["block"], attack=b["attack"],
-            growth_timer=b.get("growth_timer", 0.0), ready=b.get("ready", False),
-        )
-        for b in data["buildings"]
+        world.inventory._counts[resource] = amount
+    world.inventory.ledger = [
+        PerishableBatch(resource=b["resource"], expires_in=b["expires_in"], amount=b["amount"])
+        for b in data.get("inventory_ledger", [])
     ]
+    world.buildings = []
+    for bd in data["buildings"]:
+        building = Building(
+            type=bd["type"], x=bd["x"], y=bd["y"], block=bd["block"], attack=bd["attack"],
+            growth_timer=bd.get("growth_timer", 0.0), ready=bd.get("ready", False),
+        )
+        building.assigned_animal_id = bd.get("assigned_animal_id")
+        world.buildings.append(building)
 
-    tasks = [Task(type=t["type"], target=tuple(t["target"])) for t in data["tasks"]]
+    world.animals = []
+    max_animal_id = -1
+    for ad in data.get("animals", []):
+        animal = Animal(
+            ad["x"], ad["y"], species=ad["species"], speed=ad["speed"],
+            dangerous=ad["dangerous"], health=ad["health"], id=ad.get("id"),
+        )
+        animal.is_hostile = ad.get("is_hostile", False)
+        animal.is_tamed = ad.get("is_tamed", False)
+        animal.pen_tile = tuple(ad["pen_tile"]) if ad.get("pen_tile") else None
+        animal.path = [tuple(p) for p in ad.get("path", [])]
+        world.animals.append(animal)
+        if animal.id is not None:
+            max_animal_id = max(max_animal_id, animal.id)
+    Animal._next_id = max(Animal._next_id, max_animal_id + 1)
+    world.animal_spawn_timer = data.get("animal_spawn_timer", 0.0)
+    world.pen_production_timer = data.get("pen_production_timer", 0.0)
+
+    tasks = [
+        Task(
+            type=t["type"],
+            target=tuple(t["target"]),
+            target_animal_id=t.get("target_animal_id"),
+        )
+        for t in data["tasks"]
+    ]
     world.tasks = TaskQueue()
     world.tasks.tasks = tasks
+
 
     npcs = []
     max_id = -1

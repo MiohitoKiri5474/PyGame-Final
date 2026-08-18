@@ -1,6 +1,7 @@
 import pygame
 
 from constants import (
+    COLOR_ANIMAL_PEN,
     COLOR_FARMLAND,
     COLOR_FARMLAND_READY,
     COLOR_HOUSE,
@@ -11,7 +12,9 @@ from constants import (
 )
 from extensions import register_overlay
 
-_COLOR_BY_TYPE = {"Wall": COLOR_WALL, "Tower": COLOR_TOWER, "House": COLOR_HOUSE}
+_COLOR_BY_TYPE = {
+    "Wall": COLOR_WALL, "Tower": COLOR_TOWER, "House": COLOR_HOUSE, "AnimalPen": COLOR_ANIMAL_PEN,
+}
 
 
 def _building_color(building) -> tuple[int, int, int]:

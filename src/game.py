@@ -36,6 +36,8 @@ from constants import (
     COLOR_ROLE_FARMER,
     COLOR_ROLE_KNIGHT,
     COLOR_ROLE_MAGE,
+    COLOR_ANIMAL,
+    COLOR_ANIMAL_DANGEROUS,
 )
 from camera import Camera
 from combat import resolve_combat
@@ -238,6 +240,7 @@ class Game:
         self.screen.fill(COLOR_BG)
         self.render_grid()
         self.render_nests()
+        self.render_animals()
         self.render_npcs()
         self.render_monsters()
         render_overlays(self.screen, self.world, self.camera)
@@ -273,6 +276,16 @@ class Game:
             if fill_w > 0:
                 pygame.draw.rect(self.screen, COLOR_HUNGER_BAR,
                                  pygame.Rect(bar_x, bar_y, fill_w, bar_h))
+
+    def render_animals(self) -> None:
+        for animal in self.world.animals:
+            tx, ty = tile_at(animal.x, animal.y)
+            if not self.world.grid.get(tx, ty).revealed:
+                continue
+            screen_x = int(animal.x - self.camera.x)
+            screen_y = int(animal.y - self.camera.y)
+            color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
+            pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
 
     def render_monsters(self) -> None:
         for monster in self.monsters:
