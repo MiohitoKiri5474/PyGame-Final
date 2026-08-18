@@ -33,14 +33,14 @@ def draw_buildings(surface: pygame.Surface, world, camera) -> None:
         screen_y = building.y * TILE_SIZE - int(camera.y)
         rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
 
-        sprite = building_sprite(building.type)
+        sprite = building_sprite(building)
         if sprite is not None:
             surface.blit(sprite, sprite.get_rect(center=rect.center))
         else:
-            # No matching sprite yet (House/Farmland/AnimalPen) - fall back
-            # to the full color mapping, not a naive Wall/Tower binary, so
-            # unmapped types still get the magenta safety marker instead of
-            # silently misrendering as Tower-blue.
+            # No matching sprite yet for this building type - fall back to
+            # the full color mapping (magenta for anything truly unmapped)
+            # so a future building type fails loudly, not silently as an
+            # existing type's color.
             pygame.draw.rect(surface, _building_color(building), rect)
 
 
