@@ -107,6 +107,7 @@ def dump_state(
                 "burn_ticks_remaining": m.burn_ticks_remaining,
                 "burn_damage_per_tick": m.burn_damage_per_tick,
                 "frozen_remaining": m.frozen_remaining,
+                "type": m.type,
             }
             for m in monsters
         ],
@@ -189,7 +190,7 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
 
     monsters = []
     for md in data["monsters"]:
-        monster = Monster(md["x"], md["y"], speed=md["speed"])
+        monster = Monster(md["x"], md["y"], speed=md["speed"], type=md.get("type"))
         monster.path = [tuple(p) for p in md["path"]]
         monster.health = md["health"]
         monster.attack = md["attack"]

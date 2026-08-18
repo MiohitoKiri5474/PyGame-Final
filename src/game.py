@@ -214,7 +214,10 @@ class Game:
             run_ticks(self.world, dt)
 
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
-                self.monsters.append(spawn_monster(tile, self.world.grid, self.world.buildings))
+                monster_type = self.nest_manager.pick_monster_type()
+                self.monsters.append(
+                    spawn_monster(tile, self.world.grid, self.world.buildings, monster_type=monster_type)
+                )
             for monster in self.monsters:
                 monster.update(dt)
 

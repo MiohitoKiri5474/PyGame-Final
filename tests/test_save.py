@@ -1,5 +1,5 @@
 from build_task import Building
-from constants import ROLE_KNIGHT
+from constants import MONSTER_ZOMBIE, ROLE_KNIGHT
 from day_night import DayNightCycle, NIGHT
 from game_over import GameOverState
 from monster import Monster
@@ -46,7 +46,7 @@ def _build_nontrivial_state():
     nest_manager = NestManager(world.grid.width, world.grid.height, nests=[nest])
     nest_manager.new_nest_timer = 40.0
 
-    monster = Monster(300.0, 400.0)
+    monster = Monster(300.0, 400.0, type=MONSTER_ZOMBIE)
     monster.set_path([(9, 9), (10, 10)])
     monster.health = 17
     monster.apply_burn(damage_per_tick=5, ticks=2)  # burn_tick_timer not persisted, deliberately
@@ -108,6 +108,7 @@ def test_round_trip_preserves_specific_field_values(tmp_path):
     assert loaded_monsters[0].burn_ticks_remaining == 2
     assert loaded_monsters[0].frozen_remaining == 2.5
     assert loaded_monsters[0].burn_damage_per_tick == 5
+    assert loaded_monsters[0].type == MONSTER_ZOMBIE
     assert l_points == 4
     assert l_killed == 3
     assert loaded_world.spellbook.remaining("Lightning") == 13.5

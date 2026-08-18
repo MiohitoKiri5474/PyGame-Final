@@ -5,6 +5,7 @@ from constants import (
     MONSTER_DEFENSE,
     MONSTER_MAX_HEALTH,
     MONSTER_SPEED,
+    MONSTER_STATS,
 )
 from coords import tile_center
 from movement import step_toward_path
@@ -12,14 +13,21 @@ from pathfinding import find_path
 
 
 class Monster:
-    def __init__(self, x: float, y: float, speed: float = MONSTER_SPEED):
+    def __init__(self, x: float, y: float, speed: float | None = None, type: str | None = None):
         self.x = x
         self.y = y
-        self.speed = speed
+        self.type = type
+        stats = MONSTER_STATS.get(type, {})
+        # speed accepts an explicit override (save.py's load path always
+        # passes the exact persisted speed) that wins over a type's table
+        # speed, which wins over the untyped flat-constant default.
+        self.speed = speed if speed is not None else stats.get("speed", MONSTER_SPEED)
+        self.max_health = stats.get("max_health", MONSTER_MAX_HEALTH)
         self.path: list[tuple[int, int]] = []
-        self.health = MONSTER_MAX_HEALTH
-        self.attack = MONSTER_ATTACK
-        self.defense = MONSTER_DEFENSE
+        self.health = self.max_health
+        self.attack = stats.get("attack", MONSTER_ATTACK)
+        self.defense = stats.get("defense", MONSTER_DEFENSE)
+        self.life_steal = stats.get("life_steal", False)
         self.burn_ticks_remaining = 0
         self.burn_damage_per_tick = 0
         self.burn_tick_timer = 0.0
@@ -85,12 +93,12 @@ def nearest_claimed_tile(grid, from_tile: tuple[int, int]) -> tuple[int, int] | 
     return best
 
 
-def spawn_monster(tile: tuple[int, int], grid, buildings=()) -> Monster:
+def spawn_monster(tile: tuple[int, int], grid, buildings=(), monster_type: str | None = None) -> Monster:
     """Create a Monster at `tile` and path it toward the nearest claimed tile.
     Monsters walk in from outside territory, so unlike NPCs they treat every
     in-bounds tile as walkable (fog/unclaimed included) — except Wall tiles,
     which block like they do for NPCs (ticket 07)."""
-    monster = Monster(*tile_center(*tile))
+    monster = Monster(*tile_center(*tile), type=monster_type)
     target = nearest_claimed_tile(grid, tile)
     if target is not None:
         path = find_path(

@@ -1,5 +1,5 @@
 from combat import resolve_combat
-from constants import COMBAT_RANGE
+from constants import COMBAT_MIN_DAMAGE, COMBAT_RANGE
 from coords import tile_center
 
 
@@ -12,13 +12,18 @@ class _Building:
 
 
 class _Entity:
-    def __init__(self, x: float, y: float, health: int, attack: int, defense: int, combat_range: float = COMBAT_RANGE):
+    def __init__(
+        self, x: float, y: float, health: int, attack: int, defense: int,
+        combat_range: float = COMBAT_RANGE, life_steal: bool = False, max_health: int | None = None,
+    ):
         self.x = x
         self.y = y
         self.health = health
         self.attack = attack
         self.defense = defense
         self.combat_range = combat_range  # only read when used as the NPC side of a pair
+        self.life_steal = life_steal  # only read when used as the monster side of a pair
+        self.max_health = max_health if max_health is not None else health
 
     @property
     def is_dead(self) -> bool:
@@ -101,3 +106,41 @@ def test_wall_never_attacks_regardless_of_proximity():
     monster = _Entity(mx, my, health=40, attack=10, defense=2)
     resolve_combat([], [monster], [wall])
     assert monster.health == 40
+
+
+def test_life_steal_monster_heals_by_damage_dealt_to_npc():
+    npc = _Entity(0, 0, health=100, attack=1, defense=0)
+    monster = _Entity(0, 0, health=20, attack=10, defense=1, life_steal=True, max_health=40)
+    resolve_combat([npc], [monster])
+    dealt_to_npc = 10 - 0  # monster.attack - npc.defense
+    dealt_to_monster = max(COMBAT_MIN_DAMAGE, 1 - 1)  # npc.attack - monster.defense, floored
+    assert npc.health == 100 - dealt_to_npc
+    assert monster.health == 20 - dealt_to_monster + dealt_to_npc  # took damage, healed by what it dealt
+
+
+def test_life_steal_heal_is_capped_at_max_health():
+    npc = _Entity(0, 0, health=100, attack=1, defense=0)
+    monster = _Entity(0, 0, health=38, attack=10, defense=1, life_steal=True, max_health=40)
+    resolve_combat([npc], [monster])
+    assert monster.health == 40  # would overheal to 47+ without the cap
+
+
+def test_non_life_steal_monster_is_not_healed_by_its_own_damage():
+    npc = _Entity(0, 0, health=100, attack=1, defense=0)
+    monster = _Entity(0, 0, health=20, attack=10, defense=1, life_steal=False, max_health=40)
+    resolve_combat([npc], [monster])
+    dealt_to_monster = max(COMBAT_MIN_DAMAGE, 1 - 1)
+    assert monster.health == 20 - dealt_to_monster  # only took damage, no heal
+
+
+def test_life_steal_monster_killed_by_one_npc_cannot_resurrect_off_a_second():
+    # A Vampire fighting two NPCs in the same resolve_combat() call: the
+    # first NPC's hit is lethal. Without a dead-check inside the loop, the
+    # monster would still "fight" the second NPC and life-steal itself back
+    # above zero - resurrecting mid-tick. It must stay dead.
+    lethal_npc = _Entity(0, 0, health=100, attack=100, defense=0)
+    second_npc = _Entity(0, 0, health=100, attack=9, defense=0)
+    monster = _Entity(0, 0, health=5, attack=9, defense=0, life_steal=True, max_health=40)
+    resolve_combat([lethal_npc, second_npc], [monster])
+    assert monster.is_dead
+    assert monster.health <= 0

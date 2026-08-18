@@ -18,9 +18,20 @@ def resolve_combat(npcs: list, monsters: list, buildings=()) -> None:
     a path obstruction. Dead entities are removed from both lists in place."""
     for npc in npcs:
         for monster in monsters:
+            if monster.is_dead:
+                # A monster killed earlier in this same resolve_combat() call
+                # (e.g. by a different NPC paired against it a few
+                # iterations ago) must not keep fighting: without this, a
+                # life-steal monster reduced to lethal health by one NPC
+                # could heal itself back above zero off a second NPC's
+                # damage later in this same tick, "resurrecting" mid-tick.
+                continue
             if _within(npc.x, npc.y, monster.x, monster.y, npc.combat_range):
                 monster.health -= max(COMBAT_MIN_DAMAGE, npc.attack - monster.defense)
-                npc.health -= max(COMBAT_MIN_DAMAGE, monster.attack - npc.defense)
+                monster_dmg = max(COMBAT_MIN_DAMAGE, monster.attack - npc.defense)
+                npc.health -= monster_dmg
+                if monster.life_steal:
+                    monster.health = min(monster.max_health, monster.health + monster_dmg)
 
     for building in buildings:
         if building.type != "Tower":

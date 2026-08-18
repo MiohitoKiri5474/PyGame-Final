@@ -1,6 +1,7 @@
 import random
 
 from constants import (
+    MONSTER_SPAWN_WEIGHTS,
     NEST_BASE_SPAWN_INTERVAL,
     NEST_MAX_COUNT,
     NEST_MIN_SPAWN_INTERVAL,
@@ -73,3 +74,8 @@ class NestManager:
                 self.nests.append(Nest(*self.rng.choice(candidates)))
 
         return spawn_tiles
+
+    def pick_monster_type(self) -> str:
+        return self.rng.choices(
+            list(MONSTER_SPAWN_WEIGHTS), weights=list(MONSTER_SPAWN_WEIGHTS.values())
+        )[0]

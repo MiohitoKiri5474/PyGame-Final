@@ -1,3 +1,13 @@
+from constants import (
+    MONSTER_ATTACK,
+    MONSTER_DEFENSE,
+    MONSTER_MAX_HEALTH,
+    MONSTER_SPEED,
+    MONSTER_STATS,
+    MONSTER_VAMPIRE,
+    MONSTER_WEREWOLF,
+    MONSTER_ZOMBIE,
+)
 from coords import tile_center
 from monster import Monster, nearest_claimed_tile, spawn_monster
 
@@ -167,6 +177,49 @@ class TestFreeze:
         monster.update(3.0)  # 1.0 remaining
         monster.apply_freeze(4.0)  # re-hit while still frozen
         assert monster.frozen_remaining == 4.0  # refreshed, not 1.0 + 4.0
+
+
+class TestMonsterVariety:
+    def test_default_type_none_keeps_flat_constant_stats(self):
+        monster = Monster(x=0.0, y=0.0)
+        assert monster.type is None
+        assert monster.speed == MONSTER_SPEED
+        assert monster.max_health == MONSTER_MAX_HEALTH
+        assert monster.health == MONSTER_MAX_HEALTH
+        assert monster.attack == MONSTER_ATTACK
+        assert monster.defense == MONSTER_DEFENSE
+        assert monster.life_steal is False
+
+    def test_werewolf_stats_from_table(self):
+        monster = Monster(x=0.0, y=0.0, type=MONSTER_WEREWOLF)
+        stats = MONSTER_STATS[MONSTER_WEREWOLF]
+        assert monster.speed == stats["speed"]
+        assert monster.max_health == stats["max_health"]
+        assert monster.health == stats["max_health"]
+        assert monster.attack == stats["attack"]
+        assert monster.defense == stats["defense"]
+        assert monster.life_steal is False
+
+    def test_vampire_has_life_steal(self):
+        monster = Monster(x=0.0, y=0.0, type=MONSTER_VAMPIRE)
+        assert monster.life_steal is True
+        assert monster.max_health == MONSTER_STATS[MONSTER_VAMPIRE]["max_health"]
+
+    def test_zombie_is_slow_and_tanky(self):
+        monster = Monster(x=0.0, y=0.0, type=MONSTER_ZOMBIE)
+        stats = MONSTER_STATS[MONSTER_ZOMBIE]
+        assert monster.speed == stats["speed"]
+        assert monster.max_health == stats["max_health"]
+
+    def test_explicit_speed_overrides_type_table_speed(self):
+        monster = Monster(x=0.0, y=0.0, type=MONSTER_ZOMBIE, speed=999.0)
+        assert monster.speed == 999.0
+
+    def test_spawn_monster_passes_type_through(self):
+        grid = _FakeGrid(3, 3, claimed={(2, 2)})
+        monster = spawn_monster((0, 0), grid, monster_type=MONSTER_VAMPIRE)
+        assert monster.type == MONSTER_VAMPIRE
+        assert monster.life_steal is True
 
 
 class _Building:
