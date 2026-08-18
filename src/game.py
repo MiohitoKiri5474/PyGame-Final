@@ -38,10 +38,12 @@ from constants import (
     COLOR_ROLE_MAGE,
     COLOR_ANIMAL,
     COLOR_ANIMAL_DANGEROUS,
+)
 from audio import play_sfx
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
+
 
 from coords import tile_at, tile_center
 from game_over import GameOverState
