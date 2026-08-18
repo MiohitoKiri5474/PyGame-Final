@@ -1,0 +1,33 @@
+"""Terrain background textures (parchment/grass) for render_grid. Pygame-
+coupled like game.py itself - not part of the pygame-free test seam.
+
+Every tile blits the exact same TILE_SIZE x TILE_SIZE stamp of the source
+image. The source textures are seamlessly tileable, so repeating one
+identical stamp edge-to-edge reads as one continuous ground rather than an
+obviously repeating pattern - variant-per-tile slicing would break that
+seam-matching since each slice is an unrelated crop of the source."""
+
+from pathlib import Path
+
+import pygame
+
+from constants import TILE_SIZE
+
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets" / "terrain"
+
+_cache: dict[str, pygame.Surface] = {}
+
+
+def _load(filename: str) -> pygame.Surface:
+    if filename not in _cache:
+        raw = pygame.image.load(str(_ASSETS_DIR / filename)).convert()
+        _cache[filename] = pygame.transform.smoothscale(raw, (TILE_SIZE, TILE_SIZE))
+    return _cache[filename]
+
+
+def parchment() -> pygame.Surface:
+    return _load("parchment.png")
+
+
+def grass() -> pygame.Surface:
+    return _load("grass.png")

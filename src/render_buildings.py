@@ -11,6 +11,7 @@ from constants import (
     TILE_SIZE,
 )
 from extensions import register_overlay
+from sprites import building_sprite
 
 _COLOR_BY_TYPE = {
     "Wall": COLOR_WALL, "Tower": COLOR_TOWER, "House": COLOR_HOUSE, "AnimalPen": COLOR_ANIMAL_PEN,
@@ -31,7 +32,16 @@ def draw_buildings(surface: pygame.Surface, world, camera) -> None:
         screen_x = building.x * TILE_SIZE - int(camera.x)
         screen_y = building.y * TILE_SIZE - int(camera.y)
         rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
-        pygame.draw.rect(surface, _building_color(building), rect)
+
+        sprite = building_sprite(building)
+        if sprite is not None:
+            surface.blit(sprite, sprite.get_rect(center=rect.center))
+        else:
+            # No matching sprite yet for this building type - fall back to
+            # the full color mapping (magenta for anything truly unmapped)
+            # so a future building type fails loudly, not silently as an
+            # existing type's color.
+            pygame.draw.rect(surface, _building_color(building), rect)
 
 
 register_overlay(draw_buildings)
