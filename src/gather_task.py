@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from audio import play_sfx
 from constants import GATHER_WORK_SECONDS, GATHER_YIELD
 from task import Task, TaskType, register_task_type
 
@@ -27,9 +28,14 @@ def _on_complete(world: "World", task: Task) -> bool:
     x, y = task.target
     tile = world.grid.get(x, y)
     if tile.resource is not None:
+        if tile.resource == "wood":
+            play_sfx("chop")
+        else:
+            play_sfx("gather")
         world.inventory.add(tile.resource, GATHER_YIELD)
         tile.resource = None
     return True  # nothing left to wait for either way (already-gone is a no-op, not a retry)
+
 
 
 register_task_type(
