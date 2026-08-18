@@ -146,3 +146,12 @@ RESOURCE_WEIGHTS = {
     "berries": 0.02,
     "raw_stone": 0.02,
 }
+
+# --- House & population cap (ticket 15) ---
+BASE_POPULATION_CAP = 3
+HOUSE_BLOCK = 0
+HOUSE_ATTACK = 0
+HOUSE_COST = {"wood": 4, "bricks": 2}
+HOUSE_WORK_SECONDS = 4.0
+COLOR_HOUSE = (180, 140, 90)
+COLOR_UNKNOWN_BUILDING = (255, 0, 255)  # unmistakable "missing render mapping" marker
