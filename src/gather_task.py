@@ -28,13 +28,10 @@ def _on_complete(world: "World", task: Task) -> bool:
     x, y = task.target
     tile = world.grid.get(x, y)
     if tile.resource is not None:
-        if tile.resource == "wood":
-            play_sfx("chop")
-        else:
-            play_sfx("gather")
         world.inventory.add(tile.resource, GATHER_YIELD)
         tile.resource = None
     return True  # nothing left to wait for either way (already-gone is a no-op, not a retry)
+
 
 
 

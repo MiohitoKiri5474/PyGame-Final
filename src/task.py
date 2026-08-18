@@ -3,11 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, TYPE_CHECKING
 
+from audio import play_sfx
 from blocking import is_wall_blocked
 from constants import HUNGER_EAT_THRESHOLD
 from coords import tile_at
 from pathfinding import find_path
 from skills import gather_speed_multiplier
+
 
 if TYPE_CHECKING:
     from world import World
@@ -131,6 +133,27 @@ def update_npc_tasks(world: "World", dt: float) -> None:
                         npc.task_progress = 0.0
                         continue
 
+        # Periodic rhythmic work SFX while actively working on Gather task
+        if npc.task.type == "Gather":
+            timer = getattr(npc, "work_sfx_timer", 0.0)
+            if timer == 0.0:
+                tile = world.grid.get(*npc.task.target)
+                if tile.resource == "wood":
+                    play_sfx("chop")
+                elif tile.resource is not None:
+                    play_sfx("gather")
+                npc.work_sfx_timer = 0.001
+            else:
+                timer += dt
+                if timer >= 0.55:
+                    tile = world.grid.get(*npc.task.target)
+                    if tile.resource == "wood":
+                        play_sfx("chop")
+                    elif tile.resource is not None:
+                        play_sfx("gather")
+                    timer = 0.001
+                npc.work_sfx_timer = timer
+
         npc.task_progress += dt
         if task_type is None:
             continue
@@ -143,6 +166,7 @@ def update_npc_tasks(world: "World", dt: float) -> None:
             continue
 
         finished = task_type.on_complete(world, npc.task)
+        npc.work_sfx_timer = 0.0
         if finished:
             world.tasks.remove(npc.task)
         else:
@@ -156,6 +180,7 @@ def update_npc_tasks(world: "World", dt: float) -> None:
 
         npc.task = None
         npc.task_progress = 0.0
+
 
 
 def _try_claim_and_path(world: "World", npc: "NPC") -> None:
