@@ -57,6 +57,7 @@ from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
 from save import load_checkpoint, save_checkpoint
+from sprites import npc_sprite, resource_sprite
 
 _ROLE_COLORS = {
     ROLE_FARMER: COLOR_ROLE_FARMER,
@@ -277,7 +278,6 @@ class Game:
 
     def render_npcs(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y
-        npc_radius = NPC_RADIUS
         bar_w = TILE_SIZE - 4
         bar_h = 4
 
@@ -285,14 +285,19 @@ class Game:
             sx = int(npc.x - cam_x)
             sy = int(npc.y - cam_y)
 
-            # Body, color-coded by role
-            pygame.draw.circle(self.screen, _role_color(npc.role), (sx, sy), npc_radius)
+            # Body: sprite art with a thin role-color ring, since npc_sprite()
+            # is one look for every role (villager.png) - the ring keeps
+            # Farmer/Knight/Mage visually distinguishable at a glance.
+            sprite = npc_sprite()
+            sprite_rect = sprite.get_rect(center=(sx, sy))
+            pygame.draw.circle(self.screen, _role_color(npc.role), (sx, sy), npc_radius, 3)
             if npc is self.selected_npc:
-                pygame.draw.circle(self.screen, COLOR_NPC_SELECTED, (sx, sy), npc_radius, 2)
+                pygame.draw.rect(self.screen, COLOR_NPC_SELECTED, sprite_rect.inflate(4, 4), 2)
+            self.screen.blit(sprite, sprite_rect)
 
             # Hunger bar (above the NPC)
             bar_x = sx - bar_w // 2
-            bar_y = sy - npc_radius - bar_h - 4
+            bar_y = sprite_rect.top - bar_h - 4
             hunger_ratio = max(0.0, min(1.0, npc.hunger / NPC_MAX_HUNGER))
             # Background
             pygame.draw.rect(self.screen, COLOR_BAR_BG,
@@ -358,9 +363,14 @@ class Game:
 
                 # Material indicator for resource blocks
                 if tile.revealed and tile.resource:
-                    marker_rect = pygame.Rect(screen_x + 8, screen_y + 8, TILE_SIZE - 16, TILE_SIZE - 16)
-                    pygame.draw.rect(self.screen, (240, 210, 80), marker_rect)
-                    pygame.draw.rect(self.screen, (100, 80, 20), marker_rect, 1)
+                    sprite = resource_sprite(tile.resource)
+                    if sprite is not None:
+                        center = (screen_x + TILE_SIZE // 2, screen_y + TILE_SIZE // 2)
+                        self.screen.blit(sprite, sprite.get_rect(center=center))
+                    else:
+                        marker_rect = pygame.Rect(screen_x + 8, screen_y + 8, TILE_SIZE - 16, TILE_SIZE - 16)
+                        pygame.draw.rect(self.screen, (240, 210, 80), marker_rect)
+                        pygame.draw.rect(self.screen, (100, 80, 20), marker_rect, 1)
 
         # Hover outline
         if grid.in_bounds(hover_gx, hover_gy):
