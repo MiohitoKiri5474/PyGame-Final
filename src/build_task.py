@@ -13,6 +13,11 @@ from constants import (
     TOWER_COST,
     TOWER_BLOCK,
     TOWER_ATTACK,
+    BASE_POPULATION_CAP,
+    HOUSE_WORK_SECONDS,
+    HOUSE_COST,
+    HOUSE_BLOCK,
+    HOUSE_ATTACK,
 )
 from coords import tile_at, tile_center
 from extensions import register_hud_line
@@ -30,6 +35,8 @@ class Building:
     y: int
     block: int
     attack: int
+    growth_timer: float = 0.0  # Farmland only; no-op default for every other type
+    ready: bool = False  # Farmland only; no-op default for every other type
 
 
 def _can_queue(world: "World", tile: "Tile") -> bool:
@@ -44,12 +51,16 @@ def _can_queue(world: "World", tile: "Tile") -> bool:
     return True
 
 
+def _can_afford(world: "World", cost: dict[str, int]) -> bool:
+    return all(world.inventory.get(res) >= amt for res, amt in cost.items())
+
+
 def _can_perform_wall(world: "World", task: Task) -> bool:
-    return all(world.inventory.get(res) >= amt for res, amt in WALL_COST.items())
+    return _can_afford(world, WALL_COST)
 
 
 def _can_perform_tower(world: "World", task: Task) -> bool:
-    return all(world.inventory.get(res) >= amt for res, amt in TOWER_COST.items())
+    return _can_afford(world, TOWER_COST)
 
 
 def _on_complete_wall(world: "World", task: Task) -> bool:
@@ -58,6 +69,18 @@ def _on_complete_wall(world: "World", task: Task) -> bool:
 
 def _on_complete_tower(world: "World", task: Task) -> bool:
     return _try_build(world, task, "Tower", TOWER_COST, TOWER_BLOCK, TOWER_ATTACK)
+
+
+def _can_perform_house(world: "World", task: Task) -> bool:
+    return _can_afford(world, HOUSE_COST)
+
+
+def _on_complete_house(world: "World", task: Task) -> bool:
+    return _try_build(world, task, "House", HOUSE_COST, HOUSE_BLOCK, HOUSE_ATTACK)
+
+
+def population_cap(world: "World") -> int:
+    return BASE_POPULATION_CAP + sum(1 for b in world.buildings if b.type == "House")
 
 
 def _try_build(world: "World", task: Task, b_type: str, cost: dict[str, int], block: int, attack: int) -> bool:
@@ -102,7 +125,14 @@ def _displace_npcs_from_wall(world: "World", x: int, y: int) -> None:
             npc.path = []
 
 
-_COSTS_BY_TASK_TYPE = {"BuildWall": WALL_COST, "BuildTower": TOWER_COST}
+_COSTS_BY_TASK_TYPE = {"BuildWall": WALL_COST, "BuildTower": TOWER_COST, "BuildHouse": HOUSE_COST}
+
+
+def register_build_cost(task_type: str, cost: dict[str, int]) -> None:
+    """Extension point for other build-task modules (Farmland, Animal Pen,
+    ...) so their insufficient-funds state shows up in the blocked-builds
+    HUD line without build_task.py needing to import their cost constants."""
+    _COSTS_BY_TASK_TYPE[task_type] = cost
 
 
 def _blocked_builds_hud_line(world: "World") -> str:
@@ -138,6 +168,16 @@ register_task_type(
         can_queue=_can_queue,
         on_complete=_on_complete_tower,
         can_perform=_can_perform_tower,
+    ),
+)
+
+register_task_type(
+    "BuildHouse",
+    TaskType(
+        work_seconds=HOUSE_WORK_SECONDS,
+        can_queue=_can_queue,
+        on_complete=_on_complete_house,
+        can_perform=_can_perform_house,
     ),
 )
 
