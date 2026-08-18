@@ -15,11 +15,12 @@ _SOUND_CACHE: dict[str, pygame.mixer.Sound | None] = {}
 _LAST_PLAYED: dict[str, float] = {}
 _SFX_DIR = Path(__file__).parent.parent / "assets" / "sfx"
 
-# Default volume by SFX name (soft background work sounds)
+# Default volume by SFX name (soft ambient background work sounds)
 _DEFAULT_VOLUMES = {
-    "chop": 0.35,
-    "gather": 0.30,
+    "chop": 0.15,
+    "gather": 0.12,
 }
+
 
 # Cooldown between same-sound triggers to prevent multi-unit clutter (seconds)
 _SFX_COOLDOWN = {
