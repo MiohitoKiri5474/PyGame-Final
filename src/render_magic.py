@@ -1,6 +1,6 @@
 import pygame
 
-from extensions import register_overlay
+from extensions import register_fx_overlay
 
 
 def draw_magic_fx(surface: pygame.Surface, world, camera) -> None:
@@ -14,4 +14,4 @@ def draw_magic_fx(surface: pygame.Surface, world, camera) -> None:
         surface.blit(fx, (screen_x - 24, screen_y - 24))
 
 
-register_overlay(draw_magic_fx)
+register_fx_overlay(draw_magic_fx)

@@ -43,7 +43,7 @@ from pathfinding import find_path
 from settlement import evaluate_wave
 from population import maybe_spawn_npc
 from task import TASK_TYPES, update_npc_tasks
-from extensions import hud_lines, render_overlays, run_ticks
+from extensions import hud_lines, render_fx_overlays, render_overlays, run_ticks
 from tile_actions import applicable_tasks
 from world import World
 from priority_ui import PriorityTableUI
@@ -287,10 +287,11 @@ class Game:
         self.screen.fill(COLOR_BG)
         self.render_grid()
         self.render_nests()
+        render_overlays(self.screen, self.world, self.camera)  # buildings: ground layer, under characters
         self.render_animals()
         self.render_npcs()
         self.render_monsters()
-        render_overlays(self.screen, self.world, self.camera)
+        render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
         self.render_hud()
         self.build_bar.render(self.screen, self.font, self.world)
         self.action_menu.render(self.screen, self.font)
