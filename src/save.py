@@ -52,7 +52,14 @@ def dump_state(
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
         "buildings": [
-            {"type": b.type, "x": b.x, "y": b.y, "block": b.block, "attack": b.attack}
+            {
+                "type": b.type,
+                "x": b.x,
+                "y": b.y,
+                "block": b.block,
+                "attack": b.attack,
+                "assigned_animal_id": getattr(b, "assigned_animal_id", None),
+            }
             for b in world.buildings
         ],
         "animals": [
@@ -65,11 +72,14 @@ def dump_state(
                 "dangerous": a.dangerous,
                 "health": a.health,
                 "is_hostile": a.is_hostile,
+                "is_tamed": getattr(a, "is_tamed", False),
+                "pen_tile": list(a.pen_tile) if getattr(a, "pen_tile", None) else None,
                 "path": [list(p) for p in a.path],
             }
             for a in world.animals
         ],
         "animal_spawn_timer": world.animal_spawn_timer,
+        "pen_production_timer": getattr(world, "pen_production_timer", 0.0),
         "tasks": [
             {
                 "type": t.type,
@@ -136,10 +146,12 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     world.inventory = Inventory()
     for resource, amount in data["inventory"].items():
         world.inventory.add(resource, amount)
-    world.buildings = [
-        Building(type=b["type"], x=b["x"], y=b["y"], block=b["block"], attack=b["attack"])
-        for b in data["buildings"]
-    ]
+    world.buildings = []
+    for bd in data["buildings"]:
+        building = Building(type=bd["type"], x=bd["x"], y=bd["y"], block=bd["block"], attack=bd["attack"])
+        building.assigned_animal_id = bd.get("assigned_animal_id")
+        world.buildings.append(building)
+
     world.animals = []
     max_animal_id = -1
     for ad in data.get("animals", []):
@@ -148,12 +160,15 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
             dangerous=ad["dangerous"], health=ad["health"], id=ad.get("id"),
         )
         animal.is_hostile = ad.get("is_hostile", False)
+        animal.is_tamed = ad.get("is_tamed", False)
+        animal.pen_tile = tuple(ad["pen_tile"]) if ad.get("pen_tile") else None
         animal.path = [tuple(p) for p in ad.get("path", [])]
         world.animals.append(animal)
         if animal.id is not None:
             max_animal_id = max(max_animal_id, animal.id)
     Animal._next_id = max(Animal._next_id, max_animal_id + 1)
     world.animal_spawn_timer = data.get("animal_spawn_timer", 0.0)
+    world.pen_production_timer = data.get("pen_production_timer", 0.0)
 
     tasks = [
         Task(

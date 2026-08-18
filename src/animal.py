@@ -36,6 +36,8 @@ class Animal:
         self.health = health
         self.max_health = health
         self.is_hostile = False
+        self.is_tamed = False
+        self.pen_tile: tuple[int, int] | None = None
         self.path: list[tuple[int, int]] = []
         self._rng = rng or random.Random()
 

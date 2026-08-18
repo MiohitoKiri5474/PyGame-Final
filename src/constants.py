@@ -145,3 +145,28 @@ HUNT_WORK_SECONDS = 2.0
 KNIGHT_CRIT_CHANCE = 0.50
 KNIGHT_CRIT_MULTIPLIER = 2.0
 
+# --- Post-Hunt & Taming (ticket 26) ---
+ANIMAL_MEAT_YIELD = {
+    "FlyingSquirrel": 1,
+    "Fish": 1,
+    "WildBoar": 3,
+    "Horse": 3,
+    "Wolf": 2,
+    "Bear": 5,
+}
+
+BASE_TAME_SUCCESS_RATE = 0.50
+FARMER_TAME_SUCCESS_MULTIPLIER = 1.50
+TAME_WORK_SECONDS = 3.0
+FARMER_TAME_WORK_MULTIPLIER = 0.67  # 1.5x speed
+
+ANIMAL_PEN_WORK_SECONDS = 4.0
+ANIMAL_PEN_COST = {"wood": 4, "raw_stone": 2}
+ANIMAL_PEN_BLOCK = 20
+ANIMAL_PEN_ATTACK = 0
+COLOR_ANIMAL_PEN = (160, 130, 90)
+
+PEN_PRODUCTION_INTERVAL = 30.0  # seconds between food production ticks
+HORSE_SPEED_BONUS = 30.0  # travel speed buff for colony NPCs when horse is penned
+
+
