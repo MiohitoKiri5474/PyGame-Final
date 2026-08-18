@@ -51,6 +51,10 @@ def dump_state(
         "game_over": {"is_over": game_over_state.is_over, "score": game_over_state.score},
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
+        "inventory_ledger": [
+            {"resource": b.resource, "expires_in": b.expires_in, "amount": b.amount}
+            for b in world.inventory.ledger
+        ],
         "buildings": [
             {
                 "type": b.type,
@@ -145,7 +149,12 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     world.grid = _load_grid(data["grid"])
     world.inventory = Inventory()
     for resource, amount in data["inventory"].items():
-        world.inventory.add(resource, amount)
+        world.inventory._counts[resource] = amount
+    from inventory import PerishableBatch
+    world.inventory.ledger = [
+        PerishableBatch(resource=b["resource"], expires_in=b["expires_in"], amount=b["amount"])
+        for b in data.get("inventory_ledger", [])
+    ]
     world.buildings = []
     for bd in data["buildings"]:
         building = Building(type=bd["type"], x=bd["x"], y=bd["y"], block=bd["block"], attack=bd["attack"])

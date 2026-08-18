@@ -12,5 +12,7 @@ import destroy_task  # noqa: F401
 import wildlife  # noqa: F401
 import hunt_task  # noqa: F401
 import tame_task  # noqa: F401
+import spoilage  # noqa: F401
+
 
 
