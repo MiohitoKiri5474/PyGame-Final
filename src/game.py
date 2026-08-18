@@ -47,9 +47,10 @@ from extensions import hud_lines, render_overlays, run_ticks
 from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
-from save import load_checkpoint, save_checkpoint
+from save import SAVE_PATH, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
+from title_screen import TitleScreen, TITLE, PLAYING
 
 
 class Game:
@@ -69,25 +70,22 @@ class Game:
         self.priority_ui = PriorityTableUI()
         self.skill_ui = SkillUI()
 
-        checkpoint = load_checkpoint()
-        if checkpoint is not None:
-            (
-                self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
-                self.skill_points_available, self._monsters_killed_this_night,
-            ) = checkpoint
-            if self.skill_points_available > 0:
-                self.paused = True  # restore the auto-pause a full/partial clear set before save
-        else:
-            self.world = World()
-            self.cycle = DayNightCycle()
-            initial_nests = create_initial_nests(
-                self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
-            )
-            self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
-            self.monsters = []
-            self.game_over_state = GameOverState()
-            self.skill_points_available = 0
-            self._monsters_killed_this_night = 0
+        self.state = TITLE
+        self.save_exists = SAVE_PATH.exists()
+        self.title_screen = TitleScreen()
+
+    def _start_new_game(self) -> None:
+        self.world = World()
+        self.cycle = DayNightCycle()
+        initial_nests = create_initial_nests(
+            self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
+        )
+        self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
+        self.monsters = []
+        self.game_over_state = GameOverState()
+        self.skill_points_available = 0
+        self._monsters_killed_this_night = 0
+        self.state = PLAYING
 
     def run(self) -> None:
         while self.running:
@@ -101,6 +99,12 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            elif self.state == TITLE:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.title_screen.handle_click(event.pos) == "start":
+                        self._start_new_game()
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.running = False
             elif event.type == pygame.KEYDOWN:
                 # Priority UI and Skill UI intercept keys when open
                 if self.priority_ui.visible:
@@ -194,6 +198,9 @@ class Game:
         return None
 
     def update(self, dt: float) -> None:
+        if self.state != PLAYING:
+            return
+
         if not self.priority_ui.visible and not self.skill_ui.visible:
             keys = pygame.key.get_pressed()
             dx = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
@@ -248,6 +255,10 @@ class Game:
 
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
+        if self.state == TITLE:
+            self.title_screen.render(self.screen, self.font)
+            pygame.display.flip()
+            return
         self.render_grid()
         self.render_nests()
         self.render_animals()

@@ -21,8 +21,20 @@ def main() -> None:
     import pygame
 
     from game import Game
+    from title_screen import TITLE, PLAYING
 
     game = Game()
+    assert game.state == TITLE
+    game.render()  # title screen must render without a world yet
+
+    # Drive the real click path (not a direct state assignment) so the
+    # title-screen wiring in handle_events() is actually exercised.
+    pygame.event.post(pygame.event.Event(
+        pygame.MOUSEBUTTONDOWN, pos=game.title_screen.start_rect.center, button=1,
+    ))
+    game.handle_events()
+    assert game.state == PLAYING
+
     for _ in range(TICKS):
         game.update(1 / 60)
         game.render()
