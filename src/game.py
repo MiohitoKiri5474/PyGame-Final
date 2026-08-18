@@ -290,7 +290,7 @@ class Game:
             # Farmer/Knight/Mage visually distinguishable at a glance.
             sprite = npc_sprite()
             sprite_rect = sprite.get_rect(center=(sx, sy))
-            pygame.draw.circle(self.screen, _role_color(npc.role), (sx, sy), npc_radius, 3)
+            pygame.draw.circle(self.screen, _role_color(npc.role), (sx, sy), NPC_RADIUS, 3)
             if npc is self.selected_npc:
                 pygame.draw.rect(self.screen, COLOR_NPC_SELECTED, sprite_rect.inflate(4, 4), 2)
             self.screen.blit(sprite, sprite_rect)
