@@ -15,18 +15,32 @@ _SOUND_CACHE: dict[str, pygame.mixer.Sound | None] = {}
 _LAST_PLAYED: dict[str, float] = {}
 _SFX_DIR = Path(__file__).parent.parent / "assets" / "sfx"
 
-# Default volume by SFX name (soft ambient background work sounds)
+# Default volume by SFX name (soft ambient background work sounds and crisp combat/event cues)
 _DEFAULT_VOLUMES = {
     "chop": 0.15,
     "gather": 0.12,
+    "mine": 0.15,
+    "build": 0.15,
+    "lightning": 0.35,
+    "fire": 0.30,
+    "freeze": 0.30,
+    "night_howl": 0.40,
+    "dawn": 0.35,
 }
-
 
 # Cooldown between same-sound triggers to prevent multi-unit clutter (seconds)
 _SFX_COOLDOWN = {
     "chop": 0.35,
     "gather": 0.35,
+    "mine": 0.35,
+    "build": 0.35,
+    "lightning": 0.1,
+    "fire": 0.1,
+    "freeze": 0.1,
+    "night_howl": 1.0,
+    "dawn": 1.0,
 }
+
 
 
 def play_sfx(name: str, volume: float | None = None, min_interval: float | None = None) -> None:

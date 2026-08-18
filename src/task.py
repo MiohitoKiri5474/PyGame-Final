@@ -133,26 +133,31 @@ def update_npc_tasks(world: "World", dt: float) -> None:
                         npc.task_progress = 0.0
                         continue
 
-        # Periodic rhythmic work SFX while actively working on Gather task
-        if npc.task.type == "Gather":
-            timer = getattr(npc, "work_sfx_timer", 0.0)
-            if timer == 0.0:
+        # Periodic rhythmic work SFX while actively working on tasks
+        timer = getattr(npc, "work_sfx_timer", 0.0)
+        should_play = False
+        if timer == 0.0:
+            should_play = True
+            timer = 0.001
+        else:
+            timer += dt
+            if timer >= 0.90:
+                should_play = True
+                timer = 0.001
+        npc.work_sfx_timer = timer
+
+        if should_play:
+            if npc.task.type == "Gather":
                 tile = world.grid.get(*npc.task.target)
                 if tile.resource == "wood":
                     play_sfx("chop")
+                elif tile.resource in ("raw_stone", "bricks", "marble"):
+                    play_sfx("mine")
                 elif tile.resource is not None:
                     play_sfx("gather")
-                npc.work_sfx_timer = 0.001
-            else:
-                timer += dt
-                if timer >= 0.90:
-                    tile = world.grid.get(*npc.task.target)
-                    if tile.resource == "wood":
-                        play_sfx("chop")
-                    elif tile.resource is not None:
-                        play_sfx("gather")
-                    timer = 0.001
-                npc.work_sfx_timer = timer
+            elif npc.task.type in ("BuildWall", "BuildTower", "BuildHouse", "BuildAnimalPen", "Farmland", "Destroy"):
+                play_sfx("build")
+
 
 
         npc.task_progress += dt

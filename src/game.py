@@ -38,10 +38,11 @@ from constants import (
     COLOR_ROLE_MAGE,
     COLOR_ANIMAL,
     COLOR_ANIMAL_DANGEROUS,
-)
+from audio import play_sfx
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
+
 from coords import tile_at, tile_center
 from game_over import GameOverState
 from magic import cast_fire, cast_freeze, cast_lightning
@@ -220,6 +221,7 @@ class Game:
             transitioned = self.cycle.update(dt)
             if transitioned and self.cycle.phase == NIGHT:
                 self._monsters_killed_this_night = 0
+                play_sfx("night_howl")
 
             update_npc_tasks(self.world, dt)
             run_ticks(self.world, dt)
@@ -242,6 +244,7 @@ class Game:
             self.game_over_state.check(self.world.npcs, self.cycle.round_number)
 
             if transitioned and self.cycle.phase == DAY:
+                play_sfx("dawn")
                 # Full clear is judged by no monster being alive at day start
                 # (not by matching this night's spawn/kill counts - monsters
                 # never despawn, so a leftover from an earlier night would
@@ -251,6 +254,7 @@ class Game:
                 )
                 if self.skill_points_available > 0:
                     self.paused = True
+
 
             if transitioned:
                 save_checkpoint(
