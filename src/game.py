@@ -15,27 +15,15 @@ from constants import (
     NEST_INITIAL_COUNT,
     COLOR_BG,
     COLOR_FOG,
-    COLOR_UNCLAIMED,
-    COLOR_CLAIMED_EMPTY,
-    COLOR_RESOURCE,
-    COLOR_GRID_LINE,
     COLOR_TEXT,
     COLOR_DAY_BANNER,
     COLOR_NIGHT_BANNER,
-    COLOR_NPC,
     COLOR_NPC_SELECTED,
     COLOR_HOVER_BORDER,
     COLOR_MONSTER,
-    COLOR_NEST,
     COLOR_HUNGER_BAR,
     COLOR_BAR_BG,
     COLOR_GAME_OVER,
-    ROLE_FARMER,
-    ROLE_KNIGHT,
-    ROLE_MAGE,
-    COLOR_ROLE_FARMER,
-    COLOR_ROLE_KNIGHT,
-    COLOR_ROLE_MAGE,
     COLOR_ANIMAL,
     COLOR_ANIMAL_DANGEROUS,
 )
@@ -57,17 +45,8 @@ from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
 from save import load_checkpoint, save_checkpoint
-from sprites import npc_sprite, resource_sprite
-
-_ROLE_COLORS = {
-    ROLE_FARMER: COLOR_ROLE_FARMER,
-    ROLE_KNIGHT: COLOR_ROLE_KNIGHT,
-    ROLE_MAGE: COLOR_ROLE_MAGE,
-}
-
-
-def _role_color(role: str | None) -> tuple[int, int, int]:
-    return _ROLE_COLORS.get(role, COLOR_NPC)
+from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
+from terrain import parchment, grass
 
 
 class Game:
@@ -285,12 +264,10 @@ class Game:
             sx = int(npc.x - cam_x)
             sy = int(npc.y - cam_y)
 
-            # Body: sprite art with a thin role-color ring, since npc_sprite()
-            # is one look for every role (villager.png) - the ring keeps
-            # Farmer/Knight/Mage visually distinguishable at a glance.
-            sprite = npc_sprite()
+            # Body: each role now has its own distinct sprite (villager/
+            # knight/magician), so no color ring is needed to tell them apart.
+            sprite = npc_sprite(npc.role)
             sprite_rect = sprite.get_rect(center=(sx, sy))
-            pygame.draw.circle(self.screen, _role_color(npc.role), (sx, sy), NPC_RADIUS, 3)
             if npc is self.selected_npc:
                 pygame.draw.rect(self.screen, COLOR_NPC_SELECTED, sprite_rect.inflate(4, 4), 2)
             self.screen.blit(sprite, sprite_rect)
@@ -315,14 +292,22 @@ class Game:
                 continue
             screen_x = int(animal.x - self.camera.x)
             screen_y = int(animal.y - self.camera.y)
-            color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
-            pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
+            sprite = animal_sprite(animal.species)
+            if sprite is not None:
+                self.screen.blit(sprite, sprite.get_rect(center=(screen_x, screen_y)))
+            else:
+                color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
+                pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
 
     def render_monsters(self) -> None:
         for monster in self.monsters:
             screen_x = int(monster.x - self.camera.x)
             screen_y = int(monster.y - self.camera.y)
-            pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
+            sprite = monster_sprite(monster.type)
+            if sprite is not None:
+                self.screen.blit(sprite, sprite.get_rect(center=(screen_x, screen_y)))
+            else:
+                pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
 
     def render_nests(self) -> None:
         for nest in self.nest_manager.nests:
@@ -331,7 +316,8 @@ class Game:
             screen_x = nest.x * TILE_SIZE - self.camera.x
             screen_y = nest.y * TILE_SIZE - self.camera.y
             rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
-            pygame.draw.rect(self.screen, COLOR_NEST, rect)
+            sprite = nest_sprite()
+            self.screen.blit(sprite, sprite.get_rect(center=rect.center))
 
     def render_grid(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y
@@ -350,16 +336,13 @@ class Game:
                 rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
 
                 if not tile.revealed:
-                    color = COLOR_FOG
-                elif not tile.claimed:
-                    color = COLOR_UNCLAIMED
-                elif tile.resource:
-                    color = COLOR_RESOURCE
+                    # Fog stays a flat overlay, not a texture - it's meant to
+                    # read as "nothing to see here", not as ground you could walk on.
+                    pygame.draw.rect(self.screen, COLOR_FOG, rect)
+                elif tile.claimed:
+                    self.screen.blit(grass(), rect)
                 else:
-                    color = COLOR_CLAIMED_EMPTY
-
-                pygame.draw.rect(self.screen, color, rect)
-                pygame.draw.rect(self.screen, COLOR_GRID_LINE, rect, 1)
+                    self.screen.blit(parchment(), rect)
 
                 # Material indicator for resource blocks
                 if tile.revealed and tile.resource:
@@ -369,8 +352,8 @@ class Game:
                         self.screen.blit(sprite, sprite.get_rect(center=center))
                     else:
                         marker_rect = pygame.Rect(screen_x + 8, screen_y + 8, TILE_SIZE - 16, TILE_SIZE - 16)
-                        pygame.draw.rect(self.screen, (240, 210, 80), marker_rect)
-                        pygame.draw.rect(self.screen, (100, 80, 20), marker_rect, 1)
+                        pygame.draw.rect(self.screen, (240, 210, 80), marker_rect, border_radius=6)
+                        pygame.draw.rect(self.screen, (100, 80, 20), marker_rect, 1, border_radius=6)
 
         # Hover outline
         if grid.in_bounds(hover_gx, hover_gy):
