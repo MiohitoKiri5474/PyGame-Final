@@ -17,10 +17,12 @@ from constants import (
     MAGIC_FLASH_DURATION,
     ROLE_MAGE,
 )
+from audio import play_sfx
 from coords import tile_at
 from extensions import register_hud_line, register_tick
 from monster import nearest_claimed_tile
 from skills import aoe_radius, magic_damage_multiplier
+
 
 if TYPE_CHECKING:
     from world import World
@@ -110,7 +112,12 @@ def _cast_single_target_spell(
         on_hit(target)
     world.spellbook.start_cooldown(spell, cooldown)
     world.spellbook.trigger_flash((target.x, target.y), MAGIC_FLASH_DURATION, color)
+    if spell == "Lightning":
+        play_sfx("lightning")
+    elif spell == "Fire":
+        play_sfx("fire")
     return True
+
 
 
 def cast_lightning(world: "World", monsters: list["Monster"]) -> bool:
@@ -163,6 +170,7 @@ def cast_freeze(world: "World", monsters: list["Monster"]) -> bool:
             world.spellbook.trigger_flash((monster.x, monster.y), MAGIC_FLASH_DURATION, COLOR_FREEZE_FLASH)
 
     world.spellbook.start_cooldown("Freeze", FREEZE_COOLDOWN)
+    play_sfx("freeze")
     return True
 
 

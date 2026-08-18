@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>《午夜要塞：破曉之役》MIDNIGHT'S BASTION — 官方遊戲發表</title>
+  <meta name="description" content="白天拓荒建設，黑夜萬獸破曉。掌控魔法、馴化野獸、抵禦無盡屍潮！2026 暗黑奇幻像素殖民地生存策略遊戲。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0b10;
+      --bg-surface: rgba(18, 20, 29, 0.85);
+      --bg-surface-elevated: rgba(28, 32, 48, 0.95);
+      --border-subtle: rgba(255, 215, 120, 0.15);
+      --border-glow: rgba(255, 190, 60, 0.4);
+      --gold-primary: #f5c542;
+      --gold-bright: #ffe680;
+      --gold-deep: #b8860b;
+      --crimson: #e63946;
+      --cyan-frost: #56ccf2;
+      --ember-orange: #ff7b00;
+      --arcane-purple: #a855f7;
+      --emerald: #2ec4b6;
+      --text-main: #f0f2f5;
+      --text-muted: #9ba1b0;
+      --font-cinzel: 'Cinzel', 'Noto Serif TC', serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background 0.8s ease;
+    }
+
+    body.day-mode {
+      --bg-dark: #0f1715;
+      --bg-surface: rgba(22, 34, 30, 0.88);
+      --border-subtle: rgba(120, 200, 100, 0.25);
+      --text-muted: #a2b8ad;
+    }
+
+    /* Ambient Canvas Background */
+    #ambient-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Top Navigation */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      background: rgba(10, 11, 16, 0.85);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: all 0.3s ease;
+    }
+
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-family: var(--font-cinzel);
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--gold-primary);
+      text-shadow: 0 0 20px rgba(245, 197, 66, 0.4);
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--gold-primary), var(--ember-orange));
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: #000;
+      font-weight: 900;
+      box-shadow: 0 0 15px rgba(255, 123, 0, 0.5);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.8rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--gold-bright);
+      transform: translateY(-2px);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-toggle {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.25s;
+    }
+
+    .btn-toggle:hover {
+      background: rgba(255, 215, 120, 0.15);
+      border-color: var(--gold-primary);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #f5c542, #ff7b00);
+      color: #0d0e15;
+      font-family: var(--font-cinzel);
+      font-weight: 800;
+      letter-spacing: 1px;
+      padding: 0.65rem 1.4rem;
+      border-radius: 8px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(255, 123, 0, 0.35);
+      transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 30px rgba(255, 123, 0, 0.6);
+      filter: brightness(1.1);
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 4rem 2rem 5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(245, 197, 66, 0.1);
+      border: 1px solid rgba(245, 197, 66, 0.3);
+      padding: 0.4rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--gold-bright);
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .hero-title {
+      font-family: var(--font-cinzel);
+      font-size: 3.8rem;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: 2px;
+      color: #fff;
+      margin-bottom: 1.2rem;
+      text-shadow: 0 4px 25px rgba(0, 0, 0, 0.8);
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, var(--gold-bright), var(--ember-orange));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin-bottom: 2.2rem;
+      line-height: 1.7;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 1.2rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-weight: 700;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      text-decoration: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.25s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--text-main);
+      transform: translateY(-2px);
+    }
+
+    .hero-preview-wrapper {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(245, 197, 66, 0.15);
+      border: 1px solid var(--border-subtle);
+      transition: transform 0.5s ease;
+    }
+
+    .hero-preview-wrapper:hover {
+      transform: scale(1.02);
+    }
+
+    .hero-preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero-stats-badge {
+      position: absolute;
+      bottom: 1.5rem;
+      left: 1.5rem;
+      right: 1.5rem;
+      background: rgba(10, 12, 18, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 1rem 1.4rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      text-align: center;
+    }
+
+    .hero-stat-val {
+      font-family: var(--font-cinzel);
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--gold-bright);
+    }
+
+    .hero-stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Section Layout */
+    section {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 3.5rem;
+    }
+
+    .section-tag {
+      color: var(--gold-primary);
+      font-family: var(--font-cinzel);
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+      display: block;
+    }
+
+    .section-title {
+      font-family: var(--font-cinzel);
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 1rem;
+      letter-spacing: 1px;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* Feature Grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 2.2rem;
+      transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      border-color: var(--border-glow);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 1.8rem;
+      margin-bottom: 1.4rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .card-title {
+      font-family: var(--font-cinzel);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-text {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    .card-badge {
+      display: inline-block;
+      margin-top: 1.2rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* Day / Night Interactive Banner */
+    .cycle-showcase {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 3rem;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 3rem;
+      align-items: center;
+    }
+
+    .cycle-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .cycle-btn {
+      flex: 1;
+      padding: 0.9rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      font-family: var(--font-cinzel);
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      transition: all 0.3s;
+    }
+
+    .cycle-btn.active {
+      background: linear-gradient(135deg, rgba(245, 197, 66, 0.2), rgba(255, 123, 0, 0.2));
+      border-color: var(--gold-primary);
+      color: var(--gold-bright);
+      box-shadow: 0 0 25px rgba(245, 197, 66, 0.2);
+    }
+
+    .cycle-visual {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      aspect-ratio: 16/9;
+    }
+
+    .cycle-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.6s ease;
+    }
+
+    /* Spell Arsenal Playground */
+    .spell-playground {
+      background: radial-gradient(circle at center, rgba(30, 20, 50, 0.7), var(--bg-surface-elevated));
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 3rem;
+      text-align: center;
+    }
+
+    .spell-slots {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin: 2.5rem 0;
+      flex-wrap: wrap;
+    }
+
+    .spell-card {
+      background: rgba(10, 11, 18, 0.7);
+      border: 2px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.8rem 1.4rem;
+      width: 220px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      position: relative;
+    }
+
+    .spell-card:hover {
+      transform: translateY(-8px) scale(1.05);
+    }
+
+    .spell-card.fire:hover, .spell-card.fire.active {
+      border-color: var(--ember-orange);
+      box-shadow: 0 0 35px rgba(255, 123, 0, 0.45);
+    }
+
+    .spell-card.lightning:hover, .spell-card.lightning.active {
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 35px rgba(245, 197, 66, 0.45);
+    }
+
+    .spell-card.freeze:hover, .spell-card.freeze.active {
+      border-color: var(--cyan-frost);
+      box-shadow: 0 0 35px rgba(86, 204, 242, 0.45);
+    }
+
+    .spell-hotkey {
+      position: absolute;
+      top: -12px;
+      right: 14px;
+      background: #111;
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-bright);
+      font-size: 0.75rem;
+      font-weight: 900;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-family: var(--font-cinzel);
+    }
+
+    .spell-icon {
+      font-size: 2.8rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .spell-name {
+      font-family: var(--font-cinzel);
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+
+    .spell-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    #spell-canvas-container {
+      position: relative;
+      width: 100%;
+      height: 280px;
+      background: #06070a;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: 2rem;
+    }
+
+    #spell-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .spell-hint {
+      position: absolute;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 0.4rem 1rem;
+      border-radius: 9999px;
+      pointer-events: none;
+    }
+
+    /* Interactive Skill Tree Calculator */
+    .skill-tree-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 3rem;
+    }
+
+    .skill-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .points-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-family: var(--font-cinzel);
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--gold-bright);
+      background: rgba(245, 197, 66, 0.12);
+      border: 1px solid var(--gold-primary);
+      padding: 0.5rem 1.4rem;
+      border-radius: 12px;
+    }
+
+    .skill-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .skill-item {
+      background: rgba(10, 12, 18, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.25s;
+    }
+
+    .skill-item:hover {
+      border-color: rgba(255, 215, 120, 0.4);
+      background: rgba(20, 24, 36, 0.7);
+    }
+
+    .skill-info h4 {
+      font-family: var(--font-cinzel);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.25rem;
+    }
+
+    .skill-info p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .skill-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .skill-lvl-counter {
+      font-family: var(--font-cinzel);
+      font-size: 1.25rem;
+      font-weight: 900;
+      min-width: 45px;
+      text-align: center;
+      color: var(--gold-primary);
+    }
+
+    .btn-skill-add {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--gold-primary), var(--ember-orange));
+      border: none;
+      color: #000;
+      font-size: 1.2rem;
+      font-weight: 900;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-skill-add:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      filter: grayscale(1);
+    }
+
+    .btn-skill-add:not(:disabled):hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px rgba(255, 123, 0, 0.6);
+    }
+
+    /* Launch Command Section */
+    .launch-cta {
+      background: linear-gradient(180deg, rgba(245, 197, 66, 0.08) 0%, rgba(10, 11, 18, 0.95) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 4rem 2rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .command-box {
+      max-width: 680px;
+      margin: 2rem auto 0;
+      background: #08090d;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
+    }
+
+    .command-text {
+      font-family: 'Consolas', 'Courier New', monospace;
+      color: var(--gold-bright);
+      font-size: 0.95rem;
+      word-break: break-all;
+      text-align: left;
+    }
+
+    .btn-copy {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      margin-left: 1rem;
+    }
+
+    .btn-copy:hover {
+      background: var(--gold-primary);
+      color: #000;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 2rem;
+      }
+      .cycle-showcase {
+        grid-template-columns: 1fr;
+      }
+      .hero-title {
+        font-size: 2.8rem;
+      }
+      .nav-links {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Ambient Particle Canvas -->
+  <canvas id="ambient-canvas"></canvas>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo">
+        <div class="logo-icon">⚔</div>
+        <span>MIDNIGHT'S BASTION</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#cycle">日夜生死循環</a></li>
+        <li><a href="#heroes">英雄三職業</a></li>
+        <li><a href="#magic">魔法神殿</a></li>
+        <li><a href="#skills">天賦加點器</a></li>
+        <li><a href="#bestiary">萬獸圖鑑</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button id="sfx-toggle" class="btn-toggle" title="切換遊戲音效">
+          <span>🔊</span> <span id="sfx-status">音效 ON</span>
+        </button>
+        <button id="theme-toggle" class="btn-toggle" title="切換日夜主題">
+          <span id="theme-icon">🌙</span> <span id="theme-text">夜間模式</span>
+        </button>
+        <a href="#launch" class="btn-primary">立即啟動</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">✦ 2026 年度暗黑奇幻像素殖民地生存神作 ✦</div>
+      <h1 class="hero-title">
+        午夜要塞<br>
+        <span>破曉之役</span>
+      </h1>
+      <p class="hero-desc">
+        在迷霧覆蓋的古老荒野中建立你的最後領地。白天探索拓荒、採集建城、馴服百獸；黑夜降臨之時，抵禦狂暴狼人、吸血鬼與屍潮的無盡圍攻。掌控奧術魔法，生存直到黎明！
+      </p>
+      <div class="hero-cta">
+        <a href="#launch" class="btn-primary" style="font-size: 1.1rem; padding: 0.85rem 2rem;">⚡ 啟動遊戲</a>
+        <a href="#magic" class="btn-secondary">🔮 試玩魔法模擬器</a>
+      </div>
+    </div>
+    <div class="hero-preview-wrapper">
+      <img id="hero-banner-img" src="assets/hero_banner.jpg" alt="Midnight's Bastion Hero Banner" class="hero-preview-img" />
+      <div class="hero-stats-badge">
+        <div>
+          <div class="hero-stat-val">27/27</div>
+          <div class="hero-stat-label">完整功能已上線</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">280+</div>
+          <div class="hero-stat-label">自動化驗證測試</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">∞</div>
+          <div class="hero-stat-label">無盡生存輪次挑戰</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 1: Day/Night Cycle -->
+  <section id="cycle">
+    <div class="section-header">
+      <span class="section-tag">THE DUAL CYCLE</span>
+      <h2 class="section-title">日夜生死輪替機制</h2>
+      <p class="section-desc">時間是你最殘酷的敵人。白天是建立防禦與擴張資源的唯一機會，夜晚則是血與火的試煉。</p>
+    </div>
+
+    <div class="cycle-showcase">
+      <div class="cycle-text-block">
+        <div class="cycle-controls">
+          <button id="btn-day-cycle" class="cycle-btn">
+            <span>☀️</span> 白天：拓荒建設 (120s)
+          </button>
+          <button id="btn-night-cycle" class="cycle-btn active">
+            <span>🌙</span> 黑夜：萬獸破曉 (60s)
+          </button>
+        </div>
+
+        <div id="cycle-details">
+          <h3 id="cycle-info-title" style="font-family: var(--font-cinzel); font-size: 1.6rem; color: #fff; margin-bottom: 0.8rem;">
+            🌙 黑夜守城：抵禦血月侵襲
+          </h3>
+          <p id="cycle-info-desc" style="color: var(--text-muted); line-height: 1.7; margin-bottom: 1.5rem;">
+            地圖邊緣的巢穴將隨時間加速湧出狼人、吸血鬼與巨型殭屍。防禦塔將自動進行遠程齊射，法師可施放殖民地天罰法術，全殲當晚所有怪物可獲得 2 點全域技能天賦點數！
+          </p>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.95rem; color: var(--gold-bright);">
+            <li>✓ 自動集火防禦塔阻擊</li>
+            <li>✓ <kbd>F1</kbd>/<kbd>F2</kbd>/<kbd>F3</kbd> 全圖法術即時支援</li>
+            <li>✓ 波次結算技能點數獎勵（Full Clear +2 點）</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cycle-visual">
+        <img id="cycle-visual-img" src="assets/hero_banner.jpg" alt="Cycle Visual" class="cycle-img" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2: Heroes & Roles -->
+  <section id="heroes">
+    <div class="section-header">
+      <span class="section-tag">COLONY ROLES</span>
+      <h2 class="section-title">三大傳奇職業體系</h2>
+      <p class="section-desc">每一位殖民者都有其獨特天命。農夫、騎士與法師相互扶持，構築堅不可摧的生存鏈。</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card">
+        <div class="card-icon" style="color: #78c85a;">🌾</div>
+        <h3 class="card-title">農夫 (Farmer)</h3>
+        <p class="card-text">
+          殖民地的生命線。擁有 0.6x 工作時間倍率，負責農田播種、生長維護與小麥採收。具備 1.5 倍野生動物馴服成功率，是建立獸欄畜牧業的關鍵。
+        </p>
+        <span class="card-badge" style="background: rgba(120, 200, 90, 0.15); color: #9be080;">經濟核心 • 馴化專家</span>
+      </div>
+
+      <div class="card">
+        <div class="card-icon" style="color: #aabed2;">⚔️</div>
+        <h3 class="card-title">騎士 (Knight)</h3>
+        <p class="card-text">
+          重裝前線守護者。具備高達 140 生命值、18 點物理攻擊與 8 點護甲。在狩獵野生動物時享有 50% 機率的致命一擊（200% 暴擊傷害）特權。
+        </p>
+        <span class="card-badge" style="background: rgba(170, 190, 210, 0.15); color: #d0e0f0;">銅牆鐵壁 • 狩獵暴擊</span>
+      </div>
+
+      <div class="card">
+        <div class="card-icon" style="color: #a05adc;">🔮</div>
+        <h3 class="card-title">法師 (Mage)</h3>
+        <p class="card-text">
+          掌控元素真理的奧術大師。普通攻擊具備 3 格超遠攻擊距離，更是全殖民地天罰魔法的唯一引導者，存活時才能召喚火焰、閃電與極地冰霜。
+        </p>
+        <span class="card-badge" style="background: rgba(160, 90, 220, 0.15); color: #d5a0ff;">遠程轟殺 • 奧術共鳴</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3: Spell Arsenal Playground -->
+  <section id="magic">
+    <div class="section-header">
+      <span class="section-tag">ARCANE ARSENAL</span>
+      <h2 class="section-title">全圖魔法打擊模擬器</h2>
+      <p class="section-desc">只要殖民地有存活的法師，即可不限位置對領地威脅發動天罰。點擊下方按鈕或按下熱鍵親自體驗！</p>
+    </div>
+
+    <div class="spell-playground">
+      <div class="spell-slots">
+        <div class="spell-card fire" onclick="castSpell('fire')">
+          <div class="spell-hotkey">F1</div>
+          <span class="spell-icon">🔥</span>
+          <div class="spell-name">火焰術 (Fire)</div>
+          <div class="spell-meta">15 爆發 + 3s 燃燒 DoT<br>冷卻：15 秒</div>
+        </div>
+
+        <div class="spell-card lightning active" onclick="castSpell('lightning')">
+          <div class="spell-hotkey">F2</div>
+          <span class="spell-icon">⚡</span>
+          <div class="spell-name">閃電術 (Lightning)</div>
+          <div class="spell-meta">30 點超高瞬間爆發<br>冷卻：20 秒</div>
+        </div>
+
+        <div class="spell-card freeze" onclick="castSpell('freeze')">
+          <div class="spell-hotkey">F3</div>
+          <span class="spell-icon">🧊</span>
+          <div class="spell-name">凍結術 (Freeze)</div>
+          <div class="spell-meta">3×3 範圍定身 4 秒<br>冷卻：25 秒</div>
+        </div>
+      </div>
+
+      <div id="spell-canvas-container">
+        <canvas id="spell-canvas"></canvas>
+        <div class="spell-hint">💡 點擊上方卡片或在畫布內點擊怪物，施放毀滅魔法！</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: Interactive Skill Tree Builder -->
+  <section id="skills">
+    <div class="section-header">
+      <span class="section-tag">TALENT TREE CALCULATOR</span>
+      <h2 class="section-title">全域天賦樹加點模擬器</h2>
+      <p class="section-desc">黑夜完美清場可奪得珍貴的技能點數。按 <kbd>K</kbd> 鍵隨時開啟技能面板，打造你的專屬殖民地派系！</p>
+    </div>
+
+    <div class="skill-tree-box">
+      <div class="skill-header-bar">
+        <div>
+          <h3 style="font-family: var(--font-cinzel); font-size: 1.4rem; color: #fff;">天賦配置清單</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">所有天賦為全殖民地共享加成效果</p>
+        </div>
+        <div class="points-badge">
+          <span>可用技能點數：</span>
+          <span id="skill-points-display">4</span>
+          <button onclick="resetSkills()" class="btn-secondary" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; margin-left: 1rem;">重置天賦</button>
+        </div>
+      </div>
+
+      <div class="skill-list">
+        <div class="skill-item">
+          <div class="skill-info">
+            <h4>⚡ 採集極速 (Gather Speed)</h4>
+            <p>提升所有 NPC 採集木材/原石速率 (每級 +15%)</p>
+          </div>
+          <div class="skill-controls">
+            <span class="skill-lvl-counter" id="lvl-gather">Lv. 0</span>
+            <button class="btn-skill-add" onclick="upgradeSkill('gather')">+</button>
+          </div>
+        </div>
+
+        <div class="skill-item">
+          <div class="skill-info">
+            <h4>🎯 狩獵精準 (Hunting Accuracy)</h4>
+            <p>提升騎士對野獸之暴擊機率 (每級 +10%)</p>
+          </div>
+          <div class="skill-controls">
+            <span class="skill-lvl-counter" id="lvl-hunt">Lv. 0</span>
+            <button class="btn-skill-add" onclick="upgradeSkill('hunt')">+</button>
+          </div>
+        </div>
+
+        <div class="skill-item">
+          <div class="skill-info">
+            <h4>🐾 馴化大師 (Taming Ability)</h4>
+            <p>提升農夫馴服野生動物成功率 (每級 +10%)</p>
+          </div>
+          <div class="skill-controls">
+            <span class="skill-lvl-counter" id="lvl-tame">Lv. 0</span>
+            <button class="btn-skill-add" onclick="upgradeSkill('tame')">+</button>
+          </div>
+        </div>
+
+        <div class="skill-item">
+          <div class="skill-info">
+            <h4>🛡️ 銅牆鐵壁 (Defense Ability)</h4>
+            <p>全員永久提升 +2 防禦力 / +10 最大生命值</p>
+          </div>
+          <div class="skill-controls">
+            <span class="skill-lvl-counter" id="lvl-def">Lv. 0</span>
+            <button class="btn-skill-add" onclick="upgradeSkill('def')">+</button>
+          </div>
+        </div>
+
+        <div class="skill-item">
+          <div class="skill-info">
+            <h4>💥 秘法狂暴 (Magic Attack)</h4>
+            <p>所有法術全圖打擊威力提升 (每級 +15%)</p>
+          </div>
+          <div class="skill-controls">
+            <span class="skill-lvl-counter" id="lvl-magic">Lv. 0</span>
+            <button class="btn-skill-add" onclick="upgradeSkill('magic')">+</button>
+          </div>
+        </div>
+
+        <div class="skill-item">
+          <div class="skill-info">
+            <h4>❄️ 絕對零度 (AoE Attack)</h4>
+            <p>擴大凍結術半徑與定身時長 (額外擴散波及)</p>
+          </div>
+          <div class="skill-controls">
+            <span class="skill-lvl-counter" id="lvl-aoe">Lv. 0</span>
+            <button class="btn-skill-add" onclick="upgradeSkill('aoe')">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5: Bestiary -->
+  <section id="bestiary">
+    <div class="section-header">
+      <span class="section-tag">CREATURE DATABASE</span>
+      <h2 class="section-title">萬獸圖鑑與夜行者</h2>
+      <p class="section-desc">知己知彼，百戰不殆。了解荒野上的危險掠食者與可馴化生態夥伴。</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card" style="border-left: 4px solid var(--crimson);">
+        <h3 class="card-title">🐺 狼人 (Werewolf)</h3>
+        <p class="card-text">
+          速度高達 80 px/s 的狂暴突進者。在黑夜中會以最快速度直衝農田與未設防民房，需第一時間以凍結術阻斷！
+        </p>
+        <span class="card-badge" style="background: rgba(230, 57, 70, 0.15); color: #ff6b77;">高速突襲 • 50 HP</span>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--arcane-purple);">
+        <h3 class="card-title">🧛 吸血鬼 (Vampire)</h3>
+        <p class="card-text">
+          邪惡的夜行貴族（70 px/s）。攻擊命中 NPC 時會發動<strong>生命偷取（Life-Steal）</strong>回復自身生命，必須以閃電術高爆發快速集火斬殺。
+        </p>
+        <span class="card-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">攻擊吸血 • 40 HP</span>
+      </div>
+
+      <div class="card" style="border-left: 4px solid #888;">
+        <h3 class="card-title">🧟 殭屍 (Zombie)</h3>
+        <p class="card-text">
+          速度緩慢（40 px/s）但擁有驚人的 90 點巨額生命值與 4 點護甲。防禦塔的天然肉盾，適合以火焰術進行持續燃燒輸出。
+        </p>
+        <span class="card-badge" style="background: rgba(255, 255, 255, 0.1); color: #ddd;">攻城坦克 • 90 HP</span>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--emerald);">
+        <h3 class="card-title">🐎 靈駒 (Horse)</h3>
+        <p class="card-text">
+          荒野中最珍貴的中立生物。被農夫馴服並安置於獸欄後，能為全體殖民者賦予 <strong>+30 px/s 永久移動加速</strong>光環！
+        </p>
+        <span class="card-badge" style="background: rgba(46, 196, 182, 0.15); color: #48cae4;">馴養增益 • 全員加速</span>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--ember-orange);">
+        <h3 class="card-title">🐗 野豬 (Wild Boar)</h3>
+        <p class="card-text">
+          漫遊於前線森林。可由騎士狩獵獲得 3 單位肉品，或由農夫馴化入住獸欄，每 30 秒自動被動產出新鮮肉品儲備！
+        </p>
+        <span class="card-badge" style="background: rgba(255, 123, 0, 0.15); color: #ffb703;">生態經濟 • 肉品產出</span>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--gold-primary);">
+        <h3 class="card-title">🐻 狂暴巨熊 (Bear)</h3>
+        <p class="card-text">
+          危險中立野獸（60 HP）。平時被動漫遊不主動攻擊，但一旦遭受攻擊會立刻進入狂暴反擊狀態，擊殺可獲得 5 份高額肉品。
+        </p>
+        <span class="card-badge" style="background: rgba(245, 197, 66, 0.15); color: #ffe680;">反擊野獸 • 60 HP</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 6: Launch Game Command -->
+  <section id="launch">
+    <div class="launch-cta">
+      <div class="hero-badge">✦ 立即進入戰場 ✦</div>
+      <h2 class="section-title">準備好捍衛你的殖民地了嗎？</h2>
+      <p class="section-desc" style="max-width: 600px; margin: 0 auto;">
+        在終端機中貼上以下指令，即刻啟動 Python PyGame 原生引擎，體驗最純粹的暗黑奇幻生存！
+      </p>
+
+      <div class="command-box">
+        <span class="command-text" id="cmd-text">& "D:\python_game\PyGame-Final\.venv\Scripts\python.exe" src/main.py</span>
+        <button class="btn-copy" onclick="copyLaunchCommand()">複製指令 📋</button>
+      </div>
+
+      <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;">
+        <span style="color: var(--text-muted); font-size: 0.9rem;">⌨️ 操作：<kbd style="background:#222; padding:2px 6px; border-radius:4px;">P</kbd> 工作排程</span>
+        <span style="color: var(--text-muted); font-size: 0.9rem;">⌨️ 魔法：<kbd style="background:#222; padding:2px 6px; border-radius:4px;">F1</kbd> 火焰 / <kbd style="background:#222; padding:2px 6px; border-radius:4px;">F2</kbd> 閃電 / <kbd style="background:#222; padding:2px 6px; border-radius:4px;">F3</kbd> 冰凍</span>
+        <span style="color: var(--text-muted); font-size: 0.9rem;">⌨️ 天賦：<kbd style="background:#222; padding:2px 6px; border-radius:4px;">K</kbd> 技能樹</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>© 2026 《午夜要塞：破曉之役》MIDNIGHT'S BASTION. Built with Pygame & HTML5 Canvas.</p>
+  </footer>
+
+  <!-- Web Audio & Interactive Script -->
+  <script>
+    // ── Web Audio Synthesizer (Zero Assets Audio Engine) ───────────
+    let audioCtx = null;
+    let sfxEnabled = true;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!sfxEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+
+        if (type === 'click') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'lightning') {
+          // Thunder zap + noise
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } else if (type === 'fire') {
+          // Flame whoosh
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } else if (type === 'freeze') {
+          // Ice chime
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.exponentialRampToValueAtTime(1760, now + 0.25);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        }
+      } catch (e) {
+        console.log("Audio not allowed yet:", e);
+      }
+    }
+
+    document.getElementById('sfx-toggle').addEventListener('click', () => {
+      sfxEnabled = !sfxEnabled;
+      document.getElementById('sfx-status').textContent = sfxEnabled ? "音效 ON" : "音效 OFF";
+      playSound('click');
+    });
+
+    // ── Day / Night Mode Toggle ──────────────────────────────────
+    let isDay = false;
+    const themeBtn = document.getElementById('theme-toggle');
+    const heroBannerImg = document.getElementById('hero-banner-img');
+    const cycleVisualImg = document.getElementById('cycle-visual-img');
+
+    function setCycleMode(day) {
+      isDay = day;
+      if (isDay) {
+        document.body.classList.add('day-mode');
+        document.getElementById('theme-icon').textContent = '☀️';
+        document.getElementById('theme-text').textContent = '日間模式';
+        document.getElementById('btn-day-cycle').classList.add('active');
+        document.getElementById('btn-night-cycle').classList.remove('active');
+        heroBannerImg.src = 'assets/colony_day.jpg';
+        cycleVisualImg.src = 'assets/colony_day.jpg';
+
+        document.getElementById('cycle-info-title').textContent = '☀️ 白天拓荒：繁榮與擴張領地';
+        document.getElementById('cycle-info-desc').textContent = '陽光驅散暗夜迷霧。指派農夫在農田栽種小麥、拓荒者擴張邊境、伐木工儲備建材、建造堅固石牆與民房擴充人口上限，並馴服荒野靈駒！';
+      } else {
+        document.body.classList.remove('day-mode');
+        document.getElementById('theme-icon').textContent = '🌙';
+        document.getElementById('theme-text').textContent = '夜間模式';
+        document.getElementById('btn-day-cycle').classList.remove('active');
+        document.getElementById('btn-night-cycle').classList.add('active');
+        heroBannerImg.src = 'assets/hero_banner.jpg';
+        cycleVisualImg.src = 'assets/hero_banner.jpg';
+
+        document.getElementById('cycle-info-title').textContent = '🌙 黑夜守城：抵禦血月侵襲';
+        document.getElementById('cycle-info-desc').textContent = '地圖邊緣的巢穴將隨時間加速湧出狼人、吸血鬼與巨型殭屍。防禦塔將自動進行遠程齊射，法師可施放殖民地天罰法術，全殲當晚所有怪物可獲得 2 點全域技能天賦點數！';
+      }
+      playSound('click');
+    }
+
+    themeBtn.addEventListener('click', () => setCycleMode(!isDay));
+    document.getElementById('btn-day-cycle').addEventListener('click', () => setCycleMode(true));
+    document.getElementById('btn-night-cycle').addEventListener('click', () => setCycleMode(false));
+
+    // ── Ambient Background Canvas ────────────────────────────────
+    const ambCanvas = document.getElementById('ambient-canvas');
+    const ambCtx = ambCanvas.getContext('2d');
+    let particles = [];
+
+    function resizeAmbCanvas() {
+      ambCanvas.width = window.innerWidth;
+      ambCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeAmbCanvas);
+    resizeAmbCanvas();
+
+    for (let i = 0; i < 40; i++) {
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 2 + 1,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -Math.random() * 0.5 - 0.2,
+        alpha: Math.random() * 0.6 + 0.2
+      });
+    }
+
+    function renderAmbient() {
+      ambCtx.clearRect(0, 0, ambCanvas.width, ambCanvas.height);
+      ambCtx.fillStyle = isDay ? 'rgba(255, 220, 100, ' : 'rgba(245, 197, 66, ';
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.y < 0) p.y = ambCanvas.height;
+        if (p.x < 0) p.x = ambCanvas.width;
+        if (p.x > ambCanvas.width) p.x = 0;
+
+        ambCtx.beginPath();
+        ambCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ambCtx.fillStyle = (isDay ? 'rgba(255, 220, 120, ' : 'rgba(255, 180, 50, ') + p.alpha + ')';
+        ambCtx.fill();
+      });
+      requestAnimationFrame(renderAmbient);
+    }
+    renderAmbient();
+
+    // ── Interactive Spell Playground Canvas ──────────────────────
+    const spellCanvas = document.getElementById('spell-canvas');
+    const spellCtx = spellCanvas.getContext('2d');
+    let spellEffects = [];
+    let targets = [];
+
+    function resizeSpellCanvas() {
+      const container = document.getElementById('spell-canvas-container');
+      spellCanvas.width = container.clientWidth;
+      spellCanvas.height = container.clientHeight;
+    }
+    window.addEventListener('resize', resizeSpellCanvas);
+    resizeSpellCanvas();
+
+    // Spawn animated mock monsters
+    for (let i = 0; i < 5; i++) {
+      targets.push({
+        x: 100 + i * 160,
+        y: 140 + (i % 2) * 30,
+        type: i % 3 === 0 ? 'Werewolf 🐺' : (i % 3 === 1 ? 'Vampire 🧛' : 'Zombie 🧟'),
+        hp: 100,
+        frozen: 0,
+        burning: 0
+      });
+    }
+
+    function castSpell(type) {
+      playSound(type);
+      const target = targets[Math.floor(Math.random() * targets.length)];
+
+      if (type === 'fire') {
+        spellEffects.push({
+          type: 'fire',
+          x: target.x,
+          y: target.y,
+          radius: 10,
+          maxRadius: 70,
+          alpha: 1.0,
+          color: 'rgba(255, 100, 20,'
+        });
+        target.hp = Math.max(0, target.hp - 25);
+        target.burning = 180;
+      } else if (type === 'lightning') {
+        spellEffects.push({
+          type: 'lightning',
+          x: target.x,
+          y: target.y,
+          alpha: 1.0
+        });
+        target.hp = Math.max(0, target.hp - 40);
+      } else if (type === 'freeze') {
+        spellEffects.push({
+          type: 'freeze',
+          x: target.x,
+          y: target.y,
+          radius: 15,
+          maxRadius: 100,
+          alpha: 1.0,
+          color: 'rgba(86, 204, 242,'
+        });
+        targets.forEach(t => {
+          if (Math.hypot(t.x - target.x, t.y - target.y) < 140) {
+            t.frozen = 240;
+            t.hp = Math.max(0, t.hp - 10);
+          }
+        });
+      }
+    }
+
+    // Keyboard Hotkey Listener (F1, F2, F3)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F1') { e.preventDefault(); castSpell('fire'); }
+      if (e.key === 'F2') { e.preventDefault(); castSpell('lightning'); }
+      if (e.key === 'F3') { e.preventDefault(); castSpell('freeze'); }
+    });
+
+    spellCanvas.addEventListener('click', (e) => {
+      const rect = spellCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      // Find closest target
+      let closest = targets[0];
+      let minD = Infinity;
+      targets.forEach(t => {
+        const d = Math.hypot(t.x - x, t.y - y);
+        if (d < minD) { minD = d; closest = t; }
+      });
+      castSpell(['lightning', 'fire', 'freeze'][Math.floor(Math.random() * 3)]);
+    });
+
+    function renderSpellPlayground() {
+      spellCtx.fillStyle = '#06070a';
+      spellCtx.fillRect(0, 0, spellCanvas.width, spellCanvas.height);
+
+      // Grid Lines
+      spellCtx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      for (let x = 0; x < spellCanvas.width; x += 40) {
+        spellCtx.beginPath(); spellCtx.moveTo(x, 0); spellCtx.lineTo(x, spellCanvas.height); spellCtx.stroke();
+      }
+      for (let y = 0; y < spellCanvas.height; y += 40) {
+        spellCtx.beginPath(); spellCtx.moveTo(0, y); spellCtx.lineTo(spellCanvas.width, y); spellCtx.stroke();
+      }
+
+      // Draw Monsters
+      targets.forEach(t => {
+        if (t.hp <= 0) {
+          t.hp = 100; // revive loop for demo
+        }
+        if (t.frozen > 0) t.frozen--;
+        if (t.burning > 0) t.burning--;
+
+        // Draw Entity Box
+        spellCtx.save();
+        spellCtx.fillStyle = t.frozen > 0 ? '#48cae4' : (t.burning > 0 ? '#ff7b00' : '#e63946');
+        spellCtx.beginPath();
+        spellCtx.roundRect(t.x - 25, t.y - 25, 50, 50, 8);
+        spellCtx.fill();
+
+        // Label
+        spellCtx.fillStyle = '#fff';
+        spellCtx.font = '12px "Plus Jakarta Sans"';
+        spellCtx.textAlign = 'center';
+        spellCtx.fillText(t.type, t.x, t.y + 5);
+
+        // HP bar
+        spellCtx.fillStyle = 'rgba(0,0,0,0.6)';
+        spellCtx.fillRect(t.x - 25, t.y - 35, 50, 6);
+        spellCtx.fillStyle = '#2ec4b6';
+        spellCtx.fillRect(t.x - 25, t.y - 35, (t.hp / 100) * 50, 6);
+        spellCtx.restore();
+      });
+
+      // Render VFX
+      spellEffects.forEach((fx, idx) => {
+        fx.alpha -= 0.03;
+        if (fx.type === 'lightning') {
+          spellCtx.save();
+          spellCtx.strokeStyle = `rgba(255, 245, 180, ${fx.alpha})`;
+          spellCtx.lineWidth = 6;
+          spellCtx.beginPath();
+          spellCtx.moveTo(fx.x + (Math.random() - 0.5) * 30, 0);
+          spellCtx.lineTo(fx.x, fx.y);
+          spellCtx.stroke();
+
+          spellCtx.fillStyle = `rgba(255, 255, 255, ${fx.alpha * 0.8})`;
+          spellCtx.beginPath();
+          spellCtx.arc(fx.x, fx.y, 35, 0, Math.PI * 2);
+          spellCtx.fill();
+          spellCtx.restore();
+        } else if (fx.type === 'fire' || fx.type === 'freeze') {
+          fx.radius += 3;
+          spellCtx.save();
+          spellCtx.fillStyle = `${fx.color} ${fx.alpha * 0.4})`;
+          spellCtx.beginPath();
+          spellCtx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2);
+          spellCtx.fill();
+
+          spellCtx.strokeStyle = `${fx.color} ${fx.alpha})`;
+          spellCtx.lineWidth = 3;
+          spellCtx.stroke();
+          spellCtx.restore();
+        }
+      });
+      spellEffects = spellEffects.filter(fx => fx.alpha > 0);
+
+      requestAnimationFrame(renderSpellPlayground);
+    }
+    renderSpellPlayground();
+
+    // ── Skill Tree Calculator Logic ─────────────────────────────
+    let availablePoints = 4;
+    const skills = { gather: 0, hunt: 0, tame: 0, def: 0, magic: 0, aoe: 0 };
+
+    function upgradeSkill(name) {
+      if (availablePoints > 0) {
+        availablePoints--;
+        skills[name]++;
+        document.getElementById(`lvl-${name}`).textContent = `Lv. ${skills[name]}`;
+        document.getElementById('skill-points-display').textContent = availablePoints;
+        playSound('click');
+      }
+    }
+
+    function resetSkills() {
+      for (const k in skills) {
+        availablePoints += skills[k];
+        skills[k] = 0;
+        document.getElementById(`lvl-${k}`).textContent = 'Lv. 0';
+      }
+      document.getElementById('skill-points-display').textContent = availablePoints;
+      playSound('click');
+    }
+
+    // ── Copy Command ───────────────────────────────────────────
+    function copyLaunchCommand() {
+      const cmd = document.getElementById('cmd-text').innerText;
+      navigator.clipboard.writeText(cmd).then(() => {
+        alert("已成功複製遊戲啟動指令！請在 PowerShell 終端機貼上執行。");
+        playSound('click');
+      });
+    }
+  </script>
+</body>
+</html>
