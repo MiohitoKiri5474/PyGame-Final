@@ -1,6 +1,9 @@
-"""HUD panels for inventory totals and per-NPC task status (ticket 10).
-Registers as hud_lines() providers via extensions.py - game.py already
-splices those into the HUD, no changes needed there."""
+"""HUD panel for inventory totals (ticket 10). Registers as a hud_lines()
+provider via extensions.py - game.py already splices those into the HUD,
+no changes needed there.
+
+Per-NPC task status used to live here too as a line that grew with the
+roster - moved to npc_status_ui.py's on-demand panel (N key) instead."""
 
 from __future__ import annotations
 
@@ -20,14 +23,4 @@ def _inventory_line(world: "World") -> str:
     return f"Inventory: {parts}"
 
 
-def _npc_tasks_line(world: "World") -> str:
-    if not world.npcs:
-        return "NPCs: (none)"
-    parts = ", ".join(
-        f"NPC{i}: {npc.task.type if npc.task else 'idle'}" for i, npc in enumerate(world.npcs, start=1)
-    )
-    return f"NPCs: {parts}"
-
-
 register_hud_line(_inventory_line)
-register_hud_line(_npc_tasks_line)

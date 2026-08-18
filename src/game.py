@@ -48,6 +48,8 @@ from tile_actions import applicable_tasks
 from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
+from npc_status_ui import NpcStatusUI
+import top_bar
 from save import load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
@@ -70,6 +72,7 @@ class Game:
         self.action_menu = ActionMenu()
         self.priority_ui = PriorityTableUI()
         self.skill_ui = SkillUI()
+        self.npc_status_ui = NpcStatusUI()
 
         checkpoint = load_checkpoint()
         if checkpoint is not None:
@@ -113,6 +116,10 @@ class Game:
                         event.key, self.world, self.skill_points_available
                     )
                     continue
+                if self.npc_status_ui.visible:
+                    if event.key in (pygame.K_n, pygame.K_ESCAPE):
+                        self.npc_status_ui.close()
+                    continue
                 if event.key == pygame.K_ESCAPE:
                     if self.action_menu.visible:
                         self.action_menu.close()
@@ -128,6 +135,8 @@ class Game:
                     self.priority_ui.toggle()
                 elif event.key == pygame.K_k:
                     self.skill_ui.toggle()
+                elif event.key == pygame.K_n:
+                    self.npc_status_ui.toggle()
                 elif event.key == pygame.K_F1:
                     if not self.paused:  # casting affects sim state, stays frozen with everything else
                         cast_fire(self.world, self.monsters)
@@ -145,7 +154,7 @@ class Game:
                 ):
                     self._select_build_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if not self.priority_ui.visible and not self.skill_ui.visible:
+                if not self.priority_ui.visible and not self.skill_ui.visible and not self.npc_status_ui.visible:
                     self.handle_click(event.pos)
 
     def _select_build_by_number(self, key: int) -> None:
@@ -286,6 +295,7 @@ class Game:
         self.action_menu.render(self.screen, self.font)
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
         self.skill_ui.render(self.screen, self.font, self.world, self.skill_points_available)
+        self.npc_status_ui.render(self.screen, self.font, self.world.npcs)
         self.render_game_over()
         pygame.display.flip()
 
@@ -434,31 +444,27 @@ class Game:
 
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
-        hover_info = self._hover_tile_info()
 
         build_hint = (
             f"Building: {self.build_bar.selected}  [Esc to cancel]"
             if self.build_bar.selected is not None
-            else "Click a tile to work it - buttons below to build  [P: Priority, K: Skills]"
+            else "Click a tile to work it - buttons below to build"
         )
 
-        lines = [
-            f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
-            f"NPCs alive: {len(self.world.npcs)}",
-            f"Skill points available: {self.skill_points_available} [K to spend]" if self.skill_points_available else "",
-            "PAUSED" if self.paused else "",
-            build_hint,
-            hover_info,
-            *hud_lines(self.world),
+        segments = [
+            (f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)", banner_color),
+            ("PAUSED" if self.paused else "", COLOR_TEXT),
+            (f"NPCs alive: {len(self.world.npcs)}  [N: Status]", COLOR_TEXT),
+            (
+                f"Skill points: {self.skill_points_available} [K]" if self.skill_points_available else "",
+                COLOR_TEXT,
+            ),
+            (build_hint, COLOR_TEXT),
+            ("[P] Priority", COLOR_TEXT),
+            *((text, COLOR_TEXT) for text in hud_lines(self.world)),
+            (self._hover_tile_info(), COLOR_TEXT),
         ]
-        y = 8
-        for i, text in enumerate(lines):
-            if not text:
-                continue
-            color = banner_color if i == 0 else COLOR_TEXT
-            surf = self.font.render(text, True, color)
-            self.screen.blit(surf, (8, y))
-            y += surf.get_height() + 4
+        top_bar.render(self.screen, self.font, segments)
 
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:
