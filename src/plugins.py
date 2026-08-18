@@ -11,3 +11,8 @@ import render_buildings  # noqa: F401
 import destroy_task  # noqa: F401
 import magic  # noqa: F401
 import render_magic  # noqa: F401
+import farmland_task  # noqa: F401
+import wildlife  # noqa: F401
+import hunt_task  # noqa: F401
+import tame_task  # noqa: F401
+import spoilage  # noqa: F401

@@ -4,13 +4,23 @@
 
 **Blocked by:** 24 — Wildlife / animal fauna.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] New `hunt_task.py` registers a `Hunt` task type via the standard `register_task_type` pattern
-- [ ] Queueing is rejected on a tile with no animal present
-- [ ] `task.py`'s arrival-branch logic (the one place moving-target re-path is introduced — don't duplicate this elsewhere) recomputes the NPC's path when the target animal's current tile differs from the tile it last pathed to
-- [ ] Arrival checks the animal's CURRENT position (not the stale snapshot) before resolving combat
-- [ ] Knight NPCs get a critical-hit-chance bonus against fauna specifically (not against monsters) in `combat.py`/`npc.py`
-- [ ] Animal death ends the Hunt task and hands off to ticket 26 (Post-Hunt decision)
-- [ ] `save.py` persists the hunted-animal's id on an in-progress Hunt task, mirroring the `assigned_npc_id`-by-id pattern from ticket 11 rather than a live object reference
-- [ ] Unit tests: reject-no-animal, re-path on animal movement, arrival uses current position, death hands off correctly
+- [x] New `hunt_task.py` registers a `Hunt` task type via the standard `register_task_type` pattern
+- [x] Queueing is rejected on a tile with no animal present
+- [x] `task.py`'s arrival-branch logic recomputes the NPC's path when the target animal's current tile differs from the tile it last pathed to
+- [x] Arrival checks the animal's CURRENT position (not the stale snapshot) before resolving combat
+- [x] Knight NPCs get a critical-hit-chance bonus against fauna specifically (not against monsters)
+- [x] Animal death ends the Hunt task and hands off to ticket 26 (Post-Hunt decision)
+- [x] `save.py` persists the hunted-animal's id on an in-progress Hunt task, mirroring the `assigned_npc_id`-by-id pattern from ticket 11 rather than a live object reference
+- [x] Unit tests: reject-no-animal, re-path on animal movement, arrival uses current position, death hands off correctly
+
+**Implementation notes:**
+- Created `src/hunt_task.py` with `can_queue_hunt`, `can_perform_hunt`, and `on_complete_hunt`.
+- Integrated moving-target re-pathing in `src/task.py`'s `update_npc_tasks` arrival branch.
+- Added `Animal.id` and `Animal.retaliate()`.
+- Added serialization for `target_animal_id` in `src/save.py`.
+- Unit tests written in `tests/test_hunt_task.py`.
+
+
+**Integration note:** this implementation (n97131056's `feat/food-spoilage` stack) was independently built in parallel with my own `feat/wildlife-fauna` (ticket 24) attempt, which is superseded and closed in favor of this one - the Hunt/Taming/Spoilage pipeline needs an id-addressable `Animal` (to track which specific animal was killed/tamed), which this design has and mine didn't. Merged onto `develop` + House (ticket 15) + Farmland (ticket 17), which this branch predated: resolved conflicts in `constants.py` (duplicate stale `ROLES` block dropped), `render_buildings.py` (combined the magenta-unknown-type fallback with AnimalPen/Farmland-ready coloring), `save.py` (buildings now persist both `growth_timer`/`ready` and `assigned_animal_id`; inventory load order preserved so ledger restoration doesn't double-credit shelf life), and `game.py`/`plugins.py`/`world.py` (additive import merges). Full suite green post-merge on the first attempt (218 tests), no logic changes needed beyond the merge itself.
