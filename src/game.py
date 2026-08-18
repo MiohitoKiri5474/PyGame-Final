@@ -50,6 +50,7 @@ from npc import NPC
 from monster import spawn_monster
 from pathfinding import find_path
 from settlement import evaluate_wave
+from population import maybe_spawn_npc
 from task import TASK_TYPES, update_npc_tasks
 from extensions import hud_lines, render_overlays, run_ticks
 from world import World
@@ -251,6 +252,8 @@ class Game:
                 )
                 if self.skill_points_available > 0:
                     self.paused = True
+
+            maybe_spawn_npc(self.world, self.cycle.round_number, transitioned and self.cycle.phase == DAY)
 
             if transitioned:
                 save_checkpoint(
