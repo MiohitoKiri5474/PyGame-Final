@@ -10,6 +10,7 @@ from day_night import DayNightCycle
 from game_over import GameOverState
 from grid import Grid, Tile
 from inventory import Inventory
+from magic import Spellbook
 from monster import Monster
 from nest import Nest, NestManager
 from npc import NPC
@@ -59,6 +60,7 @@ def dump_state(
         "monsters_killed_this_night": monsters_killed_this_night,
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
+        "spellbook_cooldowns": world.spellbook.cooldowns,
         "buildings": [
             {"type": b.type, "x": b.x, "y": b.y, "block": b.block, "attack": b.attack}
             for b in world.buildings
@@ -102,6 +104,10 @@ def dump_state(
                 "health": m.health,
                 "attack": m.attack,
                 "defense": m.defense,
+                "burn_ticks_remaining": m.burn_ticks_remaining,
+                "burn_damage_per_tick": m.burn_damage_per_tick,
+                "frozen_remaining": m.frozen_remaining,
+                "type": m.type,
             }
             for m in monsters
         ],
@@ -130,6 +136,7 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     world.inventory = Inventory()
     for resource, amount in data["inventory"].items():
         world.inventory.add(resource, amount)
+    world.spellbook = Spellbook(cooldowns=data.get("spellbook_cooldowns", {}))
     world.buildings = [
         Building(type=b["type"], x=b["x"], y=b["y"], block=b["block"], attack=b["attack"])
         for b in data["buildings"]
@@ -183,11 +190,17 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
 
     monsters = []
     for md in data["monsters"]:
-        monster = Monster(md["x"], md["y"], speed=md["speed"])
+        monster = Monster(md["x"], md["y"], speed=md["speed"], type=md.get("type"))
         monster.path = [tuple(p) for p in md["path"]]
         monster.health = md["health"]
         monster.attack = md["attack"]
         monster.defense = md["defense"]
+        monster.burn_ticks_remaining = md.get("burn_ticks_remaining", 0)
+        monster.burn_damage_per_tick = md.get("burn_damage_per_tick", 0)
+        monster.frozen_remaining = md.get("frozen_remaining", 0.0)
+        # burn_tick_timer intentionally not persisted - sub-second timing
+        # precision on a 3-second DoT isn't worth the extra save-file field;
+        # a reloaded mid-burn monster just restarts its current tick's timer.
         monsters.append(monster)
 
     return (

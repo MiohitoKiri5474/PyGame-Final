@@ -1,6 +1,7 @@
 import random
+from collections import Counter
 
-from constants import NEST_MAX_COUNT
+from constants import MONSTER_SPAWN_WEIGHTS, MONSTER_WEREWOLF, NEST_MAX_COUNT
 from day_night import DAY, NIGHT
 from nest import Nest, NestManager, create_initial_nests
 
@@ -50,3 +51,15 @@ def test_create_initial_nests_returns_requested_count_on_map_edge():
     assert len(nests) == 3
     for nest in nests:
         assert nest.x in (0, 9) or nest.y in (0, 9)
+
+
+def test_pick_monster_type_returns_a_known_type():
+    manager = NestManager(width=10, height=10, rng=random.Random(1))
+    assert manager.pick_monster_type() in MONSTER_SPAWN_WEIGHTS
+
+
+def test_pick_monster_type_distribution_favors_higher_weight():
+    manager = NestManager(width=10, height=10, rng=random.Random(1))
+    picks = Counter(manager.pick_monster_type() for _ in range(500))
+    assert set(picks) == set(MONSTER_SPAWN_WEIGHTS)  # every type appears
+    assert picks[MONSTER_WEREWOLF] == max(picks.values())  # highest weight (4 vs 3/3)

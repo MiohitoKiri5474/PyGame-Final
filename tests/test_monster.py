@@ -1,3 +1,13 @@
+from constants import (
+    MONSTER_ATTACK,
+    MONSTER_DEFENSE,
+    MONSTER_MAX_HEALTH,
+    MONSTER_SPEED,
+    MONSTER_STATS,
+    MONSTER_VAMPIRE,
+    MONSTER_WEREWOLF,
+    MONSTER_ZOMBIE,
+)
 from coords import tile_center
 from monster import Monster, nearest_claimed_tile, spawn_monster
 
@@ -61,6 +71,155 @@ def test_monster_is_dead_at_zero_health():
     monster = Monster(x=0.0, y=0.0)
     monster.health = 0
     assert monster.is_dead
+
+
+class TestBurn:
+    def test_apply_burn_sets_state(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_burn(damage_per_tick=5, ticks=3)
+        assert monster.burn_ticks_remaining == 3
+        assert monster.burn_damage_per_tick == 5
+
+    def test_burn_deals_damage_once_per_second(self):
+        monster = Monster(x=0.0, y=0.0)
+        start_health = monster.health
+        monster.apply_burn(damage_per_tick=5, ticks=3)
+
+        monster.update(0.5)
+        assert monster.health == start_health  # under 1s, no tick yet
+
+        monster.update(0.5)  # crosses the 1.0s mark
+        assert monster.health == start_health - 5
+        assert monster.burn_ticks_remaining == 2
+
+    def test_burn_deals_total_damage_over_full_duration(self):
+        monster = Monster(x=0.0, y=0.0)
+        start_health = monster.health
+        monster.apply_burn(damage_per_tick=5, ticks=3)
+
+        for _ in range(4):  # 4 seconds, generous margin over the 3 ticks
+            monster.update(1.0)
+
+        assert monster.health == start_health - 15  # 3 ticks * 5
+        assert monster.burn_ticks_remaining == 0
+
+    def test_burn_expires_and_stops_dealing_damage(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_burn(damage_per_tick=5, ticks=1)
+        monster.update(1.0)
+        health_after_expiry = monster.health
+
+        monster.update(5.0)  # well past expiry
+        assert monster.health == health_after_expiry
+
+    def test_no_burn_by_default(self):
+        monster = Monster(x=0.0, y=0.0)
+        start_health = monster.health
+        monster.update(10.0)
+        assert monster.health == start_health
+
+    def test_burn_does_not_error_when_monster_dies_mid_burn(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.health = 3
+        monster.apply_burn(damage_per_tick=5, ticks=3)
+        monster.update(1.0)  # first tick drops health below zero
+        assert monster.is_dead
+        monster.update(1.0)  # must not raise even though "dead"
+        assert monster.burn_ticks_remaining == 1
+
+
+class TestFreeze:
+    def test_apply_freeze_sets_remaining(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_freeze(4.0)
+        assert monster.is_frozen
+        assert monster.frozen_remaining == 4.0
+
+    def test_frozen_monster_does_not_advance_path(self):
+        start_x, start_y = tile_center(0, 0)
+        monster = Monster(x=start_x, y=start_y, speed=1000.0)
+        monster.set_path([(2, 0)])
+        monster.apply_freeze(4.0)
+
+        monster.update(1.0)
+
+        assert (monster.x, monster.y) == (start_x, start_y)
+        assert monster.path  # never consumed while frozen
+
+    def test_monster_resumes_moving_once_freeze_expires(self):
+        start_x, start_y = tile_center(0, 0)
+        monster = Monster(x=start_x, y=start_y, speed=1000.0)
+        monster.set_path([(2, 0)])
+        monster.apply_freeze(1.0)
+
+        monster.update(1.0)  # freeze expires exactly here
+        monster.update(0.1)  # now free to move
+
+        assert monster.x > start_x
+
+    def test_freeze_counts_down_and_expires(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_freeze(4.0)
+        monster.update(1.5)
+        assert monster.frozen_remaining == 2.5
+        assert monster.is_frozen
+        monster.update(2.5)
+        assert monster.frozen_remaining == 0.0
+        assert not monster.is_frozen
+
+    def test_no_freeze_by_default(self):
+        monster = Monster(x=0.0, y=0.0)
+        assert not monster.is_frozen
+
+    def test_reapplying_freeze_refreshes_not_stacks(self):
+        monster = Monster(x=0.0, y=0.0)
+        monster.apply_freeze(4.0)
+        monster.update(3.0)  # 1.0 remaining
+        monster.apply_freeze(4.0)  # re-hit while still frozen
+        assert monster.frozen_remaining == 4.0  # refreshed, not 1.0 + 4.0
+
+
+class TestMonsterVariety:
+    def test_default_type_none_keeps_flat_constant_stats(self):
+        monster = Monster(x=0.0, y=0.0)
+        assert monster.type is None
+        assert monster.speed == MONSTER_SPEED
+        assert monster.max_health == MONSTER_MAX_HEALTH
+        assert monster.health == MONSTER_MAX_HEALTH
+        assert monster.attack == MONSTER_ATTACK
+        assert monster.defense == MONSTER_DEFENSE
+        assert monster.life_steal is False
+
+    def test_werewolf_stats_from_table(self):
+        monster = Monster(x=0.0, y=0.0, type=MONSTER_WEREWOLF)
+        stats = MONSTER_STATS[MONSTER_WEREWOLF]
+        assert monster.speed == stats["speed"]
+        assert monster.max_health == stats["max_health"]
+        assert monster.health == stats["max_health"]
+        assert monster.attack == stats["attack"]
+        assert monster.defense == stats["defense"]
+        assert monster.life_steal is False
+
+    def test_vampire_has_life_steal(self):
+        monster = Monster(x=0.0, y=0.0, type=MONSTER_VAMPIRE)
+        assert monster.life_steal is True
+        assert monster.max_health == MONSTER_STATS[MONSTER_VAMPIRE]["max_health"]
+
+    def test_zombie_is_slow_and_tanky(self):
+        monster = Monster(x=0.0, y=0.0, type=MONSTER_ZOMBIE)
+        stats = MONSTER_STATS[MONSTER_ZOMBIE]
+        assert monster.speed == stats["speed"]
+        assert monster.max_health == stats["max_health"]
+
+    def test_explicit_speed_overrides_type_table_speed(self):
+        monster = Monster(x=0.0, y=0.0, type=MONSTER_ZOMBIE, speed=999.0)
+        assert monster.speed == 999.0
+
+    def test_spawn_monster_passes_type_through(self):
+        grid = _FakeGrid(3, 3, claimed={(2, 2)})
+        monster = spawn_monster((0, 0), grid, monster_type=MONSTER_VAMPIRE)
+        assert monster.type == MONSTER_VAMPIRE
+        assert monster.life_steal is True
 
 
 class _Building:

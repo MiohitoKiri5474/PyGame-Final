@@ -155,3 +155,36 @@ HOUSE_COST = {"wood": 4, "bricks": 2}
 HOUSE_WORK_SECONDS = 4.0
 COLOR_HOUSE = (180, 140, 90)
 COLOR_UNKNOWN_BUILDING = (255, 0, 255)  # unmistakable "missing render mapping" marker
+
+# --- Magic framework + Lightning (ticket 18) ---
+LIGHTNING_DAMAGE = 35
+LIGHTNING_COOLDOWN = 20.0
+MAGIC_FLASH_DURATION = 0.3
+COLOR_LIGHTNING_FLASH = (255, 255, 120)
+
+# --- Fire spell (ticket 19) ---
+FIRE_DAMAGE = 25
+FIRE_COOLDOWN = 15.0
+FIRE_BURN_DAMAGE_PER_TICK = 5
+FIRE_BURN_TICKS = 3
+FIRE_BURN_TICK_INTERVAL = 1.0
+COLOR_FIRE_FLASH = (255, 120, 40)
+
+# --- Freeze spell (ticket 20) ---
+FREEZE_COOLDOWN = 25.0
+FREEZE_DURATION = 4.0
+FREEZE_RADIUS = 1  # 3x3 box: center tile +/- this radius on each axis
+COLOR_FREEZE_FLASH = (140, 220, 255)
+
+# --- Monster variety (ticket 21) ---
+MONSTER_WEREWOLF = "Werewolf"
+MONSTER_VAMPIRE = "Vampire"
+MONSTER_ZOMBIE = "Zombie"
+
+MONSTER_STATS = {
+    MONSTER_WEREWOLF: {"speed": 80.0, "max_health": 50, "attack": 14, "defense": 2, "life_steal": False},
+    MONSTER_VAMPIRE: {"speed": 70.0, "max_health": 40, "attack": 12, "defense": 3, "life_steal": True},
+    MONSTER_ZOMBIE: {"speed": 40.0, "max_health": 90, "attack": 8, "defense": 4, "life_steal": False},
+}
+
+MONSTER_SPAWN_WEIGHTS = {MONSTER_WEREWOLF: 4, MONSTER_VAMPIRE: 3, MONSTER_ZOMBIE: 3}
