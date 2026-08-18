@@ -145,7 +145,7 @@ def update_npc_tasks(world: "World", dt: float) -> None:
                 npc.work_sfx_timer = 0.001
             else:
                 timer += dt
-                if timer >= 0.55:
+                if timer >= 0.90:
                     tile = world.grid.get(*npc.task.target)
                     if tile.resource == "wood":
                         play_sfx("chop")
@@ -153,6 +153,7 @@ def update_npc_tasks(world: "World", dt: float) -> None:
                         play_sfx("gather")
                     timer = 0.001
                 npc.work_sfx_timer = timer
+
 
         npc.task_progress += dt
         if task_type is None:
