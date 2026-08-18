@@ -7,6 +7,7 @@ from blocking import is_wall_blocked
 from constants import HUNGER_EAT_THRESHOLD
 from coords import tile_at
 from pathfinding import find_path
+from skills import gather_speed_multiplier
 
 if TYPE_CHECKING:
     from world import World
@@ -133,7 +134,12 @@ def update_npc_tasks(world: "World", dt: float) -> None:
         npc.task_progress += dt
         if task_type is None:
             continue
-        if npc.task_progress < task_type.work_seconds * npc.work_multiplier:
+        required_seconds = task_type.work_seconds * npc.work_multiplier
+        if npc.task.type == "Gather":
+            # Gather Speed skill (ticket 23) stacks multiplicatively with the
+            # role's own work_multiplier rather than replacing it.
+            required_seconds *= gather_speed_multiplier(world)
+        if npc.task_progress < required_seconds:
             continue
 
         finished = task_type.on_complete(world, npc.task)

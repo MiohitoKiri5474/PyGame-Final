@@ -8,6 +8,7 @@ from grid import Grid
 from inventory import Inventory
 from magic import Spellbook
 from npc import NPC
+from skills import new_skill_levels
 from task import TaskQueue
 from wildlife import create_initial_animals
 
@@ -19,6 +20,7 @@ class World:
         self.tasks = TaskQueue()
         self.buildings: list = []
         self.spellbook = Spellbook()
+        self.skills = new_skill_levels()
         # Same rng-injection pattern as NestManager.rng - seedable/testable,
         # reused (not re-created per spawn) for the periodic top-up in
         # wildlife._tick_wildlife.

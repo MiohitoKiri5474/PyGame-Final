@@ -54,6 +54,7 @@ from task import TASK_TYPES, update_npc_tasks
 from extensions import hud_lines, render_overlays, run_ticks
 from world import World
 from priority_ui import PriorityTableUI
+from skill_ui import SkillUI
 from save import load_checkpoint, save_checkpoint
 
 _ROLE_COLORS = {
@@ -82,6 +83,7 @@ class Game:
         self.selected_npc: NPC | None = None
         self.selected_task_type: str | None = next(iter(TASK_TYPES), None)
         self.priority_ui = PriorityTableUI()
+        self.skill_ui = SkillUI()
 
         checkpoint = load_checkpoint()
         if checkpoint is not None:
@@ -116,9 +118,14 @@ class Game:
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
-                # Priority UI intercepts keys when open
+                # Priority UI and Skill UI intercept keys when open
                 if self.priority_ui.visible:
                     self.priority_ui.handle_key(event.key, self.world.npcs)
+                    continue
+                if self.skill_ui.visible:
+                    self.skill_points_available = self.skill_ui.handle_key(
+                        event.key, self.world, self.skill_points_available
+                    )
                     continue
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
@@ -128,6 +135,8 @@ class Game:
                     self._cycle_selected_task_type()
                 elif event.key == pygame.K_p:
                     self.priority_ui.toggle()
+                elif event.key == pygame.K_k:
+                    self.skill_ui.toggle()
                 elif event.key == pygame.K_F1:
                     if not self.paused:  # casting affects sim state, stays frozen with everything else
                         cast_fire(self.world, self.monsters)
@@ -145,7 +154,7 @@ class Game:
                 ):
                     self._select_task_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if not self.priority_ui.visible:
+                if not self.priority_ui.visible and not self.skill_ui.visible:
                     self.handle_click(event.pos)
 
     def _select_task_by_number(self, key: int) -> None:
@@ -201,7 +210,7 @@ class Game:
         return None
 
     def update(self, dt: float) -> None:
-        if not self.priority_ui.visible:
+        if not self.priority_ui.visible and not self.skill_ui.visible:
             keys = pygame.key.get_pressed()
             dx = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
             dy = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
@@ -259,6 +268,7 @@ class Game:
         render_overlays(self.screen, self.world, self.camera)
         self.render_hud()
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
+        self.skill_ui.render(self.screen, self.font, self.world, self.skill_points_available)
         self.render_game_over()
         pygame.display.flip()
 
@@ -405,7 +415,7 @@ class Game:
         lines = [
             f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
             f"NPCs alive: {len(self.world.npcs)}",
-            f"Skill points available: {self.skill_points_available}" if self.skill_points_available else "",
+            f"Skill points available: {self.skill_points_available} [K to spend]" if self.skill_points_available else "",
             "PAUSED" if self.paused else "",
             f"Tasks: {options_str}  [Keys 1-{len(TASK_TYPES)} / Tab, P for Priority]",
             hover_info,

@@ -261,3 +261,23 @@ FOOD_SHELF_LIFE = {
     "mushrooms": RAW_FOOD_SHELF_LIFE,
     "berries": PROCESSED_FOOD_SHELF_LIFE,
 }
+
+# --- Skill Upgrade UI & Tree (ticket 23) ---
+SKILL_GATHER_SPEED = "Gather Speed"
+SKILL_HUNTING_ACCURACY = "Hunting Accuracy"
+SKILL_TAMING_ABILITY = "Taming Ability"
+SKILL_DEFENSE_ABILITY = "Defense Ability"
+SKILL_MAGIC_ATTACK = "Magic Attack"
+SKILL_AOE_ATTACK = "AoE Attack"
+SKILL_NAMES = (
+    SKILL_GATHER_SPEED, SKILL_HUNTING_ACCURACY, SKILL_TAMING_ABILITY,
+    SKILL_DEFENSE_ABILITY, SKILL_MAGIC_ATTACK, SKILL_AOE_ATTACK,
+)
+
+GATHER_SPEED_REDUCTION_PER_LEVEL = 0.10  # 10% less Gather work-seconds/level, stacks with role multiplier
+HUNTING_ACCURACY_CRIT_BONUS_PER_LEVEL = 0.10  # +10pp Knight crit chance vs fauna, per level
+TAMING_SUCCESS_BONUS_PER_LEVEL = 0.10  # +10pp tame success rate, per level
+DEFENSE_BONUS_PER_LEVEL = 2  # flat defense, on top of role-based base
+HEALTH_BONUS_PER_LEVEL = 10  # flat max_health (and current health), on top of role-based base
+MAGIC_DAMAGE_MULTIPLIER_PER_LEVEL = 0.15  # +15% spell damage, per level
+AOE_RADIUS_BONUS_PER_LEVEL = 1  # +1 tile to Freeze's 3x3 box radius, per level

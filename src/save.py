@@ -16,6 +16,7 @@ from magic import Spellbook
 from monster import Monster
 from nest import Nest, NestManager
 from npc import NPC
+from skills import new_skill_levels
 from task import Task, TaskQueue
 from world import World
 
@@ -63,6 +64,7 @@ def dump_state(
         "grid": _dump_grid(world.grid),
         "inventory": world.inventory.items(),
         "spellbook_cooldowns": world.spellbook.cooldowns,
+        "skills": world.skills,
         "inventory_ledger": [
             {"resource": b.resource, "expires_in": b.expires_in, "amount": b.amount}
             for b in world.inventory.ledger
@@ -110,6 +112,7 @@ def dump_state(
                 "speed": npc.speed,
                 "path": [list(p) for p in npc.path],
                 "health": npc.health,
+                "max_health": npc.max_health,
                 "hunger": npc.hunger,
                 "alive": npc.alive,
                 "attack": npc.attack,
@@ -171,6 +174,9 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         for b in data.get("inventory_ledger", [])
     ]
     world.spellbook = Spellbook(cooldowns=data.get("spellbook_cooldowns", {}))
+    # {**defaults, **saved} guarantees every current skill name is present
+    # even from an older save predating a since-added skill.
+    world.skills = {**new_skill_levels(), **data.get("skills", {})}
     world.buildings = []
     for bd in data["buildings"]:
         building = Building(
@@ -218,6 +224,11 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         max_id = max(max_id, npc.id)
         npc.path = [tuple(p) for p in nd["path"]]
         npc.health = nd["health"]
+        # Explicit field, not re-derived from role: Defense Ability (ticket
+        # 23) can raise max_health above the role's base value, and that
+        # bonus must survive a reload. Falls back to the role-derived
+        # default for saves predating this field.
+        npc.max_health = nd.get("max_health", npc.max_health)
         npc.hunger = nd["hunger"]
         npc.alive = nd["alive"]
         npc.attack = nd["attack"]

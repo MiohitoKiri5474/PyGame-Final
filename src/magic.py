@@ -12,7 +12,6 @@ from constants import (
     FIRE_DAMAGE,
     FREEZE_COOLDOWN,
     FREEZE_DURATION,
-    FREEZE_RADIUS,
     LIGHTNING_COOLDOWN,
     LIGHTNING_DAMAGE,
     MAGIC_FLASH_DURATION,
@@ -21,6 +20,7 @@ from constants import (
 from coords import tile_at
 from extensions import register_hud_line, register_tick
 from monster import nearest_claimed_tile
+from skills import aoe_radius, magic_damage_multiplier
 
 if TYPE_CHECKING:
     from world import World
@@ -105,7 +105,7 @@ def _cast_single_target_spell(
     if target is None:
         return False
 
-    target.health -= damage
+    target.health -= int(damage * magic_damage_multiplier(world))
     if on_hit is not None:
         on_hit(target)
     world.spellbook.start_cooldown(spell, cooldown)
@@ -124,10 +124,19 @@ def cast_fire(world: "World", monsters: list["Monster"]) -> bool:
     Monster (ticked in Monster.update itself, not via
     extensions.register_tick: monsters live on Game, not World, so the
     register_tick hook - which only ever receives (world, dt) - has no way
-    to reach them)."""
+    to reach them). The burn's damage-per-tick is scaled by the same Magic
+    Attack multiplier as the direct hit (ticket 23) - without this, Fire's
+    total damage (hit + DoT) would gain proportionally less per skill level
+    than Lightning/Freeze's single scaled hit, since burn is a real chunk of
+    Fire's total output."""
+    # round(), not int(): FIRE_BURN_DAMAGE_PER_TICK is small (5) relative to
+    # the +15%/level step, so truncating (5.75 -> 5) would silently erase the
+    # level-1 bump entirely. The direct-hit damage elsewhere in this module
+    # is large enough that int() vs round() doesn't matter in practice.
+    burn_damage_per_tick = max(1, round(FIRE_BURN_DAMAGE_PER_TICK * magic_damage_multiplier(world)))
     return _cast_single_target_spell(
         world, monsters, "Fire", FIRE_DAMAGE, FIRE_COOLDOWN, COLOR_FIRE_FLASH,
-        on_hit=lambda target: target.apply_burn(FIRE_BURN_DAMAGE_PER_TICK, FIRE_BURN_TICKS),
+        on_hit=lambda target: target.apply_burn(burn_damage_per_tick, FIRE_BURN_TICKS),
     )
 
 
@@ -146,9 +155,10 @@ def cast_freeze(world: "World", monsters: list["Monster"]) -> bool:
         return False
 
     cx, cy = tile_at(center.x, center.y)
+    radius = aoe_radius(world)  # FREEZE_RADIUS + AoE Attack skill bonus (ticket 23)
     for monster in monsters:
         mx, my = tile_at(monster.x, monster.y)
-        if abs(mx - cx) <= FREEZE_RADIUS and abs(my - cy) <= FREEZE_RADIUS:
+        if abs(mx - cx) <= radius and abs(my - cy) <= radius:
             monster.apply_freeze(FREEZE_DURATION)
             world.spellbook.trigger_flash((monster.x, monster.y), MAGIC_FLASH_DURATION, COLOR_FREEZE_FLASH)
 
