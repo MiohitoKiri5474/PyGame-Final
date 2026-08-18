@@ -1,7 +1,12 @@
 """Post-Hunt: Food processing, Taming task, and Animal Pen building (ticket 26).
 
 - process_animal_for_food: credits meat to inventory and removes animal.
-- Tame task: Farmer gets 1.5x success rate and speed bonus; tamed animals are placed in Animal Pens.
+- Tame task: Farmer gets a 1.5x success-rate bonus; tamed animals are placed in Animal Pens.
+  The "and speed" half of the ticket's bonus needs no Tame-specific code: Tame goes through
+  task.py's generic work_seconds * npc.work_multiplier gate like every other task type, and
+  ROLE_STATS already gives Farmer a 0.6x work_multiplier applied there - the same mechanism
+  that makes every other Farmer task faster than a Knight/Mage's already covers Tame, so a
+  second Tame-only multiplier would double-stack the bonus rather than deliver it once.
 - Animal Pen building: passive production for penned animals + Horse travel-speed utility for colony.
 """
 
@@ -10,7 +15,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from build_task import Building, _displace_npcs_from_wall
+from build_task import Building, _can_queue, _displace_npcs_from_wall
 from constants import (
     ANIMAL_MEAT_YIELD,
     ANIMAL_PEN_ATTACK,
@@ -19,7 +24,6 @@ from constants import (
     ANIMAL_PEN_WORK_SECONDS,
     BASE_TAME_SUCCESS_RATE,
     FARMER_TAME_SUCCESS_MULTIPLIER,
-    FARMER_TAME_WORK_MULTIPLIER,
     HORSE_SPEED_BONUS,
     PEN_PRODUCTION_INTERVAL,
     ROLE_FARMER,
@@ -111,16 +115,10 @@ register_task_type(
 
 # ── Animal Pen Building ───────────────────────────────────────────────────
 
-def _can_queue_pen(world: "World", tile: tuple[int, int]) -> bool:
-    x, y = tile
-    t = world.grid.get(x, y)
-    if not t.claimed or t.resource is not None:
-        return False
-    if any(b.x == x and b.y == y for b in world.buildings):
-        return False
-    if any(task.type.startswith("Build") and task.target == tile for task in world.tasks.tasks):
-        return False
-    return True
+# Same claimed-empty-resource-free rule as Wall/Tower/House/Farmland - reuse
+# build_task's rule directly so a future change to it doesn't silently miss
+# Animal Pen (same pattern farmland_task.py already established).
+_can_queue_pen = _can_queue
 
 
 def _can_perform_pen(world: "World", task: Task) -> bool:

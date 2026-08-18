@@ -203,7 +203,10 @@ ANIMAL_MEAT_YIELD = {
 BASE_TAME_SUCCESS_RATE = 0.50
 FARMER_TAME_SUCCESS_MULTIPLIER = 1.50
 TAME_WORK_SECONDS = 3.0
-FARMER_TAME_WORK_MULTIPLIER = 0.67  # 1.5x speed
+# No FARMER_TAME_WORK_MULTIPLIER: the ticket's "1.5x ... speed vs. other
+# roles" is already delivered by the generic per-role work_multiplier
+# (task.py applies it to every task type, Tame included) - see tame_task.py's
+# module docstring for why a Tame-specific multiplier would double-stack it.
 
 ANIMAL_PEN_WORK_SECONDS = 4.0
 ANIMAL_PEN_COST = {"wood": 4, "raw_stone": 2}

@@ -44,8 +44,8 @@ def _tick_wildlife(world: "World", dt: float) -> None:
         if len(world.animals) < ANIMAL_MAX_COUNT:
             candidates = _unclaimed_tiles(world.grid)
             if candidates:
-                tile = random.choice(candidates)
-                world.animals.append(_spawn_animal(tile, random.Random()))
+                tile = world.wildlife_rng.choice(candidates)
+                world.animals.append(_spawn_animal(tile, world.wildlife_rng))
 
 
 register_tick(_tick_wildlife)

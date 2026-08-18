@@ -14,6 +14,7 @@ from constants import (
     PEN_PRODUCTION_INTERVAL,
     ROLE_FARMER,
     ROLE_KNIGHT,
+    TAME_WORK_SECONDS,
 )
 from coords import tile_center
 from npc import NPC
@@ -24,7 +25,7 @@ from tame_task import (
     process_animal_for_food,
     _tick_pen_production,
 )
-from task import Task
+from task import Task, update_npc_tasks
 from world import World
 
 
@@ -136,6 +137,37 @@ class TestTameTask:
         assert animal.is_tamed
         assert animal.pen_tile is None
         assert animal in world.animals  # Does not vanish!
+
+    def test_farmer_tames_faster_than_other_roles(self):
+        # Ticket 26's "1.5x success rate and speed vs. other roles" speed
+        # half needs no Tame-specific multiplier: Tame goes through task.py's
+        # generic work_seconds * npc.work_multiplier gate like every task,
+        # and ROLE_STATS already gives Farmer 0.6x there. This locks that in
+        # end-to-end using the real registered "Tame" task type.
+        def _setup(role):
+            world = World(npc_count=0)
+            cx, cy = world.grid.width // 2, world.grid.height // 2
+            world.grid.get(cx, cy).claimed = True
+            animal = Animal(*tile_center(cx, cy), species="Horse", speed=140.0, dangerous=False, health=40)
+            world.animals.append(animal)
+            npc = NPC(*tile_center(cx, cy), role=role)
+            world.npcs.append(npc)
+            world.tasks.add("Tame", (cx, cy))
+            return world, npc
+
+        farmer_world, farmer = _setup(ROLE_FARMER)
+        knight_world, knight = _setup(ROLE_KNIGHT)
+
+        # Between Farmer's effective work time (TAME_WORK_SECONDS * 0.6) and
+        # Knight's (TAME_WORK_SECONDS * 1.0): enough for Farmer to finish,
+        # not enough for Knight.
+        ticks = int(TAME_WORK_SECONDS * 0.8 * 60)
+        for _ in range(ticks):
+            update_npc_tasks(farmer_world, 1 / 60)
+            update_npc_tasks(knight_world, 1 / 60)
+
+        assert farmer.task is None  # finished already, thanks to the 0.6x multiplier
+        assert knight.task is not None  # still working
 
 
 class TestAnimalPenProductionAndHorseBuff:

@@ -22,3 +22,5 @@
 - Added serialization for `target_animal_id` in `src/save.py`.
 - Unit tests written in `tests/test_hunt_task.py`.
 
+
+**Integration note:** this implementation (n97131056's `feat/food-spoilage` stack) was independently built in parallel with my own `feat/wildlife-fauna` (ticket 24) attempt, which is superseded and closed in favor of this one - the Hunt/Taming/Spoilage pipeline needs an id-addressable `Animal` (to track which specific animal was killed/tamed), which this design has and mine didn't. Merged onto `develop` + House (ticket 15) + Farmland (ticket 17), which this branch predated: resolved conflicts in `constants.py` (duplicate stale `ROLES` block dropped), `render_buildings.py` (combined the magenta-unknown-type fallback with AnimalPen/Farmland-ready coloring), `save.py` (buildings now persist both `growth_timer`/`ready` and `assigned_animal_id`; inventory load order preserved so ledger restoration doesn't double-credit shelf life), and `game.py`/`plugins.py`/`world.py` (additive import merges). Full suite green post-merge on the first attempt (218 tests), no logic changes needed beyond the merge itself.

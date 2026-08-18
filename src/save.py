@@ -3,6 +3,7 @@
 to JSON so the game can resume across sessions/machines from a save file."""
 
 import json
+import random
 from pathlib import Path
 
 from animal import Animal
@@ -155,6 +156,7 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     # dataclass-ify World/Grid, or asdict()-style introspection in dump/load.
     world = World.__new__(World)
     world.grid = _load_grid(data["grid"])
+    world.wildlife_rng = random.Random()  # fresh, unseeded - same precedent as NestManager on load
     world.inventory = Inventory()
     for resource, amount in data["inventory"].items():
         world.inventory._counts[resource] = amount
