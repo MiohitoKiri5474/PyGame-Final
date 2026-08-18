@@ -91,7 +91,12 @@ class Game:
     def _continue_game(self) -> None:
         checkpoint = load_checkpoint()
         if checkpoint is None:
-            return  # save vanished between title-screen boot and the click; stay on title
+            # Save vanished or is corrupt since the title screen booted: drop
+            # save_exists so the (now-broken) Continue button stops being
+            # offered, rather than staying clickable and silently no-op'ing
+            # forever - stay on title either way.
+            self.save_exists = False
+            return
         (
             self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
             self.skill_points_available, self._monsters_killed_this_night,
@@ -113,26 +118,9 @@ class Game:
             if event.type == pygame.QUIT:
                 self.running = False
             elif self.state == TITLE:
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    action = self.title_screen.handle_click(event.pos, self.save_exists)
-                    if action == "start":
-                        if self.save_exists:
-                            self.state = CONFIRM_OVERWRITE
-                        else:
-                            self._start_new_game()
-                    elif action == "continue":
-                        self._continue_game()
-                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    self.running = False
+                self._handle_title_event(event)
             elif self.state == CONFIRM_OVERWRITE:
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    action = self.confirm_dialog.handle_click(event.pos)
-                    if action == "yes":
-                        self._start_new_game()
-                    elif action == "no":
-                        self.state = TITLE
-                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    self.state = TITLE
+                self._handle_confirm_event(event)
             elif event.type == pygame.KEYDOWN:
                 # Priority UI and Skill UI intercept keys when open
                 if self.priority_ui.visible:
@@ -172,6 +160,29 @@ class Game:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not self.priority_ui.visible and not self.skill_ui.visible:
                     self.handle_click(event.pos)
+
+    def _handle_title_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.title_screen.handle_click(event.pos, self.save_exists)
+            if action == "start":
+                if self.save_exists:
+                    self.state = CONFIRM_OVERWRITE
+                else:
+                    self._start_new_game()
+            elif action == "continue":
+                self._continue_game()
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.running = False
+
+    def _handle_confirm_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.confirm_dialog.handle_click(event.pos)
+            if action == "yes":
+                self._start_new_game()
+            elif action == "no":
+                self.state = TITLE
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = TITLE
 
     def _select_task_by_number(self, key: int) -> None:
         key_map = {

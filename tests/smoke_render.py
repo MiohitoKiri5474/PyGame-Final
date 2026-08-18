@@ -6,9 +6,13 @@ display, including CI.
 Run: SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy python tests/smoke_render.py
 """
 
+from __future__ import annotations
+
 import contextlib
 import os
 import sys
+from pathlib import Path
+from typing import Iterator
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -16,10 +20,11 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 TICKS = 180
+FIXTURE_MARKER_HEALTH = 7  # distinguishing value to verify a checkpoint round-trips exactly
 
 
 @contextlib.contextmanager
-def _preserved_save():
+def _preserved_save() -> Iterator[Path]:
     """Whatever save.json is on disk (a real developer save, or none) is
     restored byte-for-byte on exit, however the wrapped code left it - the
     title-screen tests below need to freely create/delete save.json to
@@ -36,11 +41,27 @@ def _preserved_save():
             SAVE_PATH.write_bytes(original_bytes)
 
 
-def _click(game, pos) -> None:
+def _click(game: "Game", pos: tuple[int, int]) -> None:
     import pygame
 
     pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=pos, button=1))
     game.handle_events()
+
+
+def _make_checkpointed_fixture() -> None:
+    """Builds a fresh game, marks npcs[0].health with FIXTURE_MARKER_HEALTH,
+    and checkpoints it to save.json - the shared setup for both the Continue
+    and overwrite-confirm checks below."""
+    from game import Game
+    from save import save_checkpoint
+
+    fixture = Game()
+    fixture._start_new_game()
+    fixture.world.npcs[0].health = FIXTURE_MARKER_HEALTH
+    save_checkpoint(
+        fixture.world, fixture.cycle, fixture.nest_manager, fixture.monsters,
+        fixture.game_over_state, fixture.skill_points_available, fixture._monsters_killed_this_night,
+    )
 
 
 def main() -> None:
@@ -94,7 +115,6 @@ def check_continue() -> None:
     import pygame
 
     from game import Game
-    from save import save_checkpoint
     from title_screen import PLAYING
 
     with _preserved_save() as save_path:
@@ -102,20 +122,16 @@ def check_continue() -> None:
         game = Game()
         assert not game.save_exists
         assert game.title_screen.handle_click(game.title_screen.continue_rect.center, game.save_exists) is None
+        pygame.quit()
 
-        fixture = Game()
-        fixture._start_new_game()
-        fixture.world.npcs[0].health = 7  # distinguishing marker to verify the exact checkpoint round-trips
-        save_checkpoint(
-            fixture.world, fixture.cycle, fixture.nest_manager, fixture.monsters,
-            fixture.game_over_state, fixture.skill_points_available, fixture._monsters_killed_this_night,
-        )
+        _make_checkpointed_fixture()
+        pygame.quit()
 
         game = Game()
         assert game.save_exists
         _click(game, game.title_screen.continue_rect.center)
         assert game.state == PLAYING
-        assert game.world.npcs[0].health == 7
+        assert game.world.npcs[0].health == FIXTURE_MARKER_HEALTH
         pygame.quit()
 
     print("continue OK: save-gated Continue button resumes the exact checkpoint")
@@ -128,18 +144,12 @@ def check_overwrite_confirm() -> None:
     import pygame
 
     from game import Game
-    from save import save_checkpoint
     from title_screen import TITLE, PLAYING, CONFIRM_OVERWRITE
 
     with _preserved_save() as save_path:
         save_path.unlink(missing_ok=True)
-        fixture = Game()
-        fixture._start_new_game()
-        fixture.world.npcs[0].health = 7  # marker: still present after decline, gone after confirm
-        save_checkpoint(
-            fixture.world, fixture.cycle, fixture.nest_manager, fixture.monsters,
-            fixture.game_over_state, fixture.skill_points_available, fixture._monsters_killed_this_night,
-        )
+        _make_checkpointed_fixture()
+        pygame.quit()
         saved_bytes = save_path.read_bytes()
 
         # Decline path: Start -> confirm -> No/Esc both return to title untouched.
@@ -158,12 +168,21 @@ def check_overwrite_confirm() -> None:
         assert game.state == TITLE
         assert save_path.read_bytes() == saved_bytes
 
+        # A double-click on the same screen position must not smuggle Start's
+        # click into the confirm dialog's Yes/No rects (regression check for
+        # the rect-overlap bug: Start and Yes/No now live on different y-bands).
+        assert game.title_screen.start_rect.colliderect(game.confirm_dialog.yes_rect) is False
+        assert game.title_screen.start_rect.colliderect(game.confirm_dialog.no_rect) is False
+        assert game.title_screen.continue_rect.colliderect(game.confirm_dialog.yes_rect) is False
+        assert game.title_screen.continue_rect.colliderect(game.confirm_dialog.no_rect) is False
+
         # Confirm path: Yes proceeds into a fresh game (marker gone).
         _click(game, game.title_screen.start_rect.center)
         assert game.state == CONFIRM_OVERWRITE
         _click(game, game.confirm_dialog.yes_rect.center)
         assert game.state == PLAYING
-        assert game.world.npcs[0].health != 7
+        assert game.world.npcs[0].health != FIXTURE_MARKER_HEALTH
+        pygame.quit()
 
         # No save at all: Start goes straight to PLAYING, no dialog.
         save_path.unlink(missing_ok=True)
@@ -171,13 +190,34 @@ def check_overwrite_confirm() -> None:
         assert not game.save_exists
         _click(game, game.title_screen.start_rect.center)
         assert game.state == PLAYING
-
         pygame.quit()
 
-    print("overwrite-confirm OK: decline preserves the save, confirm starts fresh")
+    print("overwrite-confirm OK: decline preserves the save, confirm starts fresh, buttons never overlap")
+
+
+def check_continue_corrupt_save() -> None:
+    """Ticket #39 hardening: a corrupt (unreadable) save.json must not leave
+    Continue permanently visible-but-broken - clicking it should clear
+    save_exists so the dead button disappears instead of no-op'ing forever."""
+    import pygame
+
+    from game import Game
+    from title_screen import TITLE
+
+    with _preserved_save() as save_path:
+        save_path.write_text("not valid json")
+        game = Game()
+        assert game.save_exists
+        _click(game, game.title_screen.continue_rect.center)
+        assert game.state == TITLE
+        assert not game.save_exists
+        pygame.quit()
+
+    print("continue-corrupt OK: a broken save clears save_exists instead of a dead Continue button")
 
 
 if __name__ == "__main__":
     main()
     check_continue()
     check_overwrite_confirm()
+    check_continue_corrupt_save()

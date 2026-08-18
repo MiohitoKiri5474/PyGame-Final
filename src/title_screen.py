@@ -61,15 +61,21 @@ class TitleScreen:
 
 class ConfirmOverwriteDialog:
     def __init__(self) -> None:
+        # Deliberately placed on a different y-band than TitleScreen's
+        # start_rect (y: WINDOW_HEIGHT//2 to +56) and continue_rect (below
+        # that): the two screens are never shown at once, but a plain
+        # double-click at the same screen position must not land on Start
+        # in one state and Yes/No in the other by coordinate coincidence.
+        dialog_y = WINDOW_HEIGHT // 2 + 160
         self.yes_rect = pygame.Rect(
             WINDOW_WIDTH // 2 - _BUTTON_WIDTH - _BUTTON_GAP // 2,
-            WINDOW_HEIGHT // 2,
+            dialog_y,
             _BUTTON_WIDTH,
             _BUTTON_HEIGHT,
         )
         self.no_rect = pygame.Rect(
             WINDOW_WIDTH // 2 + _BUTTON_GAP // 2,
-            WINDOW_HEIGHT // 2,
+            dialog_y,
             _BUTTON_WIDTH,
             _BUTTON_HEIGHT,
         )
