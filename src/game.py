@@ -47,7 +47,7 @@ from extensions import hud_lines, render_overlays, run_ticks
 from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
-from save import SAVE_PATH, save_checkpoint
+from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
 from title_screen import TitleScreen, TITLE, PLAYING
@@ -87,6 +87,18 @@ class Game:
         self._monsters_killed_this_night = 0
         self.state = PLAYING
 
+    def _continue_game(self) -> None:
+        checkpoint = load_checkpoint()
+        if checkpoint is None:
+            return  # save vanished between title-screen boot and the click; stay on title
+        (
+            self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
+            self.skill_points_available, self._monsters_killed_this_night,
+        ) = checkpoint
+        if self.skill_points_available > 0:
+            self.paused = True  # restore the auto-pause a full/partial clear set before save
+        self.state = PLAYING
+
     def run(self) -> None:
         while self.running:
             dt = self.clock.tick(FPS) / 1000
@@ -101,8 +113,11 @@ class Game:
                 self.running = False
             elif self.state == TITLE:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.title_screen.handle_click(event.pos) == "start":
+                    action = self.title_screen.handle_click(event.pos, self.save_exists)
+                    if action == "start":
                         self._start_new_game()
+                    elif action == "continue":
+                        self._continue_game()
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     self.running = False
             elif event.type == pygame.KEYDOWN:
@@ -256,7 +271,7 @@ class Game:
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         if self.state == TITLE:
-            self.title_screen.render(self.screen, self.font)
+            self.title_screen.render(self.screen, self.font, self.save_exists)
             pygame.display.flip()
             return
         self.render_grid()

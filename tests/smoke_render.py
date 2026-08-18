@@ -61,5 +61,50 @@ def main() -> None:
     print(f"game-over OK: score={game.game_over_state.score}")
 
 
+def check_continue() -> None:
+    """Ticket #39: Continue only offered when save.json exists, and clicking
+    it resumes the exact checkpointed state. Saves/restores whatever real
+    save.json is on disk so running this test never loses a developer's
+    actual save."""
+    import pygame
+
+    from game import Game
+    from save import SAVE_PATH, save_checkpoint
+    from title_screen import PLAYING
+
+    original_bytes = SAVE_PATH.read_bytes() if SAVE_PATH.exists() else None
+    try:
+        SAVE_PATH.unlink(missing_ok=True)
+        game = Game()
+        assert not game.save_exists
+        assert game.title_screen.handle_click(game.title_screen.continue_rect.center, game.save_exists) is None
+
+        fixture = Game()
+        fixture._start_new_game()
+        fixture.world.npcs[0].health = 7  # distinguishing marker to verify the exact checkpoint round-trips
+        save_checkpoint(
+            fixture.world, fixture.cycle, fixture.nest_manager, fixture.monsters,
+            fixture.game_over_state, fixture.skill_points_available, fixture._monsters_killed_this_night,
+        )
+
+        game = Game()
+        assert game.save_exists
+        pygame.event.post(pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN, pos=game.title_screen.continue_rect.center, button=1,
+        ))
+        game.handle_events()
+        assert game.state == PLAYING
+        assert game.world.npcs[0].health == 7
+        pygame.quit()
+    finally:
+        if original_bytes is None:
+            SAVE_PATH.unlink(missing_ok=True)
+        else:
+            SAVE_PATH.write_bytes(original_bytes)
+
+    print("continue OK: save-gated Continue button resumes the exact checkpoint")
+
+
 if __name__ == "__main__":
     main()
+    check_continue()
