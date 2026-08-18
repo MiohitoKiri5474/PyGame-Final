@@ -35,6 +35,8 @@ class Building:
     y: int
     block: int
     attack: int
+    growth_timer: float = 0.0  # Farmland only; no-op default for every other type
+    ready: bool = False  # Farmland only; no-op default for every other type
 
 
 def _can_queue(world: "World", tile: "Tile") -> bool:
@@ -124,6 +126,13 @@ def _displace_npcs_from_wall(world: "World", x: int, y: int) -> None:
 
 
 _COSTS_BY_TASK_TYPE = {"BuildWall": WALL_COST, "BuildTower": TOWER_COST, "BuildHouse": HOUSE_COST}
+
+
+def register_build_cost(task_type: str, cost: dict[str, int]) -> None:
+    """Extension point for other build-task modules (Farmland, Animal Pen,
+    ...) so their insufficient-funds state shows up in the blocked-builds
+    HUD line without build_task.py needing to import their cost constants."""
+    _COSTS_BY_TASK_TYPE[task_type] = cost
 
 
 def _blocked_builds_hud_line(world: "World") -> str:
