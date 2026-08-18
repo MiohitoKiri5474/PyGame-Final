@@ -62,6 +62,7 @@ class Game:
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
+        self.big_font = pygame.font.Font(None, 40)  # top bar's countdown number
 
         self.camera = Camera()
         self.paused = False
@@ -451,8 +452,7 @@ class Game:
             else "Click a tile to work it - buttons below to build"
         )
 
-        segments = [
-            (f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)", banner_color),
+        items = [
             ("PAUSED" if self.paused else "", COLOR_TEXT),
             (f"NPCs alive: {len(self.world.npcs)}  [N: Status]", COLOR_TEXT),
             (
@@ -464,7 +464,11 @@ class Game:
             *((text, COLOR_TEXT) for text in hud_lines(self.world)),
             (self._hover_tile_info(), COLOR_TEXT),
         ]
-        top_bar.render(self.screen, self.font, segments)
+        top_bar.render(
+            self.screen, self.font, self.big_font,
+            self.cycle.round_number, self.cycle.phase.upper(), self.cycle.remaining(), banner_color,
+            items,
+        )
 
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:

@@ -1,10 +1,9 @@
-"""Full-width top info bar, replacing the old top-left stacked-line HUD.
+"""Full-width top info bar: a small left box for round/phase/countdown and
+a larger right box listing everything else as a bulleted list - framed to
+match the build bar's button styling, per the requester's redesign ask.
 
-Lays out short status segments left-to-right, wrapping to a new row when a
-segment would overflow the window width, so the corner doesn't grow an
-unbounded vertical list as more systems register hud_lines(). Per-NPC detail
-lives in npc_status_ui.py instead, opened on demand - this bar only ever
-carries compact, always-relevant status.
+Per-NPC detail lives in npc_status_ui.py instead, opened on demand - this
+bar only ever carries compact, always-relevant status.
 
 Thin rendering layer, not itself unit tested, matching priority_ui.py's
 precedent.
@@ -16,41 +15,60 @@ import pygame
 
 from constants import WINDOW_WIDTH
 
-_BG = (10, 11, 16, 215)
-_PAD_X = 10
-_PAD_Y = 6
-_GAP_X = 22
+_MARGIN = 10
+_PAD = 12
+_LEFT_W = 170
 _ROW_H = 22
+_MIN_BOX_H = 112  # tall enough for the left box's round/phase/number stack
+_BOX_BG = (24, 26, 32)
+_BOX_BORDER = (70, 74, 86)
+_ROUND_COLOR = (220, 220, 225)
+_EMPTY_COLOR = (120, 120, 130)
+_BULLET = "• "
 
 
-def render(surface: pygame.Surface, font: pygame.font.Font, segments: list[tuple[str, tuple[int, int, int]]]) -> int:
-    """Draws the bar and returns its pixel height (0 if there was nothing
-    to show), so callers can stack other content below it if they want."""
-    segments = [(text, color) for text, color in segments if text]
-    if not segments:
-        return 0
+def render(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    big_font: pygame.font.Font,
+    round_number: int,
+    phase_label: str,
+    remaining_seconds: float,
+    phase_color: tuple[int, int, int],
+    items: list[tuple[str, tuple[int, int, int]]],
+) -> int:
+    """Draws the bar and returns its total pixel height so callers can
+    stack other content below it if they want."""
+    items = [(text, color) for text, color in items if text]
 
-    rows: list[list[tuple[tuple[int, int, int], pygame.Surface]]] = [[]]
-    x = _PAD_X
-    for text, color in segments:
-        rendered = font.render(text, True, color)
-        if x + rendered.get_width() > WINDOW_WIDTH - _PAD_X and rows[-1]:
-            rows.append([])
-            x = _PAD_X
-        rows[-1].append((color, rendered))
-        x += rendered.get_width() + _GAP_X
+    right_x = _MARGIN + _LEFT_W + _MARGIN
+    right_w = WINDOW_WIDTH - right_x - _MARGIN
+    box_h = max(_MIN_BOX_H, _PAD * 2 + max(1, len(items)) * _ROW_H)
 
-    bar_h = _PAD_Y * 2 + _ROW_H * len(rows)
-    overlay = pygame.Surface((WINDOW_WIDTH, bar_h), pygame.SRCALPHA)
-    overlay.fill(_BG)
-    surface.blit(overlay, (0, 0))
+    left_rect = pygame.Rect(_MARGIN, _MARGIN, _LEFT_W, box_h)
+    right_rect = pygame.Rect(right_x, _MARGIN, right_w, box_h)
+    for rect in (left_rect, right_rect):
+        pygame.draw.rect(surface, _BOX_BG, rect, border_radius=8)
+        pygame.draw.rect(surface, _BOX_BORDER, rect, 2, border_radius=8)
 
-    y = _PAD_Y
-    for row in rows:
-        x = _PAD_X
-        for color, rendered in row:
-            surface.blit(rendered, (x, y))
-            x += rendered.get_width() + _GAP_X
+    # Left: round / phase / a big countdown number, vertically centered.
+    round_surf = font.render(f"Round {round_number}", True, _ROUND_COLOR)
+    phase_surf = font.render(phase_label, True, phase_color)
+    number_surf = big_font.render(f"{remaining_seconds:.0f}s", True, phase_color)
+    stack_h = round_surf.get_height() + phase_surf.get_height() + number_surf.get_height() + 8
+    y = left_rect.centery - stack_h // 2
+    surface.blit(round_surf, round_surf.get_rect(centerx=left_rect.centerx, top=y))
+    y += round_surf.get_height() + 2
+    surface.blit(phase_surf, phase_surf.get_rect(centerx=left_rect.centerx, top=y))
+    y += phase_surf.get_height() + 6
+    surface.blit(number_surf, number_surf.get_rect(centerx=left_rect.centerx, top=y))
+
+    # Right: one bullet per line.
+    y = right_rect.top + _PAD
+    rows = items or [("(nothing to report)", _EMPTY_COLOR)]
+    for text, color in rows:
+        surf = font.render(f"{_BULLET}{text}", True, color)
+        surface.blit(surf, (right_rect.left + _PAD, y))
         y += _ROW_H
 
-    return bar_h
+    return left_rect.bottom + _MARGIN

@@ -99,5 +99,5 @@ class SkillUI:
             y += row_h + 2
 
         y = panel_y + panel_h - row_h - pad
-        hint_surf = font.render("[↑↓] select   [Enter/→] spend point   [K/Esc] close", True, _HINT_TEXT)
+        hint_surf = font.render("[Up/Down] select   [Enter/Right] spend point   [K/Esc] close", True, _HINT_TEXT)
         surface.blit(hint_surf, (panel_x + pad, y))
