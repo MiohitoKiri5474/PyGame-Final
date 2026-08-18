@@ -15,7 +15,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from build_task import Building, _can_queue, _displace_npcs_from_wall
+from build_task import Building, _can_queue, _displace_npcs_from_wall, register_build_cost
 from constants import (
     ANIMAL_MEAT_YIELD,
     ANIMAL_PEN_ATTACK,
@@ -158,6 +158,8 @@ register_task_type(
         can_perform=_can_perform_pen,
     ),
 )
+
+register_build_cost("BuildAnimalPen", ANIMAL_PEN_COST)
 
 
 # ── Pen Production & Horse Buff Tick Hook ────────────────────────────────

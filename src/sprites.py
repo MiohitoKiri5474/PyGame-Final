@@ -83,6 +83,15 @@ def building_sprite(building) -> pygame.Surface | None:
     return _load_scaled(path, TILE_SIZE) if path else None
 
 
+def building_icon(building_type: str, height: int) -> pygame.Surface | None:
+    """Sprite for a building *type* with no instance to inspect - used by the
+    build bar's buttons. Farmland shows its ready look as the menu icon."""
+    if building_type == "Farmland":
+        return _load_scaled(_FARMLAND_READY_PATH, height)
+    path = _BUILDING_PATHS.get(building_type)
+    return _load_scaled(path, height) if path else None
+
+
 def monster_sprite(monster_type: str | None) -> pygame.Surface | None:
     path = _MONSTER_PATHS.get(monster_type)
     return _load_scaled(path, int(TILE_SIZE * 1.3)) if path else None

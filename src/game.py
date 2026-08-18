@@ -27,12 +27,12 @@ from constants import (
     COLOR_ANIMAL,
     COLOR_ANIMAL_DANGEROUS,
 )
+from action_menu import ActionMenu
 from audio import play_sfx
+from build_bar import BuildBar
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
-
-
 from coords import tile_at, tile_center
 from game_over import GameOverState
 from magic import cast_fire, cast_freeze, cast_lightning
@@ -44,6 +44,7 @@ from settlement import evaluate_wave
 from population import maybe_spawn_npc
 from task import TASK_TYPES, update_npc_tasks
 from extensions import hud_lines, render_overlays, run_ticks
+from tile_actions import applicable_tasks
 from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
@@ -65,7 +66,8 @@ class Game:
         self.running = True
 
         self.selected_npc: NPC | None = None
-        self.selected_task_type: str | None = next(iter(TASK_TYPES), None)
+        self.build_bar = BuildBar()
+        self.action_menu = ActionMenu()
         self.priority_ui = PriorityTableUI()
         self.skill_ui = SkillUI()
 
@@ -112,11 +114,16 @@ class Game:
                     )
                     continue
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    if self.action_menu.visible:
+                        self.action_menu.close()
+                    elif self.build_bar.selected is not None:
+                        self.build_bar.clear()
+                    else:
+                        self.running = False
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
                 elif event.key == pygame.K_TAB:
-                    self._cycle_selected_task_type()
+                    self.build_bar.cycle()
                 elif event.key == pygame.K_p:
                     self.priority_ui.toggle()
                 elif event.key == pygame.K_k:
@@ -136,12 +143,12 @@ class Game:
                     pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4,
                     pygame.K_KP5, pygame.K_KP6, pygame.K_KP7, pygame.K_KP8, pygame.K_KP9,
                 ):
-                    self._select_task_by_number(event.key)
+                    self._select_build_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if not self.priority_ui.visible and not self.skill_ui.visible:
                     self.handle_click(event.pos)
 
-    def _select_task_by_number(self, key: int) -> None:
+    def _select_build_by_number(self, key: int) -> None:
         key_map = {
             pygame.K_1: 0, pygame.K_KP1: 0,
             pygame.K_2: 1, pygame.K_KP2: 1,
@@ -155,22 +162,23 @@ class Game:
         }
         idx = key_map.get(key)
         if idx is not None:
-            types = list(TASK_TYPES.keys())
-            if idx < len(types):
-                self.selected_task_type = types[idx]
-
-    def _cycle_selected_task_type(self) -> None:
-        types = list(TASK_TYPES.keys())
-        if not types:
-            self.selected_task_type = None
-            return
-        if self.selected_task_type not in types:
-            self.selected_task_type = types[0]
-            return
-        next_index = (types.index(self.selected_task_type) + 1) % len(types)
-        self.selected_task_type = types[next_index]
+            self.build_bar.select_index(idx)
 
     def handle_click(self, screen_pos: tuple[int, int]) -> None:
+        # Action menu takes first crack at every click: while it's open, a
+        # click either picks one of its rows or (clicking elsewhere) just
+        # closes it - either way the click is consumed, not also treated as
+        # a map click underneath.
+        if self.action_menu.visible:
+            tile = self.action_menu.tile  # handle_click() closes the menu (clears .tile) before returning
+            choice = self.action_menu.handle_click(screen_pos)
+            if choice is not None and tile is not None:
+                self.world.tasks.add(choice, tile)
+            return
+
+        if self.build_bar.handle_click(screen_pos):
+            return
+
         world_x = screen_pos[0] + self.camera.x
         world_y = screen_pos[1] + self.camera.y
 
@@ -183,9 +191,21 @@ class Game:
         if not self.world.grid.in_bounds(gx, gy):
             return
 
-        task_type = TASK_TYPES.get(self.selected_task_type) if self.selected_task_type else None
-        if task_type is not None and task_type.can_queue(self.world, (gx, gy)):
-            self.world.tasks.add(self.selected_task_type, (gx, gy))
+        # A building is armed: place it here (or fall through, if this tile
+        # can't take one - can_queue rejects it silently, same as before).
+        if self.build_bar.selected is not None:
+            task_type = TASK_TYPES.get(self.build_bar.selected)
+            if task_type is not None and task_type.can_queue(self.world, (gx, gy)):
+                self.world.tasks.add(self.build_bar.selected, (gx, gy))
+            return
+
+        # Otherwise infer from what's actually on the tile: queue directly
+        # when exactly one task applies, ask when there's a real choice.
+        options = applicable_tasks(self.world, (gx, gy))
+        if len(options) == 1:
+            self.world.tasks.add(options[0], (gx, gy))
+        elif len(options) > 1:
+            self.action_menu.open(options, (gx, gy), screen_pos)
 
     def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
         for npc in self.world.npcs:
@@ -262,6 +282,8 @@ class Game:
         self.render_monsters()
         render_overlays(self.screen, self.world, self.camera)
         self.render_hud()
+        self.build_bar.render(self.screen, self.font, self.world)
+        self.action_menu.render(self.screen, self.font)
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
         self.skill_ui.render(self.screen, self.font, self.world, self.skill_points_available)
         self.render_game_over()
@@ -414,18 +436,18 @@ class Game:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
         hover_info = self._hover_tile_info()
 
-        options_list = []
-        for i, t_name in enumerate(TASK_TYPES.keys(), start=1):
-            marker = "*" if t_name == self.selected_task_type else ""
-            options_list.append(f"[{i}] {t_name}{marker}")
-        options_str = "  ".join(options_list)
+        build_hint = (
+            f"Building: {self.build_bar.selected}  [Esc to cancel]"
+            if self.build_bar.selected is not None
+            else "Click a tile to work it - buttons below to build  [P: Priority, K: Skills]"
+        )
 
         lines = [
             f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
             f"NPCs alive: {len(self.world.npcs)}",
             f"Skill points available: {self.skill_points_available} [K to spend]" if self.skill_points_available else "",
             "PAUSED" if self.paused else "",
-            f"Tasks: {options_str}  [Keys 1-{len(TASK_TYPES)} / Tab, P for Priority]",
+            build_hint,
             hover_info,
             *hud_lines(self.world),
         ]

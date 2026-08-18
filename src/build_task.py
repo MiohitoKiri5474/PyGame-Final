@@ -135,6 +135,11 @@ def register_build_cost(task_type: str, cost: dict[str, int]) -> None:
     _COSTS_BY_TASK_TYPE[task_type] = cost
 
 
+def build_cost(task_type: str) -> dict[str, int]:
+    """Registered cost for a Build* task type, or {} if it has none."""
+    return _COSTS_BY_TASK_TYPE.get(task_type, {})
+
+
 def _blocked_builds_hud_line(world: "World") -> str:
     # Insufficient-funds tasks stay queued but are skipped by NPCs until
     # affordable — report them so that's visible to the player.
