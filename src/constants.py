@@ -116,6 +116,12 @@ RESOURCE_WEIGHTS = {
     "raw_stone": 0.02,
 }
 
+# --- Roles (ticket 12) ---
+ROLE_FARMER = "Farmer"
+ROLE_KNIGHT = "Knight"
+ROLE_MAGE = "Mage"
+ROLES = (ROLE_FARMER, ROLE_KNIGHT, ROLE_MAGE)
+
 # --- Wildlife / animal fauna (ticket 24) ---
 ANIMAL_INITIAL_COUNT = 10
 ANIMAL_MAX_COUNT = 20
@@ -133,3 +139,9 @@ ANIMAL_SPECIES = {
 
 COLOR_ANIMAL = (150, 190, 90)
 COLOR_ANIMAL_DANGEROUS = (200, 140, 60)
+
+# --- Hunt Task (ticket 25) ---
+HUNT_WORK_SECONDS = 2.0
+KNIGHT_CRIT_CHANCE = 0.50
+KNIGHT_CRIT_MULTIPLIER = 2.0
+

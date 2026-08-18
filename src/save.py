@@ -57,6 +57,7 @@ def dump_state(
         ],
         "animals": [
             {
+                "id": a.id,
                 "x": a.x,
                 "y": a.y,
                 "species": a.species,
@@ -74,6 +75,7 @@ def dump_state(
                 "type": t.type,
                 "target": list(t.target),
                 "assigned_npc_id": t.assigned_npc.id if t.assigned_npc else None,
+                "target_animal_id": getattr(t, "target_animal_id", None),
             }
             for t in world.tasks.tasks
         ],
@@ -139,19 +141,31 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         for b in data["buildings"]
     ]
     world.animals = []
+    max_animal_id = -1
     for ad in data.get("animals", []):
         animal = Animal(
             ad["x"], ad["y"], species=ad["species"], speed=ad["speed"],
-            dangerous=ad["dangerous"], health=ad["health"],
+            dangerous=ad["dangerous"], health=ad["health"], id=ad.get("id"),
         )
-        animal.is_hostile = ad["is_hostile"]
-        animal.path = [tuple(p) for p in ad["path"]]
+        animal.is_hostile = ad.get("is_hostile", False)
+        animal.path = [tuple(p) for p in ad.get("path", [])]
         world.animals.append(animal)
+        if animal.id is not None:
+            max_animal_id = max(max_animal_id, animal.id)
+    Animal._next_id = max(Animal._next_id, max_animal_id + 1)
     world.animal_spawn_timer = data.get("animal_spawn_timer", 0.0)
 
-    tasks = [Task(type=t["type"], target=tuple(t["target"])) for t in data["tasks"]]
+    tasks = [
+        Task(
+            type=t["type"],
+            target=tuple(t["target"]),
+            target_animal_id=t.get("target_animal_id"),
+        )
+        for t in data["tasks"]
+    ]
     world.tasks = TaskQueue()
     world.tasks.tasks = tasks
+
 
     npcs = []
     max_id = -1

@@ -44,6 +44,9 @@ def _build_nontrivial_state():
     animal.set_path([(8, 8)])
     world.animal_spawn_timer = 17.5
 
+    hunt_task = world.tasks.add("Hunt", (8, 8), target_animal_id=animal.id)
+
+
     cycle = DayNightCycle()
     cycle.round_number = 3
     cycle.phase = NIGHT

@@ -20,6 +20,7 @@ class Task:
     type: str
     target: Tile
     assigned_npc: "NPC | None" = None
+    target_animal_id: int | None = None
 
 
 @dataclass
@@ -44,8 +45,8 @@ class TaskQueue:
     def __init__(self):
         self.tasks: list[Task] = []
 
-    def add(self, task_type: str, target: Tile) -> Task:
-        task = Task(type=task_type, target=target)
+    def add(self, task_type: str, target: Tile, target_animal_id: int | None = None) -> Task:
+        task = Task(type=task_type, target=target, target_animal_id=target_animal_id)
         self.tasks.append(task)
         return task
 
@@ -102,6 +103,32 @@ def update_npc_tasks(world: "World", dt: float) -> None:
         if not npc.has_arrived:
             continue
 
+        # Moving-target re-path check (ticket 25): for Hunt tasks, if target animal moved
+        if npc.task.type == "Hunt" and hasattr(world, "animals"):
+            animal = None
+            if npc.task.target_animal_id is not None:
+                animal = next((a for a in world.animals if a.id == npc.task.target_animal_id), None)
+            if animal is None:
+                animal = next((a for a in world.animals if tile_at(a.x, a.y) == npc.task.target and not a.is_dead), None)
+
+            if animal is not None and not animal.is_dead:
+                animal_tile = tile_at(animal.x, animal.y)
+                npc_tile = tile_at(npc.x, npc.y)
+                if animal_tile != npc_tile:
+                    # Animal moved! Recompute path to animal's current tile
+                    path = find_path(
+                        lambda x, y: world.grid.in_bounds(x, y) and not is_wall_blocked(world.buildings, x, y),
+                        world.grid.width,
+                        world.grid.height,
+                        npc_tile,
+                        animal_tile,
+                    )
+                    if path:
+                        npc.task.target = animal_tile
+                        npc.set_path(path)
+                        npc.task_progress = 0.0
+                        continue
+
         npc.task_progress += dt
         if task_type is None or npc.task_progress < task_type.work_seconds:
             continue
@@ -110,9 +137,14 @@ def update_npc_tasks(world: "World", dt: float) -> None:
         if finished:
             world.tasks.remove(npc.task)
         else:
-            # Task could not be completed (e.g. missing materials); unassign NPC so
-            # it skips to other available tasks instead of staying stuck
-            npc.task.assigned_npc = None
+            # Task could not be completed (e.g. missing materials or animal still alive);
+            # unassign NPC or reset progress so it re-evaluates
+            npc.task_progress = 0.0
+            if npc.task.type != "Hunt":
+                npc.task.assigned_npc = None
+                npc.task = None
+            continue
+
         npc.task = None
         npc.task_progress = 0.0
 
@@ -129,8 +161,10 @@ def _try_claim_and_path(world: "World", npc: "NPC") -> None:
             if task_type.can_perform is not None and not task_type.can_perform(world, task):
                 continue
 
+            # Hunt task targets may be outside claimed territory, so allow pathing across unblocked tiles
+            is_hunt = (task.type == "Hunt")
             path = find_path(
-                lambda x, y: (world.grid.get(x, y).claimed or (x, y) == task.target)
+                lambda x, y: (is_hunt or world.grid.get(x, y).claimed or (x, y) == task.target)
                 and (not is_wall_blocked(world.buildings, x, y) or (x, y) == task.target),
                 world.grid.width,
                 world.grid.height,
@@ -140,7 +174,13 @@ def _try_claim_and_path(world: "World", npc: "NPC") -> None:
             if path is None:
                 continue
 
+            if is_hunt and task.target_animal_id is None and hasattr(world, "animals"):
+                animal = next((a for a in world.animals if tile_at(a.x, a.y) == task.target and not a.is_dead), None)
+                if animal is not None:
+                    task.target_animal_id = animal.id
+
             task.assigned_npc = npc
             npc.task = task
             npc.set_path(path)
             return
+
