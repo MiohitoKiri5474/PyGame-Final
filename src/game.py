@@ -37,7 +37,6 @@ from constants import (
     ROLE_FARMER,
     ROLE_KNIGHT,
     ROLE_MAGE,
-    FARMLAND_GROW_SECONDS,
 )
 import time
 from action_menu import ActionMenu
@@ -1805,92 +1804,25 @@ class Game:
                     continue
                 self.screen.blit(claim_tile, (x * TILE_SIZE - cam_x, y * TILE_SIZE - cam_y))
 
-    def _hover_tile_info(self) -> str:
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        gx, gy = tile_at(mouse_x + self.camera.x, mouse_y + self.camera.y)
-        if not self.world.grid.in_bounds(gx, gy):
-            return ""
-
-        tile = self.world.grid.get(gx, gy)
-        if not tile.revealed:
-            return f"Tile ({gx}, {gy}): Fog of War (Unexplored)"
-
-        task = next((t for t in self.world.tasks.tasks if t.target == (gx, gy)), None)
-        click_hint = self._click_hint((gx, gy), already_queued=task is not None)
-
-        if not tile.claimed:
-            res_str = f" [Material: {tile.resource.capitalize()}]" if tile.resource else ""
-            return f"Tile ({gx}, {gy}): Unclaimed Land{res_str}{click_hint}"
-
-        building = next((b for b in self.world.buildings if b.x == gx and b.y == gy), None)
-        npc = next((n for n in self.world.npcs if tile_at(n.x, n.y) == (gx, gy)), None)
-
-        if building:
-            if building.type == "Farmland":
-                if building.ready:
-                    info = "Building: Farmland (Ready to Harvest!)"
-                else:
-                    info = f"Building: Farmland (Growing: {int(building.growth_timer)}/{int(FARMLAND_GROW_SECONDS)}s)"
-            else:
-                info = f"Building: {building.type} (Block: {building.block}, Attack: {building.attack})"
-        elif tile.resource:
-            info = f"Material: {tile.resource.capitalize()}"
-        else:
-            info = "Claimed Land (Empty)"
-
-        if task:
-            info += f" [Queued Task: {task.type}]"
-        if npc:
-            role_str = f" [{npc.role}]" if npc.role else ""
-            info += (
-                f" | NPC{role_str} (HP: {int(npc.health)}/{int(npc.max_health)}, "
-                f"Hunger: {int(npc.hunger)}/{int(NPC_MAX_HUNGER)})"
-            )
-
-        return f"Tile ({gx}, {gy}): {info}{click_hint}"
-
-    def _click_hint(self, tile: tuple[int, int], already_queued: bool) -> str:
-        """' - Click to Gather'-style suffix so hovering a workable tile
-        reads as an invitation to click, not just a status readout. Silent
-        when there's nothing new a click would do: already queued, a
-        building's armed (that hint lives in the build panel instead), or
-        the tile genuinely has no applicable task."""
-        if already_queued or self.build_bar.selected is not None:
-            return ""
-        options = applicable_tasks(self.world, tile)
-        if not options:
-            return ""
-        if len(options) == 1:
-            if options[0] == "Destroy":
-                return "  ->  Click for menu: Destroy"
-            return f"  ->  Click to {options[0]}"
-        return f"  ->  Click to choose: {', '.join(options)}"
-
-
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
 
-        build_hint = (
-            f"Building: {self.build_bar.selected}  [Esc to cancel]"
-            if self.build_bar.selected is not None
-            else "Click a tile to work it - buttons below to build"
-        )
-        # PAUSED/NPC count/Skill points/Priority used to be plain-text lines
-        # here - now shown by the top-right buttons (pause highlights, skill
-        # lights up when points are available) and the NPC box, so they're
-        # not duplicated as hint text too.
-        hint_lines = [
-            (build_hint, COLOR_TEXT),
-            *((text, COLOR_TEXT) for text in hud_lines(self.world)),
-            (self._hover_tile_info(), COLOR_TEXT),
-        ]
+        # Tile-hover status text and the "Click to X" suffix were dropped -
+        # the cursor (hand vs arrow), the queued-task tile border, and the
+        # armed build button's own highlight already show all of that
+        # visually now. Only the genuinely actionable tips/alerts remain.
+        hint_lines = [(text, COLOR_TEXT) for text in hud_lines(self.world)]
         inventory_items = sorted(self.world.inventory.items().items())
 
         top_bar.render(
             self.screen, self.font,
             self.cycle.round_number, self.cycle.phase.upper(),
             self.cycle.remaining(), self.cycle.duration(), banner_color,
-            len(self.world.npcs), inventory_items, hint_lines,
+            inventory_items,
+        )
+        side_top = self.sanctuary_ui.PANEL_Y + self.sanctuary_ui.PANEL_HEIGHT + 10
+        top_bar.render_side_info(
+            self.screen, self.font, len(self.world.npcs), len(self.world.tasks.tasks), hint_lines, side_top,
         )
 
     def _game_over_panel_rect(self) -> pygame.Rect:
