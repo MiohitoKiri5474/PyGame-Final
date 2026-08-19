@@ -25,6 +25,9 @@ COLOR_NIGHT_BANNER = (120, 140, 255)
 COLOR_NPC = (220, 220, 60)
 COLOR_NPC_SELECTED = (255, 255, 255)
 COLOR_HOVER_BORDER = (100, 220, 255)
+COLOR_BAR_BG = (40, 40, 50)
+COLOR_HUNGER_BAR = (230, 180, 50)
+
 
 # --- Gather UX polish: queued-task marker, work progress, Expand preview ---
 COLOR_QUEUED_WAITING = (255, 200, 90)   # task queued, no NPC assigned yet

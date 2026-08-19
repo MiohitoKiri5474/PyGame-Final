@@ -58,17 +58,20 @@ def on_complete_hunt(world: "World", task: "Task", rng: random.Random | None = N
     base_attack = getattr(npc, "attack", 12) if npc else 12
     npc_role = getattr(npc, "role", None) if npc else None
 
-    # Knight gets a critical-hit-chance bonus against fauna specifically,
-    # boosted further by the Hunting Accuracy skill (ticket 23)
     damage = float(base_attack)
     if npc_role == ROLE_KNIGHT and rng.random() < hunting_crit_chance(world):
         damage *= KNIGHT_CRIT_MULTIPLIER
 
+    if npc and hasattr(npc, "trigger_attack"):
+        npc.trigger_attack(animal.x, animal.y)
+
     animal.take_damage(damage)
+
 
     # If dangerous animal is hostile and still alive, retaliate against NPC
     if animal.dangerous and animal.is_hostile and npc and not animal.is_dead:
         animal.retaliate(npc)
+
 
     if animal.is_dead:
         world.animals[:] = [a for a in world.animals if not a.is_dead]

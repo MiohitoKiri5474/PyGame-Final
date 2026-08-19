@@ -104,3 +104,57 @@ def nest_sprite() -> pygame.Surface:
 def animal_sprite(species: str) -> pygame.Surface | None:
     path = _ANIMAL_PATHS.get(species)
     return _load_scaled(path, int(TILE_SIZE * 1.2)) if path else None
+
+
+_TOOL_CACHE: dict[str, pygame.Surface] = {}
+
+def get_tool_sprite(tool_type: str) -> pygame.Surface:
+    """Returns a crisp, themed pixel-art tool/weapon surface for action animations."""
+    if tool_type in _TOOL_CACHE:
+        return _TOOL_CACHE[tool_type]
+
+    surf = pygame.Surface((28, 28), pygame.SRCALPHA)
+
+    if tool_type == "axe":
+        # Wooden handle
+        pygame.draw.line(surf, (110, 70, 30), (6, 22), (18, 6), 3)
+        # Steel axe head
+        pygame.draw.polygon(surf, (190, 200, 215), [(14, 6), (24, 2), (22, 14), (16, 12)])
+        pygame.draw.polygon(surf, (130, 140, 155), [(14, 6), (18, 5), (17, 11), (15, 10)])
+    elif tool_type == "pickaxe":
+        # Wooden handle
+        pygame.draw.line(surf, (110, 70, 30), (6, 22), (18, 6), 3)
+        # Curved double-pick head
+        pygame.draw.polygon(surf, (190, 200, 215), [(10, 3), (25, 3), (23, 7), (14, 8)])
+        pygame.draw.polygon(surf, (160, 170, 185), [(14, 8), (17, 16), (14, 15), (12, 9)])
+    elif tool_type == "sickle":
+        # Handle
+        pygame.draw.line(surf, (110, 70, 30), (6, 22), (12, 14), 3)
+        # Curved harvesting blade
+        pygame.draw.arc(surf, (220, 200, 90), pygame.Rect(8, 2, 16, 16), 0.5, 3.8, 3)
+    elif tool_type == "hammer":
+        # Handle
+        pygame.draw.line(surf, (110, 70, 30), (6, 22), (18, 8), 3)
+        # Heavy steel hammer head
+        pygame.draw.rect(surf, (150, 160, 175), pygame.Rect(14, 4, 10, 7), border_radius=2)
+        pygame.draw.rect(surf, (190, 200, 215), pygame.Rect(15, 5, 8, 4))
+    elif tool_type == "sword":
+        # Hilt & Crossguard
+        pygame.draw.line(surf, (90, 60, 30), (5, 23), (9, 19), 3)
+        pygame.draw.line(surf, (210, 180, 60), (6, 16), (13, 23), 3)
+        # Gleaming double-edged silver blade
+        pygame.draw.polygon(surf, (230, 240, 255), [(9, 17), (25, 1), (17, 9)])
+        pygame.draw.polygon(surf, (170, 190, 215), [(9, 17), (25, 1), (11, 19)])
+    elif tool_type == "staff":
+        # Ancient staff shaft
+        pygame.draw.line(surf, (70, 45, 25), (4, 24), (20, 6), 3)
+        # Glowing Arcane Crystal Orb
+        pygame.draw.circle(surf, (160, 90, 240), (21, 5), 5)
+        pygame.draw.circle(surf, (230, 190, 255), (21, 5), 3)
+    else:
+        # Default generic hand / tool
+        pygame.draw.circle(surf, (220, 180, 140), (14, 14), 4)
+
+    _TOOL_CACHE[tool_type] = surf
+    return _TOOL_CACHE[tool_type]
+

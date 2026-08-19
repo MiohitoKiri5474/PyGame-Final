@@ -24,6 +24,7 @@ from constants import (
     COLOR_HUNGER_BAR,
     COLOR_BAR_BG,
     COLOR_GAME_OVER,
+
     COLOR_ANIMAL,
     COLOR_ANIMAL_DANGEROUS,
     COLOR_QUEUED_WAITING,
@@ -31,7 +32,12 @@ from constants import (
     COLOR_PROGRESS_BAR,
     COLOR_EXPAND_PREVIEW_CLAIM,
     EXPAND_CLAIM_RADIUS,
+    ROLE_FARMER,
+    ROLE_KNIGHT,
+    ROLE_MAGE,
 )
+
+import time
 from action_menu import ActionMenu
 from audio import play_bgm, play_sfx, stop_bgm
 from build_bar import BuildBar
@@ -58,8 +64,9 @@ import top_bar
 import top_buttons
 import magic_panel
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
-from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
+from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite, get_tool_sprite
 from terrain import parchment, grass
+
 
 _CAST_SPELL = {"Fire": cast_fire, "Lightning": cast_lightning, "Freeze": cast_freeze}
 
@@ -94,6 +101,10 @@ class Game:
                 self.paused = True  # restore the auto-pause a full/partial clear set before save
         else:
             self._new_game()
+
+        self.particles: list[dict] = []
+        play_bgm(self.cycle.phase)
+
 
     def _new_game(self) -> None:
         """Fresh colony from scratch - used both for a no-checkpoint startup
@@ -144,9 +155,12 @@ class Game:
                     self.priority_ui.handle_key(event.key, self.world.npcs)
                     continue
                 if self.skill_ui.visible:
+                    pts_before = self.skill_points_available
                     self.skill_points_available = self.skill_ui.handle_key(
                         event.key, self.world, self.skill_points_available
                     )
+                    if self.skill_points_available < pts_before:
+                        self._spawn_skill_upgrade_fx()
                     continue
                 if self.npc_status_ui.visible:
                     if event.key in (pygame.K_n, pygame.K_ESCAPE):
@@ -188,8 +202,16 @@ class Game:
                 ):
                     self._select_build_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if not self.priority_ui.visible and not self.skill_ui.visible and not self.npc_status_ui.visible:
+                if self.skill_ui.visible:
+                    pts_before = self.skill_points_available
+                    self.skill_points_available = self.skill_ui.handle_click(
+                        event.pos, self.world, self.skill_points_available
+                    )
+                    if self.skill_points_available < pts_before:
+                        self._spawn_skill_upgrade_fx()
+                elif not self.priority_ui.visible and not self.npc_status_ui.visible:
                     self.handle_click(event.pos)
+
 
     def _select_build_by_number(self, key: int) -> None:
         key_map = {
@@ -327,6 +349,15 @@ class Game:
             update_npc_tasks(self.world, dt)
             run_ticks(self.world, dt)
 
+            for p in self.particles:
+                p["x"] += p["vx"] * dt
+                p["y"] += p["vy"] * dt
+                p["vy"] += p.get("gravity", 120.0) * dt
+                p["life"] -= dt
+                if "rot" in p:
+                    p["rot"] = (p["rot"] + p.get("vrot", 0.0) * dt) % 360
+            self.particles = [p for p in self.particles if p["life"] > 0]
+
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
                 monster_type = self.nest_manager.pick_monster_type()
                 self.monsters.append(
@@ -340,9 +371,65 @@ class Game:
                     # keep actively chasing instead of freezing in place.
                     retarget_monster(monster, self.world)
 
+            # Trigger Death VFX for any monster that died before combat resolution (e.g. spell / burn)
+            for monster in self.monsters:
+                if monster.is_dead and not getattr(monster, "_death_fx_spawned", False):
+                    monster._death_fx_spawned = True
+                    self._spawn_monster_death_fx(monster.x, monster.y)
+
             monster_count_before_combat = len(self.monsters)
-            resolve_combat(self.world.npcs, self.monsters, self.world.buildings)
+
+            def _on_damage(src, target, dmg):
+                is_npc_target = hasattr(target, "role")
+                col = (255, 80, 80) if is_npc_target else (255, 220, 60)
+                self.particles.append({
+                    "type": "damage_num",
+                    "text": f"-{int(dmg)}",
+                    "x": target.x + random.uniform(-4, 4),
+                    "y": target.y - 12,
+                    "vx": random.uniform(-15, 15),
+                    "vy": -55.0,
+                    "color": col,
+                    "life": 0.65,
+                    "max_life": 0.65,
+                    "gravity": 40.0,
+                })
+                confetti_colors = [
+                    (255, 220, 50),
+                    (255, 75, 75),
+                    (255, 255, 255),
+                    (255, 130, 40),
+                ]
+                for _ in range(4):
+                    self.particles.append({
+                        "x": target.x + random.uniform(-6, 6),
+                        "y": target.y + random.uniform(-6, 6),
+                        "vx": random.uniform(-75, 75),
+                        "vy": random.uniform(-95, -30),
+                        "color": random.choice(confetti_colors),
+                        "size": random.uniform(3.0, 5.0),
+                        "life": 0.35,
+                        "max_life": 0.35,
+                        "rot": random.uniform(0, 360),
+                        "vrot": random.uniform(-360, 360),
+                    })
+
+                if target.is_dead and not getattr(target, "_death_fx_spawned", False):
+                    target._death_fx_spawned = True
+                    if is_npc_target:
+                        self._spawn_npc_death_fx(target.x, target.y, target.role)
+                    else:
+                        self._spawn_monster_death_fx(target.x, target.y)
+
+            resolve_combat(self.world.npcs, self.monsters, self.world.buildings, on_damage=_on_damage)
             self._monsters_killed_this_night += monster_count_before_combat - len(self.monsters)
+
+            # Trigger Death VFX for any colonist that died (hunger or combat)
+            for npc in self.world.npcs:
+                if npc.is_dead and not getattr(npc, "_death_fx_spawned", False):
+                    npc._death_fx_spawned = True
+                    self._spawn_npc_death_fx(npc.x, npc.y, npc.role)
+
             self.world.npcs[:] = [npc for npc in self.world.npcs if not npc.is_dead]
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None
@@ -354,11 +441,6 @@ class Game:
             if transitioned and self.cycle.phase == DAY:
                 play_sfx("dawn")
                 play_bgm("day")
-                # Full clear is judged by no monster being alive at day start
-                # - evaluated here, before the retreat below clears the list,
-                # so it still reflects "were they actually killed" and not
-                # "did they just retreat" (both would otherwise look like a
-                # full clear once retreat empties self.monsters every dawn).
                 self.skill_points_available += evaluate_wave(
                     len(self.monsters) == 0, self._monsters_killed_this_night
                 )
@@ -374,6 +456,148 @@ class Game:
                     self.skill_points_available, self._monsters_killed_this_night,
                 )
 
+    def _spawn_monster_death_fx(self, x: float, y: float) -> None:
+        """Paper Mario: Monster Defeat Confetti Fireworks & Smoke Poof!"""
+        confetti_colors = [
+            (255, 220, 50),   # Star Yellow
+            (255, 60, 60),    # Mario Red
+            (60, 190, 255),   # Sky Blue
+            (85, 230, 95),    # Origami Green
+            (215, 95, 255),   # Magic Violet
+            (255, 140, 30),   # Origami Orange
+            (255, 255, 255),  # Paper White
+        ]
+        # 24 colorful confetti scraps bursting outward with rotation
+        for _ in range(24):
+            self.particles.append({
+                "x": x + random.uniform(-6, 6),
+                "y": y + random.uniform(-6, 6),
+                "vx": random.uniform(-110, 110),
+                "vy": random.uniform(-140, -40),
+                "color": random.choice(confetti_colors),
+                "size": random.uniform(3.5, 6.0),
+                "life": random.uniform(0.65, 0.95),
+                "max_life": 0.95,
+                "rot": random.uniform(0, 360),
+                "vrot": random.uniform(-400, 400),
+                "gravity": 160.0,
+            })
+        # Expanding comic POOF smoke puff rings
+        for _ in range(5):
+            self.particles.append({
+                "type": "poof",
+                "x": x + random.uniform(-8, 8),
+                "y": y + random.uniform(-8, 8),
+                "vx": random.uniform(-20, 20),
+                "vy": random.uniform(-30, 0),
+                "radius_start": 6.0,
+                "radius_end": random.uniform(22.0, 34.0),
+                "color": (240, 240, 245),
+                "life": 0.45,
+                "max_life": 0.45,
+                "gravity": 0.0,
+            })
+        # Floating defeat gold star
+        self.particles.append({
+            "type": "star",
+            "x": x,
+            "y": y - 8,
+            "vx": 0.0,
+            "vy": -45.0,
+            "color": (255, 225, 60),
+            "size": 8.0,
+            "life": 0.75,
+            "max_life": 0.75,
+            "gravity": 20.0,
+        })
+
+    def _spawn_npc_death_fx(self, x: float, y: float, role: str) -> None:
+        """Paper Mario: Colonist Paper Soul Ascension & Angelic Halo!"""
+        # Translucent ascending paper soul
+        self.particles.append({
+            "type": "paper_soul",
+            "x": x,
+            "y": y,
+            "vx": 0.0,
+            "vy": -24.0,
+            "role": role,
+            "life": 2.2,
+            "max_life": 2.2,
+            "gravity": 0.0,
+        })
+        # Delicate halo & star sparkles shower
+        soul_colors = [
+            (255, 255, 255),
+            (255, 235, 120),
+            (160, 220, 255),
+        ]
+        for _ in range(16):
+            self.particles.append({
+                "type": "star",
+                "x": x + random.uniform(-10, 10),
+                "y": y + random.uniform(-12, 12),
+                "vx": random.uniform(-35, 35),
+                "vy": random.uniform(-60, -10),
+                "color": random.choice(soul_colors),
+                "size": random.uniform(3.0, 5.0),
+                "life": random.uniform(1.0, 1.8),
+                "max_life": 1.8,
+                "gravity": -10.0,
+            })
+        # Soft RIP Memorial Text
+        self.particles.append({
+            "type": "damage_num",
+            "text": f"RIP {role}...",
+            "x": x,
+            "y": y - 24,
+            "vx": 0.0,
+            "vy": -18.0,
+            "color": (240, 240, 255),
+            "life": 2.0,
+            "max_life": 2.0,
+            "gravity": 0.0,
+        })
+
+    def _spawn_skill_upgrade_fx(self) -> None:
+        """Paper Mario: Radiant Skill Upgrade Starburst Banner & Confetti!"""
+        play_sfx("skill_point")
+        center_x = self.camera.x + WINDOW_WIDTH // 2
+        center_y = self.camera.y + WINDOW_HEIGHT // 2
+
+        self.particles.append({
+            "type": "skill_banner",
+            "text": "★ SKILL UPGRADED! ★",
+            "x": center_x,
+            "y": center_y - 80,
+            "vx": 0.0,
+            "vy": -12.0,
+            "color": (255, 230, 80),
+            "life": 1.6,
+            "max_life": 1.6,
+            "gravity": 0.0,
+        })
+
+        star_colors = [
+            (255, 230, 70),
+            (255, 255, 255),
+            (100, 220, 255),
+            (255, 120, 180),
+            (130, 255, 130),
+        ]
+        for _ in range(35):
+            self.particles.append({
+                "type": "star",
+                "x": center_x + random.uniform(-40, 40),
+                "y": center_y - 80 + random.uniform(-20, 20),
+                "vx": random.uniform(-160, 160),
+                "vy": random.uniform(-180, 20),
+                "color": random.choice(star_colors),
+                "size": random.uniform(4.0, 7.0),
+                "life": random.uniform(0.9, 1.4),
+                "max_life": 1.4,
+                "gravity": 80.0,
+            })
+
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         self.render_grid()
@@ -382,6 +606,7 @@ class Game:
         self.render_animals()
         self.render_npcs()
         self.render_monsters()
+        self.render_particles()
         render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
         self.render_hud()
         magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom())
@@ -394,35 +619,321 @@ class Game:
         self.render_game_over()
         pygame.display.flip()
 
+    def render_particles(self) -> None:
+        cam_x, cam_y = self.camera.x, self.camera.y
+        for p in self.particles:
+            alpha = max(0.0, min(1.0, p["life"] / p["max_life"]))
+            sx = int(p["x"] - cam_x)
+            sy = int(p["y"] - cam_y)
+
+            p_type = p.get("type")
+            if p_type == "damage_num":
+                txt = p["text"]
+                col = p["color"]
+                txt_surf = self.font.render(txt, True, col)
+                outline_surf = self.font.render(txt, True, (15, 15, 20))
+                for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1)]:
+                    self.screen.blit(outline_surf, (sx + ox, sy + oy))
+                self.screen.blit(txt_surf, (sx, sy))
+            elif p_type == "poof":
+                prog = 1.0 - alpha
+                r = int(p.get("radius_start", 6.0) + (p.get("radius_end", 28.0) - p.get("radius_start", 6.0)) * prog)
+                poof_surf = pygame.Surface((r * 2 + 6, r * 2 + 6), pygame.SRCALPHA)
+                poof_col = (245, 245, 250, int(200 * alpha))
+                pygame.draw.circle(poof_surf, poof_col, (r + 3, r + 3), r, 3)
+                self.screen.blit(poof_surf, (sx - r - 3, sy - r - 3))
+            elif p_type == "star":
+                sz = max(2, int(p.get("size", 4.0) * (0.5 + 0.5 * alpha)))
+                col = p["color"]
+                star_surf = pygame.Surface((sz * 2 + 4, sz * 2 + 4), pygame.SRCALPHA)
+                star_col = (col[0], col[1], col[2], int(255 * alpha))
+                cx_s, cy_s = sz + 2, sz + 2
+                points = [
+                    (cx_s, cy_s - sz),
+                    (cx_s + sz // 3, cy_s - sz // 3),
+                    (cx_s + sz, cy_s),
+                    (cx_s + sz // 3, cy_s + sz // 3),
+                    (cx_s, cy_s + sz),
+                    (cx_s - sz // 3, cy_s + sz // 3),
+                    (cx_s - sz, cy_s),
+                    (cx_s - sz // 3, cy_s - sz // 3),
+                ]
+                pygame.draw.polygon(star_surf, star_col, points)
+                self.screen.blit(star_surf, (sx - sz - 2, sy - sz - 2))
+            elif p_type == "paper_soul":
+                role = p.get("role", "villager")
+                base_sprite = npc_sprite(role)
+                time_s = time.monotonic() * 4.0
+                sway = math.sin(time_s) * 8.0
+                ghost_w = max(1, int(base_sprite.get_width() * 0.95))
+                ghost_h = max(1, int(base_sprite.get_height() * 0.95))
+                scaled = pygame.transform.smoothscale(base_sprite, (ghost_w, ghost_h))
+                soul_surf = pygame.Surface((ghost_w + 16, ghost_h + 16), pygame.SRCALPHA)
+                soul_surf.blit(scaled, (8, 12))
+                halo_rect = pygame.Rect(ghost_w // 2, 2, 16, 6)
+                pygame.draw.ellipse(soul_surf, (255, 235, 100, int(230 * alpha)), halo_rect, 2)
+                soul_surf.fill((255, 255, 255, int(190 * alpha)), special_flags=pygame.BLEND_RGBA_MULT)
+                rotated = pygame.transform.rotate(soul_surf, sway)
+                self.screen.blit(rotated, rotated.get_rect(center=(sx, sy)))
+            elif p_type == "skill_banner":
+                txt = p["text"]
+                txt_surf = self.font.render(txt, True, p["color"])
+                bg_w = txt_surf.get_width() + 24
+                bg_h = txt_surf.get_height() + 12
+                bg_surf = pygame.Surface((bg_w, bg_h), pygame.SRCALPHA)
+                bg_surf.fill((20, 24, 35, int(220 * alpha)))
+                pygame.draw.rect(bg_surf, (255, 215, 80, int(240 * alpha)), pygame.Rect(0, 0, bg_w, bg_h), 2, border_radius=6)
+                self.screen.blit(bg_surf, (sx - bg_w // 2, sy - bg_h // 2))
+                self.screen.blit(txt_surf, (sx - txt_surf.get_width() // 2, sy - txt_surf.get_height() // 2))
+            elif "rot" in p:
+                sz = max(2, int(p.get("size", 3.0) * alpha))
+                p_surf = pygame.Surface((sz, max(2, int(sz * 1.5))), pygame.SRCALPHA)
+                col = p["color"]
+                p_surf.fill((col[0], col[1], col[2], int(250 * alpha)))
+                rot_surf = pygame.transform.rotate(p_surf, p["rot"])
+                self.screen.blit(rot_surf, rot_surf.get_rect(center=(sx, sy)))
+            else:
+                sz = max(2, int(p.get("size", 3.0) * alpha))
+                pygame.draw.circle(self.screen, p["color"], (sx, sy), sz)
+
+
     def render_npcs(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y
         bar_w = TILE_SIZE - 4
         bar_h = 4
 
         for npc in self.world.npcs:
-            sx = int(npc.x - cam_x)
-            sy = int(npc.y - cam_y)
+            base_sx = int(npc.x - cam_x)
+            base_sy = int(npc.y - cam_y)
 
-            # Body: each role now has its own distinct sprite (villager/
-            # knight/magician), so no color ring is needed to tell them apart.
-            sprite = npc_sprite(npc.role)
-            sprite_rect = sprite.get_rect(center=(sx, sy))
+            # Paper Mario: 2D Soft Ground Shadow
+            shadow_w = 22
+            shadow_h = 7
+            shadow_rect = pygame.Rect(base_sx - shadow_w // 2, base_sy + 14 - shadow_h // 2, shadow_w, shadow_h)
+            shadow_surf = pygame.Surface((shadow_w, shadow_h), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, shadow_w, shadow_h))
+            self.screen.blit(shadow_surf, shadow_rect)
+
+            # Paper Mario: Card Flip Horizontal Scale
+            flip_p = getattr(npc, "flip_progress", 1.0)
+            paper_flip_scale = max(0.08, abs(math.cos(flip_p * math.pi)))
+
+            draw_x = npc.x
+            draw_y = npc.y
+            tilt_angle = 0.0
+            scale_x = 1.0
+            scale_y = 1.0
+            display_facing = getattr(npc, "display_facing_left", False)
+            is_attacking = (getattr(npc, "attack_timer", 0.0) > 0)
+            ap = (1.0 - (npc.attack_timer / 0.35)) if is_attacking else 0.0
+
+            if getattr(npc, "hit_timer", 0.0) > 0:
+                # 1. Hit Hurt Reaction (Squash & Wobble)
+                hp = npc.hit_timer / 0.25
+                scale_x = 1.0 + 0.35 * hp
+                scale_y = 1.0 - 0.30 * hp
+                draw_y -= 4.0 * hp
+                tilt_angle = math.sin(hp * 30.0) * 16.0
+            elif is_attacking:
+                # 2. Combat Attack Strike (Lunge & Weapon Swing)
+                if ap < 0.40:
+                    prog = ap / 0.40
+                    scale_y = 1.0 + 0.25 * prog
+                    scale_x = 1.0 - 0.15 * prog
+                    tilt_angle = -24.0 * prog
+                    draw_y -= 3.0 * prog
+                else:
+                    prog = (ap - 0.40) / 0.60
+                    scale_y = 0.70 + 0.30 * prog
+                    scale_x = 1.30 - 0.30 * prog
+                    tilt_angle = 30.0 * (1.0 - prog)
+                    lunge_dir = -1.0 if display_facing else 1.0
+                    draw_x += lunge_dir * 8.0 * (1.0 - prog)
+            elif getattr(npc, "is_moving", False):
+                # 3. Hop & Squash Walk
+                timer = getattr(npc, "anim_timer", 0.0)
+                hop_phase = math.sin(timer * 16.0)
+                if hop_phase > 0:
+                    draw_y -= hop_phase * 6.0
+                    scale_y = 1.0 + 0.14 * hop_phase
+                    scale_x = 1.0 - 0.08 * hop_phase
+                    tilt_angle = math.sin(timer * 16.0) * 8.0
+                else:
+                    squash = abs(hop_phase)
+                    scale_y = 1.0 - 0.16 * squash
+                    scale_x = 1.0 + 0.16 * squash
+                    tilt_angle = 0.0
+            elif npc.task is not None:
+                # 4. Origami Fold & Hammer/Tool Slam
+                timer = getattr(npc, "work_anim_timer", 0.0)
+                cycle = (timer % 0.90) / 0.90
+                if cycle < 0.50:
+                    p = cycle / 0.50
+                    scale_y = 1.0 + 0.25 * p
+                    scale_x = 1.0 - 0.15 * p
+                    tilt_angle = -26.0 * p
+                    draw_y -= 3.0 * p
+                    offset_dir = 1.0 if display_facing else -1.0
+                    draw_x += offset_dir * 3.0 * p
+                elif cycle < 0.65:
+                    strike_prog = (cycle - 0.50) / 0.15
+                    scale_y = 0.65 + 0.25 * strike_prog
+                    scale_x = 1.35 - 0.15 * strike_prog
+                    tilt_angle = 28.0 * (1.0 - strike_prog)
+                    draw_y += 2.0
+                    offset_dir = -1.0 if display_facing else 1.0
+                    draw_x += offset_dir * 5.0
+
+                    if strike_prog < 0.25 and random.random() < 0.65:
+                        confetti_colors = [
+                            (255, 220, 50),
+                            (255, 75, 75),
+                            (60, 190, 255),
+                            (85, 230, 95),
+                            (215, 95, 255),
+                            (255, 255, 255),
+                        ]
+                        tx, ty = tile_center(*npc.task.target)
+                        for _ in range(3):
+                            c = random.choice(confetti_colors)
+                            self.particles.append({
+                                "x": tx + random.uniform(-6, 6),
+                                "y": ty + random.uniform(-6, 6),
+                                "vx": random.uniform(-65, 65),
+                                "vy": random.uniform(-85, -30),
+                                "color": c,
+                                "size": random.uniform(3.0, 5.0),
+                                "life": 0.40,
+                                "max_life": 0.40,
+                                "rot": random.uniform(0, 360),
+                                "vrot": random.uniform(-360, 360),
+                            })
+                else:
+                    recoil_prog = (cycle - 0.65) / 0.35
+                    wobble = math.sin(recoil_prog * math.pi * 3.0) * (1.0 - recoil_prog) * 0.18
+                    scale_y = 1.0 + wobble
+                    scale_x = 1.0 - wobble
+                    tilt_angle = wobble * 18.0
+            else:
+                draw_y += math.sin(time.monotonic() * 2.8 + npc.id) * 1.2
+                tilt_angle = math.sin(time.monotonic() * 2.0 + npc.id) * 2.0
+
+            sx = int(draw_x - cam_x)
+            sy = int(draw_y - cam_y)
+
+            # Main Body Sprite
+            base_sprite = npc_sprite(npc.role)
+            if display_facing:
+                base_sprite = pygame.transform.flip(base_sprite, True, False)
+                tilt_angle = -tilt_angle
+
+            final_w = max(1, int(base_sprite.get_width() * scale_x * paper_flip_scale))
+            final_h = max(1, int(base_sprite.get_height() * scale_y))
+            transformed_sprite = pygame.transform.smoothscale(base_sprite, (final_w, final_h))
+
+            if abs(tilt_angle) > 0.5:
+                rendered_sprite = pygame.transform.rotate(transformed_sprite, tilt_angle)
+            else:
+                rendered_sprite = transformed_sprite
+
+            sprite_rect = rendered_sprite.get_rect(center=(sx, sy))
             if npc is self.selected_npc:
-                pygame.draw.rect(self.screen, COLOR_NPC_SELECTED, sprite_rect.inflate(4, 4), 2)
-            self.screen.blit(sprite, sprite_rect)
+                pygame.draw.rect(self.screen, COLOR_NPC_SELECTED, sprite_rect.inflate(6, 6), 2, border_radius=4)
+            self.screen.blit(rendered_sprite, sprite_rect)
 
-            # Hunger bar (above the NPC)
-            bar_x = sx - bar_w // 2
-            bar_y = sprite_rect.top - bar_h - 4
+            # Tool & Combat Weapon Overlay
+            if is_attacking or npc.task is not None:
+                if is_attacking:
+                    tool_type = "sword" if npc.role == ROLE_KNIGHT else ("staff" if npc.role == ROLE_MAGE else "axe")
+                else:
+                    tool_type = "axe"
+                    if npc.task.type == "Gather":
+                        target_tile = (
+                            self.world.grid.get(*npc.task.target)
+                            if self.world.grid.in_bounds(*npc.task.target)
+                            else None
+                        )
+                        if target_tile and target_tile.resource in ("raw_stone", "bricks", "marble"):
+                            tool_type = "pickaxe"
+                        elif target_tile and target_tile.resource in ("crop", "berries"):
+                            tool_type = "sickle"
+                        else:
+                            tool_type = "axe"
+                    elif "Build" in npc.task.type or npc.task.type in ("Farmland", "Destroy"):
+                        tool_type = "hammer"
+                    elif npc.task.type in ("Hunt", "Tame"):
+                        if npc.role == ROLE_KNIGHT:
+                            tool_type = "sword"
+                        elif npc.role == ROLE_MAGE:
+                            tool_type = "staff"
+                        else:
+                            tool_type = "sickle"
+
+                tool_surf = get_tool_sprite(tool_type)
+                if is_attacking:
+                    if ap < 0.40:
+                        tool_angle = -60.0 * (ap / 0.40)
+                        hand_dx = 8.0 * paper_flip_scale
+                        hand_dy = 1.0 - 6.0 * (ap / 0.40)
+                    else:
+                        strike_p = (ap - 0.40) / 0.60
+                        tool_angle = -60.0 + 140.0 * strike_p
+                        hand_dx = (8.0 + 10.0 * strike_p) * paper_flip_scale
+                        hand_dy = -5.0 + 12.0 * strike_p
+                else:
+                    timer = getattr(npc, "work_anim_timer", 0.0)
+                    cycle = (timer % 0.90) / 0.90
+                    if cycle < 0.50:
+                        tool_angle = -55.0 * (cycle / 0.50)
+                        hand_dx = 9.0 * paper_flip_scale
+                        hand_dy = 1.0 - 5.0 * (cycle / 0.50)
+                    elif cycle < 0.65:
+                        strike_prog = (cycle - 0.50) / 0.15
+                        tool_angle = -55.0 + 130.0 * strike_prog
+                        hand_dx = (9.0 + 8.0 * strike_prog) * paper_flip_scale
+                        hand_dy = -4.0 + 10.0 * strike_prog
+                    else:
+                        recoil_prog = (cycle - 0.65) / 0.35
+                        tool_angle = 75.0 * (1.0 - recoil_prog)
+                        hand_dx = (9.0 + 8.0 * (1.0 - recoil_prog)) * paper_flip_scale
+                        hand_dy = 6.0 * (1.0 - recoil_prog)
+
+                if display_facing:
+                    hand_dx = -hand_dx
+                    tool_angle = -tool_angle
+                    tool_surf = pygame.transform.flip(tool_surf, True, False)
+
+                tw = max(1, int(tool_surf.get_width() * paper_flip_scale * 1.15))
+                th = max(1, int(tool_surf.get_height() * 1.15))
+                scaled_tool = pygame.transform.smoothscale(tool_surf, (tw, th))
+                rotated_tool = pygame.transform.rotate(scaled_tool, tool_angle)
+                tool_pos = (sx + int(hand_dx), sy + int(hand_dy))
+
+                # Combat & Work Slash Smear Arc
+                show_arc = (is_attacking and 0.40 <= ap < 0.85) or (not is_attacking and 0.50 <= cycle < 0.65)
+                if show_arc:
+                    trail_surf = pygame.Surface((TILE_SIZE * 2, TILE_SIZE * 2), pygame.SRCALPHA)
+                    trail_center = (TILE_SIZE, TILE_SIZE)
+                    arc_rect = pygame.Rect(trail_center[0] - 18, trail_center[1] - 18, 36, 36)
+                    arc_col = (255, 240, 100, 240) if npc.role == ROLE_KNIGHT else ((200, 100, 255, 240) if npc.role == ROLE_MAGE else (255, 255, 255, 210))
+                    if not display_facing:
+                        pygame.draw.arc(trail_surf, (255, 255, 255, 210), arc_rect, 0.0, 2.1, 4)
+                        pygame.draw.arc(trail_surf, arc_col, arc_rect, 0.3, 1.7, 3)
+                    else:
+                        pygame.draw.arc(trail_surf, (255, 255, 255, 210), arc_rect, 1.0, 3.14, 4)
+                        pygame.draw.arc(trail_surf, arc_col, arc_rect, 1.4, 2.8, 3)
+                    self.screen.blit(trail_surf, (tool_pos[0] - TILE_SIZE, tool_pos[1] - TILE_SIZE))
+
+                self.screen.blit(rotated_tool, rotated_tool.get_rect(center=tool_pos))
+
+            # Hunger bar
+            bar_x = base_sx - bar_w // 2
+            bar_y = base_sy - TILE_SIZE // 2 - bar_h - 4
             hunger_ratio = max(0.0, min(1.0, npc.hunger / NPC_MAX_HUNGER))
-            # Background
-            pygame.draw.rect(self.screen, COLOR_BAR_BG,
-                             pygame.Rect(bar_x, bar_y, bar_w, bar_h))
-            # Fill
+            pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, bar_y, bar_w, bar_h))
             fill_w = max(0, int(bar_w * hunger_ratio))
             if fill_w > 0:
-                pygame.draw.rect(self.screen, COLOR_HUNGER_BAR,
-                                 pygame.Rect(bar_x, bar_y, fill_w, bar_h))
+                pygame.draw.rect(self.screen, COLOR_HUNGER_BAR, pygame.Rect(bar_x, bar_y, fill_w, bar_h))
 
             # Work-in-progress bar (below the NPC) - task_progress only ticks
             # once the NPC has actually arrived at its target (task.py), so
@@ -442,24 +953,198 @@ class Game:
             tx, ty = tile_at(animal.x, animal.y)
             if not self.world.grid.get(tx, ty).revealed:
                 continue
-            screen_x = int(animal.x - self.camera.x)
-            screen_y = int(animal.y - self.camera.y)
+            base_sx = int(animal.x - self.camera.x)
+            base_sy = int(animal.y - self.camera.y)
+
+            # Paper Mario Ground Shadow
+            shadow_surf = pygame.Surface((20, 6), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 75), pygame.Rect(0, 0, 20, 6))
+            self.screen.blit(shadow_surf, (base_sx - 10, base_sy + 12))
+
+            draw_x = animal.x
+            draw_y = animal.y
+            tilt_angle = 0.0
+            scale_x = 1.0
+            scale_y = 1.0
+            facing_left = getattr(animal, "facing_left", False)
+            is_attacking = (getattr(animal, "attack_timer", 0.0) > 0)
+            ap = (1.0 - (animal.attack_timer / 0.35)) if is_attacking else 0.0
+
+            if getattr(animal, "hit_timer", 0.0) > 0:
+                # 1. Hurt Squash & Shake
+                hp = animal.hit_timer / 0.25
+                scale_x = 1.0 + 0.30 * hp
+                scale_y = 1.0 - 0.25 * hp
+                draw_y -= 4.0 * hp
+                tilt_angle = math.sin(hp * 30.0) * 15.0
+            elif is_attacking:
+                # 2. Retaliation Beast Strike / Claw Attack
+                if ap < 0.40:
+                    prog = ap / 0.40
+                    scale_y = 1.0 + 0.35 * prog
+                    scale_x = 1.0 - 0.20 * prog
+                    tilt_angle = -22.0 * prog
+                else:
+                    prog = (ap - 0.40) / 0.60
+                    scale_y = 0.70 + 0.30 * prog
+                    scale_x = 1.30 - 0.30 * prog
+                    tilt_angle = 26.0 * (1.0 - prog)
+                    lunge_dir = -1.0 if facing_left else 1.0
+                    draw_x += lunge_dir * 8.0 * (1.0 - prog)
+            elif getattr(animal, "is_moving", False):
+                # 3. Hop & Squash Walk
+                timer = getattr(animal, "anim_timer", 0.0)
+                bounce_speed = 16.0 if animal.speed > 90 else 11.0
+                hop = math.sin(timer * bounce_speed)
+                if hop > 0:
+                    draw_y -= hop * 5.0
+                    scale_y = 1.0 + 0.12 * hop
+                    scale_x = 1.0 - 0.08 * hop
+                    tilt_angle = hop * 6.0
+                else:
+                    squash = abs(hop)
+                    scale_y = 1.0 - 0.14 * squash
+                    scale_x = 1.0 + 0.14 * squash
+
+            screen_x = int(draw_x - self.camera.x)
+            screen_y = int(draw_y - self.camera.y)
             sprite = animal_sprite(animal.species)
             if sprite is not None:
-                self.screen.blit(sprite, sprite.get_rect(center=(screen_x, screen_y)))
+                if facing_left:
+                    sprite = pygame.transform.flip(sprite, True, False)
+                    tilt_angle = -tilt_angle
+
+                tw = max(1, int(sprite.get_width() * scale_x))
+                th = max(1, int(sprite.get_height() * scale_y))
+                transformed = pygame.transform.smoothscale(sprite, (tw, th))
+                if abs(tilt_angle) > 0.5:
+                    transformed = pygame.transform.rotate(transformed, tilt_angle)
+                self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
+
+                # Beast claw swipe arc on attack
+                if is_attacking and 0.40 <= ap < 0.85:
+                    claw_surf = pygame.Surface((36, 36), pygame.SRCALPHA)
+                    arc_rect = pygame.Rect(4, 4, 28, 28)
+                    if not facing_left:
+                        pygame.draw.arc(claw_surf, (255, 90, 60, 230), arc_rect, 0.2, 2.0, 3)
+                    else:
+                        pygame.draw.arc(claw_surf, (255, 90, 60, 230), arc_rect, 1.2, 3.0, 3)
+                    self.screen.blit(claw_surf, (screen_x - 18, screen_y - 18))
             else:
                 color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
                 pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
 
     def render_monsters(self) -> None:
         for monster in self.monsters:
-            screen_x = int(monster.x - self.camera.x)
-            screen_y = int(monster.y - self.camera.y)
+            base_sx = int(monster.x - self.camera.x)
+            base_sy = int(monster.y - self.camera.y)
+
+            # Paper Mario Ground Shadow
+            shadow_surf = pygame.Surface((22, 7), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, 22, 7))
+            self.screen.blit(shadow_surf, (base_sx - 11, base_sy + 13))
+
+            draw_x = monster.x
+            draw_y = monster.y
+            tilt_angle = 0.0
+            scale_x = 1.0
+            scale_y = 1.0
+            facing_left = getattr(monster, "display_facing_left", False)
+            is_attacking = (getattr(monster, "attack_timer", 0.0) > 0)
+            ap = (1.0 - (monster.attack_timer / 0.35)) if is_attacking else 0.0
+
+            if getattr(monster, "hit_timer", 0.0) > 0:
+                # 1. Monster Hurt Squash & Recoil
+                hp = monster.hit_timer / 0.25
+                scale_x = 1.0 + 0.35 * hp
+                scale_y = 1.0 - 0.30 * hp
+                draw_y -= 5.0 * hp
+                tilt_angle = math.sin(hp * 30.0) * 16.0
+            elif is_attacking:
+                # 2. Monster Bite / Claw Attack Strike
+                if ap < 0.35:
+                    prog = ap / 0.35
+                    scale_y = 1.0 + 0.30 * prog
+                    scale_x = 1.0 - 0.20 * prog
+                    tilt_angle = -20.0 * prog
+                else:
+                    prog = (ap - 0.35) / 0.65
+                    scale_y = 0.65 + 0.35 * prog
+                    scale_x = 1.35 - 0.35 * prog
+                    tilt_angle = 25.0 * (1.0 - prog)
+                    lunge_dir = -1.0 if facing_left else 1.0
+                    draw_x += lunge_dir * 9.0 * (1.0 - prog)
+            elif getattr(monster, "is_moving", False):
+                # 3. Hop & Squash Walk
+                timer = getattr(monster, "anim_timer", 0.0)
+                hop = math.sin(timer * 13.0)
+                if hop > 0:
+                    draw_y -= hop * 4.5
+                    scale_y = 1.0 + 0.12 * hop
+                    scale_x = 1.0 - 0.08 * hop
+                    tilt_angle = hop * 6.0
+                else:
+                    squash = abs(hop)
+                    scale_y = 1.0 - 0.14 * squash
+                    scale_x = 1.0 + 0.14 * squash
+            else:
+                draw_y += math.sin(time.monotonic() * 2.5 + monster.x) * 1.0
+
+            screen_x = int(draw_x - self.camera.x)
+            screen_y = int(draw_y - self.camera.y)
             sprite = monster_sprite(monster.type)
             if sprite is not None:
-                self.screen.blit(sprite, sprite.get_rect(center=(screen_x, screen_y)))
+                if facing_left:
+                    sprite = pygame.transform.flip(sprite, True, False)
+                    tilt_angle = -tilt_angle
+
+                tw = max(1, int(sprite.get_width() * scale_x))
+                th = max(1, int(sprite.get_height() * scale_y))
+                transformed = pygame.transform.smoothscale(sprite, (tw, th))
+                if abs(tilt_angle) > 0.5:
+                    transformed = pygame.transform.rotate(transformed, tilt_angle)
+                self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
+
+                # Persistent Burn Status VFX (flame tongues & embers)
+                if getattr(monster, "burn_ticks_remaining", 0) > 0:
+                    t_burn = time.monotonic() * 12.0
+                    burn_surf = pygame.Surface((36, 36), pygame.SRCALPHA)
+                    flame_pts = [
+                        (6, 26),
+                        (12, 10 + int(math.sin(t_burn) * 5)),
+                        (18, 16),
+                        (24, 8 + int(math.cos(t_burn) * 5)),
+                        (30, 26),
+                    ]
+                    pygame.draw.polygon(burn_surf, (255, 70, 20, 210), flame_pts)
+                    pygame.draw.polygon(burn_surf, (255, 200, 40, 240), [(p[0], p[1] + 4) for p in flame_pts])
+                    self.screen.blit(burn_surf, (screen_x - 18, screen_y - 20))
+
+                # Persistent Freeze Status VFX (translucent origami ice block & frost crystals)
+                if getattr(monster, "is_frozen", False):
+                    ice_box = pygame.Surface((36, 40), pygame.SRCALPHA)
+                    pygame.draw.rect(ice_box, (100, 215, 255, 115), pygame.Rect(2, 2, 32, 36), border_radius=4)
+                    pygame.draw.rect(ice_box, (220, 250, 255, 230), pygame.Rect(2, 2, 32, 36), 2, border_radius=4)
+                    # Diagonal specular gleam line
+                    pygame.draw.line(ice_box, (255, 255, 255, 220), (6, 6), (30, 30), 2)
+                    self.screen.blit(ice_box, (screen_x - 18, screen_y - 20))
+
+                # Red/Purple Claw Slash Smear Arc during monster attack
+                if is_attacking and 0.35 <= ap < 0.85:
+                    claw_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
+                    arc_rect = pygame.Rect(4, 4, 30, 30)
+                    if not facing_left:
+                        pygame.draw.arc(claw_surf, (255, 60, 60, 240), arc_rect, 0.2, 2.2, 4)
+                        pygame.draw.arc(claw_surf, (220, 40, 160, 200), arc_rect, 0.4, 1.8, 3)
+                    else:
+                        pygame.draw.arc(claw_surf, (255, 60, 60, 240), arc_rect, 1.0, 3.0, 4)
+                        pygame.draw.arc(claw_surf, (220, 40, 160, 200), arc_rect, 1.3, 2.7, 3)
+                    self.screen.blit(claw_surf, (screen_x - 19, screen_y - 19))
             else:
                 pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
+
+
+
 
     def render_nests(self) -> None:
         for nest in self.nest_manager.nests:
