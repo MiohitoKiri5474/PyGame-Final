@@ -460,7 +460,7 @@ class Game:
             self.skill_ui.toggle()
             return
 
-        spell = magic_panel.handle_click(screen_pos, top_bar.left_box_bottom())
+        spell = magic_panel.handle_click(screen_pos, top_bar.left_box_bottom(), self.font)
         if spell is not None:
             if not self.paused:  # casting affects sim state, stays frozen with everything else
                 _CAST_SPELL[spell](self.world, self.monsters)
@@ -577,7 +577,7 @@ class Game:
         pos = pygame.mouse.get_pos()
         hovering = (
             top_buttons.is_hovering(pos)
-            or magic_panel.is_hovering(pos, top_bar.left_box_bottom())
+            or magic_panel.is_hovering(pos, top_bar.left_box_bottom(), self.font)
             or self.build_bar.is_hovering(pos)
             or self.sanctuary_ui.is_hovering(pos)
             or self.is_dragging
