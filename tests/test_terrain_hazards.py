@@ -187,3 +187,22 @@ def test_mountain_has_no_resources_and_cannot_be_gathered():
     world.grid.get(*mountain_tile).claimed = True
 
     assert _can_queue(world, mountain_tile) is False
+
+
+def test_mountain_massif_cascade_reveal_on_expand():
+    grid = Grid()
+    # Create a 4x4 mountain massif that extends far beyond normal expand radius
+    for y in range(30, 34):
+        for x in range(30, 34):
+            grid.get(x, y).terrain = TERRAIN_MOUNTAIN
+            grid.get(x, y).claimed = False
+            grid.get(x, y).revealed = False
+
+    # Expand at (29, 30) (edge of mountain)
+    grid.expand(29, 30, claim_radius=2, reveal_radius=3)
+
+    # Entire 4x4 mountain massif should now be revealed and claimed
+    for y in range(30, 34):
+        for x in range(30, 34):
+            assert grid.get(x, y).revealed is True
+            assert grid.get(x, y).claimed is True

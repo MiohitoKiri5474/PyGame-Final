@@ -150,6 +150,25 @@ class Grid:
     def get(self, x: int, y: int) -> Tile:
         return self.tiles[y][x]
 
+    def _reveal_mountain_massif(self, start_x: int, start_y: int) -> None:
+
+        """Flood-reveals and claims an entire connected mountain massif when any part is explored,
+        ensuring mountain interiors are never trapped in fog/parchment."""
+        queue = [(start_x, start_y)]
+        visited = {(start_x, start_y)}
+        while queue:
+            x, y = queue.pop(0)
+            tile = self.get(x, y)
+            tile.revealed = True
+            tile.claimed = True
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                nx, ny = x + dx, y + dy
+                if self.in_bounds(nx, ny) and (nx, ny) not in visited:
+                    nbr = self.get(nx, ny)
+                    if getattr(nbr, "terrain", "plain") == TERRAIN_MOUNTAIN:
+                        visited.add((nx, ny))
+                        queue.append((nx, ny))
+
     def expand(self, cx: int, cy: int, claim_radius: int, reveal_radius: int | None = None) -> None:
         # ponytail: square-radius, not circular — good enough for this game's feel
         if reveal_radius is None:
@@ -161,5 +180,9 @@ class Grid:
         for y in range(cy - claim_radius, cy + claim_radius + 1):
             for x in range(cx - claim_radius, cx + claim_radius + 1):
                 if self.in_bounds(x, y):
-                    self.get(x, y).claimed = True
+                    tile = self.get(x, y)
+                    tile.claimed = True
+                    if getattr(tile, "terrain", "plain") == TERRAIN_MOUNTAIN:
+                        self._reveal_mountain_massif(x, y)
+
 
