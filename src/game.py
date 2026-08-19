@@ -38,7 +38,7 @@ from game_over import GameOverState
 from magic import cast_fire, cast_freeze, cast_lightning
 from nest import NestManager, create_initial_nests
 from npc import NPC
-from monster import spawn_monster
+from monster import retarget_monster, spawn_monster
 from pathfinding import find_path
 from settlement import evaluate_wave
 from population import maybe_spawn_npc
@@ -216,6 +216,11 @@ class Game:
                 )
             for monster in self.monsters:
                 monster.update(dt)
+                if monster.has_arrived:
+                    # Reached wherever it was last sent (initial spawn target,
+                    # or a previous retarget) - pick a new one so monsters
+                    # keep actively chasing instead of freezing in place.
+                    retarget_monster(monster, self.world)
 
             monster_count_before_combat = len(self.monsters)
             resolve_combat(self.world.npcs, self.monsters, self.world.buildings)
@@ -229,14 +234,16 @@ class Game:
             if transitioned and self.cycle.phase == DAY:
                 play_sfx("dawn")
                 # Full clear is judged by no monster being alive at day start
-                # (not by matching this night's spawn/kill counts - monsters
-                # never despawn, so a leftover from an earlier night would
-                # otherwise let killing it wrongly earn a false full-clear).
+                # - evaluated here, before the retreat below clears the list,
+                # so it still reflects "were they actually killed" and not
+                # "did they just retreat" (both would otherwise look like a
+                # full clear once retreat empties self.monsters every dawn).
                 self.skill_points_available += evaluate_wave(
                     len(self.monsters) == 0, self._monsters_killed_this_night
                 )
                 if self.skill_points_available > 0:
                     self.paused = True
+                self.monsters.clear()  # survivors retreat to their nest at dawn
 
             maybe_spawn_npc(self.world, self.cycle.round_number, transitioned and self.cycle.phase == DAY)
 

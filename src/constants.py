@@ -49,8 +49,11 @@ COMBAT_MIN_DAMAGE = 1  # damage floor so attack <= defense still chips away
 
 NEST_INITIAL_COUNT = 3
 NEST_MAX_COUNT = 8
-NEST_BASE_SPAWN_INTERVAL = 15.0  # seconds between spawns at round 1
-NEST_SPAWN_RAMP_PER_ROUND = 1.0  # interval shrinks by this much per round
+# At round 1 this yields ~1 spawn/nest over a NIGHT_SECONDS=60 night (3 nests
+# -> ~3 monsters) - the old 15.0 gave up to 4/nest (~12 total) on the very
+# first night, before the colony has any defenses.
+NEST_BASE_SPAWN_INTERVAL = 40.0  # seconds between spawns at round 1
+NEST_SPAWN_RAMP_PER_ROUND = 2.5  # interval shrinks by this much per round
 NEST_MIN_SPAWN_INTERVAL = 4.0  # floor so late rounds don't spawn every tick
 NEW_NEST_INTERVAL = 240.0  # seconds between chances for a new nest to appear
 
