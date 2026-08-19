@@ -33,7 +33,7 @@ from world import World
 
 class TestProcessAnimalForFood:
     def test_process_wild_boar_credits_meat_and_removes_animal(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         boar = Animal(*tile_center(10, 10), species="WildBoar", speed=70.0, dangerous=False, health=30)
         world.animals.append(boar)
 
@@ -45,7 +45,7 @@ class TestProcessAnimalForFood:
         assert boar not in world.animals
 
     def test_process_bear_credits_five_meat(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         bear = Animal(*tile_center(10, 10), species="Bear", speed=50.0, dangerous=True, health=60)
         world.animals.append(bear)
 
@@ -56,14 +56,14 @@ class TestProcessAnimalForFood:
 
 class TestTameTask:
     def test_can_queue_tame_true_for_untamed_animal(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
 
         assert can_queue_tame(world, (10, 10))
 
     def test_can_queue_tame_false_for_already_tamed_animal(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         animal.is_tamed = True
         world.animals.append(animal)
@@ -71,7 +71,7 @@ class TestTameTask:
         assert not can_queue_tame(world, (10, 10))
 
     def test_farmer_tame_success_rate_bonus(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
 
@@ -88,7 +88,7 @@ class TestTameTask:
         assert animal.is_tamed
 
     def test_non_farmer_fails_above_base_success_rate(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
 
@@ -104,7 +104,7 @@ class TestTameTask:
         assert not animal.is_tamed
 
     def test_tamed_animal_places_in_available_pen(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
         world.buildings.append(pen)
 
@@ -127,7 +127,7 @@ class TestTameTask:
         assert animal.idle_target == idle_spot_near_pen(world, 5, 5)
 
     def test_tamed_animal_waits_if_no_pen_available(self):
-        world = World()  # No pens
+        world = World(animal_count=0)  # No pens; animal_count=0 avoids random-wildlife collisions too
         animal = Animal(*tile_center(10, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
 
@@ -149,7 +149,7 @@ class TestTameTask:
 
 class TestPenAssignmentAndFollowInteraction:
     def test_new_pen_binds_to_a_following_animal_without_interrupting_it(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         animal.is_tamed = True
         animal.is_following = True
@@ -166,7 +166,7 @@ class TestPenAssignmentAndFollowInteraction:
         assert animal.is_following  # still following - not yanked back
 
     def test_back_to_pen_helper_targets_a_free_tile_beside_the_pen(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
         world.buildings.append(pen)
 
@@ -174,7 +174,7 @@ class TestPenAssignmentAndFollowInteraction:
         assert spot == tile_center(5, 4)  # first free cardinal tile checked (north)
 
     def test_idle_spot_skips_blocked_cardinal_tiles(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
         blocker = Building(type="Wall", x=5, y=4, block=100, attack=0)  # occupies the north tile
         world.buildings.extend([pen, blocker])
@@ -189,7 +189,7 @@ class TestPenAssignmentAndFollowInteraction:
         # and ROLE_STATS already gives Farmer 0.6x there. This locks that in
         # end-to-end using the real registered "Tame" task type.
         def _setup(role):
-            world = World(npc_count=0)
+            world = World(npc_count=0, animal_count=0)
             cx, cy = world.grid.width // 2, world.grid.height // 2
             world.grid.get(cx, cy).claimed = True
             animal = Animal(*tile_center(cx, cy), species="Horse", speed=140.0, dangerous=False, health=40)
@@ -220,8 +220,7 @@ class TestTameRepathing:
         # Hunt did), so a wandering animal would silently desync from the
         # stale target tile with no chase logic to recover - this covers
         # the same claim-and-chase path Hunt already had, now shared by Tame.
-        world = World(npc_count=1)
-        world.animals = []  # World() seeds random wildlife too - keep only this test's own animal
+        world = World(npc_count=1, animal_count=0)
         animal = Animal(*tile_center(12, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
 
@@ -243,7 +242,7 @@ class TestTameRepathing:
         assert len(npc.path) > 0
 
     def test_npc_holds_position_and_works_once_in_range(self):
-        world = World(npc_count=1)
+        world = World(npc_count=1, animal_count=0)
         animal = Animal(*tile_center(11, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
 
@@ -261,7 +260,7 @@ class TestTameRepathing:
 
 class TestAnimalPenProductionAndHorseBuff:
     def test_penned_animal_produces_meat_periodically(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
         world.buildings.append(pen)
 
@@ -278,7 +277,7 @@ class TestAnimalPenProductionAndHorseBuff:
         assert world.inventory.get("meat") == initial_meat + 1
 
     def test_penned_horse_grants_travel_speed_bonus(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
         world.buildings.append(pen)
 
@@ -295,7 +294,7 @@ class TestAnimalPenProductionAndHorseBuff:
         assert npc.speed == 120.0 + HORSE_SPEED_BONUS
 
     def test_following_animal_pauses_meat_production(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
         world.buildings.append(pen)
 
@@ -311,7 +310,7 @@ class TestAnimalPenProductionAndHorseBuff:
         assert world.inventory.get("meat") == initial_meat
 
     def test_following_horse_pauses_speed_bonus(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
         world.buildings.append(pen)
 

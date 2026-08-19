@@ -741,8 +741,11 @@ class Game:
                 )
             for monster in self.monsters:
                 monster.update(dt)
-                if monster.has_arrived:
-                    retarget_monster(monster, self.world)
+                # Every tick, not just on arrival - retarget_monster only
+                # actually re-paths when the target has moved to a new tile
+                # or the monster has no path left, so this doesn't mean
+                # recomputing a route every frame.
+                retarget_monster(monster, self.world)
 
             # Trigger Death VFX for any monster that died before combat resolution (e.g. spell / burn)
             for monster in self.monsters:
