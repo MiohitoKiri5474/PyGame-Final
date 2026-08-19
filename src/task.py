@@ -92,10 +92,37 @@ class TaskQueue:
         self.tasks = [t for t in self.tasks if t is not task]
 
 
+def _purge_dead_tasks(world: "World") -> None:
+    """Drops unassigned tasks whose can_perform now says no - covers both
+    "went stale before anyone even claimed it" (e.g. an overlapping Expand
+    already claimed the target) and "was assigned, went invalid mid-work,
+    got unassigned a moment ago" (the per-NPC loop below only clears
+    assigned_npc, it doesn't remove the Task itself). Runs once at the top
+    of each tick, using last tick's assignments, so nothing gets pulled out
+    from under an NPC that's still actively deciding what to do with it
+    this same tick. Without this the queue would otherwise accumulate dead
+    entries forever - nothing else ever removes an unassigned task."""
+    world.tasks.tasks = [
+        task for task in world.tasks.tasks
+        if task.assigned_npc is not None or task_can_perform(world, task)
+    ]
+
+
+def task_can_perform(world: "World", task: Task) -> bool:
+    """True if this task's own can_perform (or the absence of one) says
+    it's still doable - shared by the purge above and by game.py's queued-
+    marker rendering, so "is this task dead" has exactly one definition."""
+    task_type = TASK_TYPES.get(task.type)
+    if task_type is None or task_type.can_perform is None:
+        return True
+    return task_type.can_perform(world, task)
+
+
 def update_npc_tasks(world: "World", dt: float) -> None:
     """Single per-tick entry point: idle NPCs claim work, assigned NPCs walk
     to and perform it. If a task is blocked (e.g. missing materials), NPCs skip
     it and work on available tasks. Hungry NPCs consume food from the colony inventory."""
+    _purge_dead_tasks(world)
     for npc in world.npcs:
         # Colony food consumption: hungry NPCs eat from inventory (soonest-to-expire first)
         if npc.hunger <= HUNGER_EAT_THRESHOLD and not npc.is_dead:

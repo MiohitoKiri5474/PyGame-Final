@@ -57,7 +57,7 @@ from monster import retarget_monster, spawn_monster
 from pathfinding import find_path
 from settlement import evaluate_wave
 from population import maybe_spawn_npc
-from task import TASK_TYPES, update_npc_tasks
+from task import TASK_TYPES, task_can_perform, update_npc_tasks
 from extensions import hud_lines, render_fx_overlays, render_overlays, run_ticks
 from tile_actions import applicable_tasks
 from world import World
@@ -1426,20 +1426,13 @@ class Game:
 
         # One task per target tile in practice (can_queue rejects duplicates
         # on an already-queued tile) - built once per frame instead of
-        # rescanning world.tasks.tasks for every visible tile. Tasks that can
-        # no longer actually be performed (target already gone/claimed by
-        # something else) are skipped rather than counted as "still open" -
-        # a dead queue entry can otherwise sit lit forever since nothing else
-        # currently purges it (task.py's own unassign-on-invalid doesn't
-        # remove it from the queue either), which would make the yellow
-        # count a lie about how much work is genuinely left.
-        queued_by_tile = {}
-        for task in self.world.tasks.tasks:
-            task_type = TASK_TYPES.get(task.type)
-            if task_type is not None and task_type.can_perform is not None:
-                if not task_type.can_perform(self.world, task):
-                    continue
-            queued_by_tile[task.target] = task
+        # rescanning world.tasks.tasks for every visible tile. task.py's own
+        # per-tick purge keeps dead tasks out of the queue entirely now, but
+        # this still guards the one-tick window between a task going invalid
+        # mid-work and the next purge sweep picking it up.
+        queued_by_tile = {
+            task.target: task for task in self.world.tasks.tasks if task_can_perform(self.world, task)
+        }
 
         for row in range(start_row, min(grid.height, start_row + VIEWPORT_TILES_Y + 2)):
             for col in range(start_col, min(grid.width, start_col + VIEWPORT_TILES_X + 2)):
