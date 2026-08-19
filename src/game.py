@@ -67,6 +67,7 @@ import top_bar
 import top_buttons
 import magic_panel
 import minimap
+from render_fog import render_fog_base_tile, render_drifting_fog_layer, render_fog_tile
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
     animal_sprite,
@@ -1081,7 +1082,9 @@ class Game:
         self.render_projectiles()
         self.render_particles()
         render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
+        self.render_fog_layer()
         # Crossfades in over the first few seconds of night and back out over
+
         # the first few seconds of day, rather than snapping instantly at
         # the phase boundary - reuses cycle.timer (seconds into the current
         # phase), which already resets to 0 exactly on each transition.
@@ -1734,7 +1737,12 @@ class Game:
             sprite = nest_sprite()
             self.screen.blit(sprite, sprite.get_rect(center=rect.center))
 
+    def render_fog_layer(self) -> None:
+        """Renders continuous drifting clouds and mist floating over unexplored regions."""
+        render_drifting_fog_layer(self.screen, self.world.grid, self.camera, time.monotonic())
+
     def render_grid(self) -> None:
+
         cam_x, cam_y = self.camera.x, self.camera.y
         start_col = cam_x // TILE_SIZE
         start_row = cam_y // TILE_SIZE
@@ -1753,6 +1761,7 @@ class Game:
             task.target: task for task in self.world.tasks.tasks if task_can_perform(self.world, task)
         }
 
+        time_s = time.monotonic()
         for row in range(start_row, min(grid.height, start_row + VIEWPORT_TILES_Y + 2)):
             for col in range(start_col, min(grid.width, start_col + VIEWPORT_TILES_X + 2)):
                 tile = grid.get(col, row)
@@ -1761,13 +1770,13 @@ class Game:
                 rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
 
                 if not tile.revealed:
-                    # Fog stays a flat overlay, not a texture - it's meant to
-                    # read as "nothing to see here", not as ground you could walk on.
-                    pygame.draw.rect(self.screen, COLOR_FOG, rect)
+                    render_fog_base_tile(self.screen, rect)
                 elif tile.claimed:
                     self.screen.blit(grass(), rect)
                 else:
                     self.screen.blit(parchment(), rect)
+
+
 
                 # Material indicator for resource blocks
                 if tile.revealed and tile.resource:
@@ -1829,6 +1838,8 @@ class Game:
             self.cycle.round_number, self.cycle.phase.upper(),
             self.cycle.remaining(), self.cycle.duration(), banner_color,
             inventory_items,
+            big_font=self.big_font,
+            timer=self.cycle.timer,
         )
         side_top = self.sanctuary_ui.PANEL_Y + self.sanctuary_ui.PANEL_HEIGHT + 10
         top_bar.render_side_info(
@@ -1843,6 +1854,7 @@ class Game:
         panel = self._game_over_panel_rect()
         btn_w, btn_h = 200, 48
         return pygame.Rect(panel.centerx - btn_w // 2, panel.bottom - btn_h - 24, btn_w, btn_h)
+
 
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:

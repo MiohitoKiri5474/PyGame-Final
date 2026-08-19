@@ -74,6 +74,9 @@ def _box(surface: pygame.Surface, rect: pygame.Rect) -> None:
     pygame.draw.rect(surface, _BOX_BORDER, rect, 2, border_radius=8)
 
 
+from render_celestial import render_celestial_dial
+
+
 def _layout_inventory_rows(
     items: list[tuple[str, int]], font: pygame.font.Font, max_width: int
 ) -> list[list[tuple[str, str, int]]]:
@@ -102,29 +105,23 @@ def render(
     duration_seconds: float,
     phase_color: tuple[int, int, int],
     inventory_items: list[tuple[str, int]],
+    big_font: pygame.font.Font | None = None,
+    timer: float | None = None,
 ) -> int:
-    """Draws the round box and the inventory box. Returns the left box's own
+    """Draws the celestial dial and the inventory box. Returns the left box's own
     bottom y - the magic panel starts there, not at the (possibly taller)
     inventory box's bottom, since it shares the left box's x-range but not
     the middle column's."""
     left_rect = pygame.Rect(_MARGIN, _MARGIN, LEFT_W, _LEFT_MIN_H)
-    _box(surface, left_rect)
-
-    round_surf = font.render(f"Round {round_number}", True, _ROUND_COLOR)
-    phase_surf = font.render(phase_label, True, phase_color)
-    ring_diameter = _RING_RADIUS * 2
-    stack_h = round_surf.get_height() + phase_surf.get_height() + ring_diameter + 8
-    y = left_rect.centery - stack_h // 2
-    surface.blit(round_surf, round_surf.get_rect(centerx=left_rect.centerx, top=y))
-    y += round_surf.get_height() + 2
-    surface.blit(phase_surf, phase_surf.get_rect(centerx=left_rect.centerx, top=y))
-    y += phase_surf.get_height() + 6
-
-    fraction = 0.0 if duration_seconds <= 0 else max(0.0, min(1.0, remaining_seconds / duration_seconds))
-    ring_center = (left_rect.centerx, y + _RING_RADIUS)
-    _draw_progress_ring(surface, ring_center, fraction, phase_color)
-    number_surf = font.render(f"{remaining_seconds:.0f}s", True, phase_color)
-    surface.blit(number_surf, number_surf.get_rect(center=ring_center))
+    if timer is None:
+        timer = max(0.0, duration_seconds - remaining_seconds)
+    if big_font is None:
+        big_font = font
+    render_celestial_dial(
+        surface, left_rect, font, big_font,
+        phase=phase_label, round_number=round_number,
+        timer=timer, duration=duration_seconds,
+    )
 
     middle_x = left_rect.right + _MARGIN
     middle_w = WINDOW_WIDTH - middle_x - _MARGIN - _RIGHT_COL_W - _MARGIN
