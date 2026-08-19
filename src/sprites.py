@@ -27,6 +27,14 @@ _RESOURCE_PATHS = {
     "mushrooms": "building/mushroom.png",
 }
 
+# Tile-drawn resource nodes read better as the thing actually growing there
+# (a tree) rather than the harvested material - collected-resource icons
+# everywhere else (inventory, build costs) keep showing what you actually
+# end up holding (a log), via plain resource_sprite/_RESOURCE_PATHS above.
+_MAP_RESOURCE_OVERRIDES = {
+    "wood": "building/tree.png",
+}
+
 _BUILDING_PATHS = {
     "Wall": "building/wall.png",
     "Tower": "building/tower.png",
@@ -72,6 +80,14 @@ def npc_sprite(role: str | None = None) -> pygame.Surface:
 
 def resource_sprite(resource: str) -> pygame.Surface | None:
     path = _RESOURCE_PATHS.get(resource)
+    return _load_scaled(path, TILE_SIZE - 6) if path else None
+
+
+def map_resource_sprite(resource: str) -> pygame.Surface | None:
+    """Like resource_sprite, but specifically for the tile drawn on the map
+    itself - falls back to resource_sprite's own mapping for anything with
+    no map-specific override."""
+    path = _MAP_RESOURCE_OVERRIDES.get(resource, _RESOURCE_PATHS.get(resource))
     return _load_scaled(path, TILE_SIZE - 6) if path else None
 
 

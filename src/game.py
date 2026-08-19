@@ -74,10 +74,10 @@ from sprites import (
     get_arrow_sprite,
     get_magic_orb_sprite,
     get_tool_sprite,
+    map_resource_sprite,
     monster_sprite,
     nest_sprite,
     npc_sprite,
-    resource_sprite,
 )
 from tame_task import idle_spot_near_pen
 from terrain import grass, parchment
@@ -1762,7 +1762,7 @@ class Game:
 
                 # Material indicator for resource blocks
                 if tile.revealed and tile.resource:
-                    sprite = resource_sprite(tile.resource)
+                    sprite = map_resource_sprite(tile.resource)
                     if sprite is not None:
                         center = (screen_x + TILE_SIZE // 2, screen_y + TILE_SIZE // 2)
                         self.screen.blit(sprite, sprite.get_rect(center=center))
