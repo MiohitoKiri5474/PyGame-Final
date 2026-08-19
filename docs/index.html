@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AETHELGARD: FRONTIER COLONY — 2026 年度手繪紙雕奇幻殖民生存策略</title>
-  <meta name="description" content="《AETHELGARD: FRONTIER COLONY》2026 年度手繪紙雕奇幻殖民生存策略。白晝拓荒建設、馴養生態萬獸，暗夜施展元素魔法抵禦屍潮與狼人進犯！" />
+  <title>MEDIEVIL — 2026 年度暗黑奇幻像素殖民地生存策略</title>
+  <meta name="description" content="《MEDIEVIL》2026 年度暗黑奇幻像素殖民地生存策略。白天拓荒建設、馴服萬獸，黑夜抵禦屍潮與狼人進犯！" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,12 +51,6 @@
       --border-subtle: rgba(120, 200, 100, 0.25);
       --text-muted: #a2b8ad;
     }
-
-    /* Hide granular numeric tables as requested by user */
-    .card-stats-table {
-      display: none !important;
-    }
-
 
     /* Ambient Canvas Background */
     #ambient-canvas {
@@ -901,8 +895,8 @@
   <header>
     <div class="nav-container">
       <a href="#" class="logo">
-        <img src="../assets/player/knight.png" alt="Aethelgard Logo" class="logo-img" onerror="this.style.display='none'" />
-        <span>AETHELGARD</span>
+        <img src="../assets/player/knight.png" alt="Medievil Logo" class="logo-img" onerror="this.style.display='none'" />
+        <span>MEDIEVIL</span>
       </a>
       <ul class="nav-links">
         <li><a href="#cycle">日夜生死循環</a></li>
@@ -912,7 +906,6 @@
         <li><a href="#skills">天賦加點器</a></li>
         <li><a href="#buildings">建築藍圖</a></li>
         <li><a href="#bestiary">萬獸圖鑑</a></li>
-        <li><a href="#poster-showcase">A1海報</a></li>
       </ul>
       <div class="nav-actions">
         <button id="bgm-toggle" class="btn-toggle" style="border-color: rgba(245, 197, 66, 0.45); background: rgba(245, 197, 66, 0.12);" title="播放/暫停白天背景音樂">
@@ -924,6 +917,7 @@
         <button id="theme-toggle" class="btn-toggle" title="切換日夜主題">
           <span id="theme-icon">🌙</span> <span id="theme-text">夜間模式</span>
         </button>
+        <a href="#launch" class="btn-primary">立即啟動</a>
       </div>
     </div>
   </header>
@@ -931,30 +925,30 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="hero-content">
-      <div class="hero-badge">✦ 2026 年度手繪紙雕奇幻殖民生存策略 ✦</div>
+      <div class="hero-badge">✦ 2026 年度暗黑奇幻像素殖民地生存策略 ✦</div>
       <h1 class="hero-title">
-        艾瑟爾加德：<br><span>邊境拓荒者</span>
+        <span>MEDIEVIL</span>
       </h1>
       <p class="hero-desc">
-        白晝在未知的迷霧荒野中拓荒建設、採集資源、耕種農田、馴服野獸；黑夜深淵魔物破曉襲擊之時，抵禦狂暴狼人、吸血鬼與劇毒殭屍的無盡圍攻。引導元素天罰，帶領你的殖民者生存直到破曉黎明！
+        白天在未知的迷霧荒野中拓荒建設、採集資源、耕種農田、馴服野獸；黑夜血月降臨之時，抵禦狂暴狼人、吸血鬼與巨型殭屍的無盡圍攻。引導奧術天罰，帶領你的殖民者生存直到破曉黎明！
       </p>
 
       <div class="hero-cta">
-        <a href="#cycle" class="btn-primary" style="font-size: 1.1rem; padding: 0.85rem 2rem;">⚡ 探索世界</a>
+        <a href="#launch" class="btn-primary" style="font-size: 1.1rem; padding: 0.85rem 2rem;">⚡ 啟動遊戲</a>
         <a href="#magic" class="btn-secondary">🔮 魔法模擬器試玩</a>
-        <a href="#poster-showcase" class="btn-secondary">🖼️ 檢視 A1 展演海報</a>
+        <a href="#sfx" class="btn-secondary">🎧 原生音效試聽</a>
       </div>
     </div>
     <div class="hero-preview-wrapper">
-      <img id="hero-banner-img" src="assets/screenshot_day.png" alt="Aethelgard Hero Banner" class="hero-preview-img" />
+      <img id="hero-banner-img" src="assets/hero_banner.jpg" alt="Medievil Hero Banner" class="hero-preview-img" />
       <div class="hero-stats-badge">
         <div>
-          <div class="hero-stat-val">360/360</div>
-          <div class="hero-stat-label">自動化驗證測試</div>
+          <div class="hero-stat-val">27/27</div>
+          <div class="hero-stat-label">完整模組全上線</div>
         </div>
         <div>
-          <div class="hero-stat-val">16-Tile</div>
-          <div class="hero-stat-label">四大奇幻地貌系統</div>
+          <div class="hero-stat-val">293+</div>
+          <div class="hero-stat-label">自動化驗證測試</div>
         </div>
         <div>
           <div class="hero-stat-val">∞</div>
@@ -963,7 +957,6 @@
       </div>
     </div>
   </section>
-
 
   <!-- Section 1: Day/Night Cycle -->
   <section id="cycle">
@@ -1466,26 +1459,13 @@
     </div>
   </section>
 
-  <!-- Section: A1 Exhibition Poster Showcase -->
-  <section id="poster-showcase">
-    <div class="section-header">
-      <span class="section-tag">EXHIBITION MASTERPIECE</span>
-      <h2 class="section-title">A1 遊戲介紹展演海報</h2>
-      <p class="section-desc">手繪童話紙雕風 × 雙核心機制展示 · 標準 A1 尺寸展演海報輸出</p>
-    </div>
-
-    <div style="max-width: 680px; margin: 0 auto 3rem; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.9), 0 0 35px rgba(245, 197, 66, 0.35); border: 3px solid var(--gold-primary);">
-      <img src="assets/poster_a1.jpg" alt="A1 Master Presentation Poster" style="width: 100%; display: block;" />
-    </div>
-  </section>
-
   <!-- Section 8: Launch Game Command -->
   <section id="launch">
     <div class="launch-cta">
       <div class="hero-badge">✦ 立即進入戰場 ✦</div>
-      <h2 class="section-title">準備好捍衛你的 AETHELGARD 殖民地了嗎？</h2>
+      <h2 class="section-title">準備好捍衛你的 MEDIEVIL 殖民地了嗎？</h2>
       <p class="section-desc" style="max-width: 650px; margin: 0 auto;">
-        在 PowerShell 終端機中貼上以下指令，即刻啟動 Python PyGame 原生引擎，體驗手繪童話紙雕奇幻生存！
+        在 PowerShell 終端機中貼上以下指令，即刻啟動 Python PyGame 原生引擎，體驗最純粹的暗黑奇幻生存！
       </p>
 
       <div class="command-box">
@@ -1504,7 +1484,7 @@
 
   <!-- Footer -->
   <footer>
-    <p>第三組 出品 · 《艾瑟爾加德：邊境拓荒者 (AETHELGARD)》 · Python 3.13 & Pygame 2.6 開發</p>
+    <p>© 2026 MEDIEVIL. Built with Pygame & HTML5 Canvas.</p>
   </footer>
 
 
