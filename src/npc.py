@@ -56,6 +56,14 @@ class NPC:
         self.task = None  # set by task.update_npc_tasks; typed loosely to avoid a task.py<->npc.py import cycle
         self.task_progress = 0.0
 
+        # Paper Mario Animation states
+        self.facing_left = False
+        self.is_moving = False
+        self.anim_timer = 0.0
+        self.work_anim_timer = 0.0
+        self.flip_progress = 1.0
+        self.display_facing_left = False
+
     @property
     def has_arrived(self) -> bool:
         return not self.path
@@ -87,4 +95,29 @@ class NPC:
         if self.hunger <= 0.0:
             self.kill()
             return
+        old_x = self.x
         self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
+        dx = self.x - old_x
+        if abs(dx) > 0.01:
+            new_facing = (dx < 0.0)
+            if new_facing != self.facing_left:
+                self.facing_left = new_facing
+                self.flip_progress = 0.0
+
+        if self.flip_progress < 1.0:
+            self.flip_progress = min(1.0, self.flip_progress + dt * 8.0)
+            if self.flip_progress >= 0.5:
+                self.display_facing_left = self.facing_left
+        else:
+            self.display_facing_left = self.facing_left
+
+        if not self.has_arrived:
+            self.is_moving = True
+            self.anim_timer += dt
+        else:
+            self.is_moving = False
+            if self.task is not None:
+                self.work_anim_timer += dt
+            else:
+                self.work_anim_timer = 0.0
+
