@@ -37,19 +37,17 @@ from constants import (
     ROLE_FARMER,
     ROLE_KNIGHT,
     ROLE_MAGE,
-    FARMLAND_GROW_SECONDS,
 )
-
-
 import time
 from action_menu import ActionMenu
-from audio import play_bgm, play_sfx, stop_bgm
+from audio import play_bgm, play_sfx, set_sfx_muted, stop_bgm
 from build_bar import BuildBar
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
 from coords import tile_at, tile_center
 from game_over import GameOverState
+from highscore import load_best_score, save_best_score
 from magic import cast_fire, cast_freeze, cast_lightning
 from nest import NestManager, create_initial_nests
 from npc import NPC
@@ -57,7 +55,7 @@ from monster import retarget_monster, spawn_monster
 from pathfinding import find_path
 from settlement import evaluate_wave
 from population import maybe_spawn_npc
-from task import TASK_TYPES, update_npc_tasks
+from task import TASK_TYPES, task_can_perform, update_npc_tasks
 from extensions import hud_lines, render_fx_overlays, render_overlays, run_ticks
 from tile_actions import applicable_tasks
 from world import World
@@ -68,25 +66,36 @@ from sanctuary_ui import SanctuaryUI
 import top_bar
 import top_buttons
 import magic_panel
+import minimap
 from render_fog import render_fog_base_tile, render_drifting_fog_layer, render_fog_tile
-
-
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
     animal_sprite,
     get_arrow_sprite,
     get_magic_orb_sprite,
     get_tool_sprite,
+    map_resource_sprite,
     monster_sprite,
     nest_sprite,
     npc_sprite,
-    resource_sprite,
 )
 from tame_task import idle_spot_near_pen
 from terrain import grass, parchment
-
+from title_screen import ConfirmOverwriteDialog, TitleScreen
+from pause_menu import PauseMenu
+from settings_screen import SettingsScreen
 
 _CAST_SPELL = {"Fire": cast_fire, "Lightning": cast_lightning, "Freeze": cast_freeze}
+
+# Game.state values. Bare-string constants mirror day_night.py's DAY/NIGHT
+# pattern - they live here, not in title_screen.py, because self.state is
+# Game's own field and PLAYING covers all non-title-screen gameplay, not
+# just a title-screen concept.
+TITLE = "title"
+PLAYING = "playing"
+CONFIRM_OVERWRITE = "confirm_overwrite"
+PAUSE_MENU = "pause_menu"
+SETTINGS = "settings"
 
 
 class Game:
@@ -114,26 +123,22 @@ class Game:
         self.dragging_npc: NPC | None = None
         self.drag_start_pos: tuple[int, int] | None = None
         self.is_dragging: bool = False
+        self.best_score = load_best_score()  # survives restart() wiping the checkpoint - separate file on purpose
 
-        checkpoint = load_checkpoint()
-        if checkpoint is not None:
-            (
-                self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
-                self.skill_points_available, self._monsters_killed_this_night,
-            ) = checkpoint
-            if self.skill_points_available > 0:
-                self.paused = True  # restore the auto-pause a full/partial clear set before save
-        else:
-            self._new_game()
-
-        self.particles: list[dict] = []
-        self.projectiles: list[dict] = []
-        play_bgm(self.cycle.phase)
-
+        self.state = TITLE
+        self.save_exists = SAVE_PATH.exists()
+        self.title_screen = TitleScreen()
+        self.confirm_dialog = ConfirmOverwriteDialog()
+        self.pause_menu = PauseMenu()
+        self.settings_screen = SettingsScreen()
+        self.fullscreen = False  # session-only, always starts windowed
+        self.sfx_muted = False  # session-only, mirrors audio.py's module-level mute flag
+        self._settings_return_state = TITLE  # which screen Settings' Back returns to
 
     def _new_game(self) -> None:
-        """Fresh colony from scratch - used both for a no-checkpoint startup
-        and for restarting after game over (R key)."""
+        """Fresh colony from scratch - used for a no-checkpoint startup, the
+        title screen's Start/overwrite-confirm Yes, and restarting after
+        game over (R key)."""
         self.world = World()
         self.cycle = DayNightCycle()
         initial_nests = create_initial_nests(
@@ -150,7 +155,53 @@ class Game:
         self.drag_start_pos = None
         self.is_dragging = False
 
+    def _start_new_game(self) -> None:
+        """Title screen's Start (no save) / overwrite-confirm's Yes: those
+        UI elements are all still at their fresh __init__ defaults at this
+        point (nothing's been touched yet), so unlike restart() this needs
+        no build_bar/action_menu/paused/selected_npc cleanup."""
+        self._new_game()
+        self.state = PLAYING
+        play_bgm(self.cycle.phase)
 
+    def _continue_game(self) -> None:
+        checkpoint = load_checkpoint()
+        if checkpoint is None:
+            # Save vanished or is corrupt since the title screen booted: drop
+            # save_exists so the (now-broken) Continue button stops being
+            # offered, rather than staying clickable and silently no-op'ing
+            # forever - stay on title either way.
+            self.save_exists = False
+            return
+        (
+            self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
+            self.skill_points_available, self._monsters_killed_this_night,
+        ) = checkpoint
+        if self.skill_points_available > 0:
+            self.paused = True  # restore the auto-pause a full/partial clear set before save
+        self.particles: list[dict] = []
+        self.projectiles: list[dict] = []
+        self.state = PLAYING
+        play_bgm(self.cycle.phase)
+
+    def _set_fullscreen(self, enabled: bool) -> None:
+        self.fullscreen = enabled
+        if not enabled:
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), 0)
+            return
+        try:
+            # SCALED lets SDL letterbox/scale our fixed logical resolution to
+            # whatever the real display is, instead of changing the actual
+            # display mode to match ours.
+            self.screen = pygame.display.set_mode(
+                (WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN | pygame.SCALED
+            )
+        except pygame.error:
+            # SCALED needs a renderer backend some drivers don't provide
+            # (e.g. the dummy driver used for headless testing, or some
+            # minimal/software display setups) - fall back to plain
+            # fullscreen rather than crash on toggle.
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN)
 
     def restart(self) -> None:
         """Only meaningful after game over - starts a brand new colony and
@@ -181,6 +232,14 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            elif self.state == TITLE:
+                self._handle_title_event(event)
+            elif self.state == CONFIRM_OVERWRITE:
+                self._handle_confirm_event(event)
+            elif self.state == PAUSE_MENU:
+                self._handle_pause_menu_event(event)
+            elif self.state == SETTINGS:
+                self._handle_settings_event(event)
             elif event.type == pygame.KEYDOWN:
                 # Priority UI and Skill UI intercept keys when open
                 if self.priority_ui.visible:
@@ -204,7 +263,7 @@ class Game:
                     elif self.build_bar.selected is not None:
                         self.build_bar.clear()
                     else:
-                        self.running = False
+                        self.state = PAUSE_MENU
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
                 elif event.key == pygame.K_r:
@@ -234,7 +293,10 @@ class Game:
                 ):
                     self._select_build_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.skill_ui.visible:
+                if self.game_over_state.is_over:
+                    if self._game_over_restart_button_rect().collidepoint(event.pos):
+                        self.restart()
+                elif self.skill_ui.visible:
                     pts_before = self.skill_points_available
                     self.skill_points_available = self.skill_ui.handle_click(
                         event.pos, self.world, self.skill_points_available
@@ -293,7 +355,6 @@ class Game:
                             self.dragging_npc.path = []
                             self.dragging_npc.is_moving = False
                             play_sfx("dawn")
-
                             for _ in range(16):
                                 self.particles.append({
                                     "type": "star",
@@ -317,8 +378,64 @@ class Game:
                     self.is_dragging = False
                     self.drag_start_pos = None
 
+    def _handle_title_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.title_screen.handle_click(event.pos, self.save_exists)
+            if action == "start":
+                if self.save_exists:
+                    self.state = CONFIRM_OVERWRITE
+                else:
+                    self._start_new_game()
+            elif action == "continue":
+                self._continue_game()
+            elif action == "settings":
+                self._settings_return_state = TITLE
+                self.state = SETTINGS
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.running = False
 
+    def _handle_confirm_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.confirm_dialog.handle_click(event.pos)
+            if action == "yes":
+                self._start_new_game()
+            elif action == "no":
+                self.state = TITLE
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = TITLE
 
+    def _handle_pause_menu_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.pause_menu.handle_click(event.pos)
+            if action == "resume":
+                self.state = PLAYING
+            elif action == "save":
+                save_checkpoint(
+                    self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
+                    self.skill_points_available, self._monsters_killed_this_night,
+                )
+                self.save_exists = True
+                self.pause_menu.mark_saved()
+            elif action == "settings":
+                self._settings_return_state = PAUSE_MENU
+                self.state = SETTINGS
+            elif action == "quit":
+                self.running = False
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = PLAYING  # Esc closes the pause menu the same as clicking Resume
+
+    def _handle_settings_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.settings_screen.handle_click(event.pos)
+            if action == "toggle_fullscreen":
+                self._set_fullscreen(not self.fullscreen)
+            elif action == "toggle_sfx_muted":
+                self.sfx_muted = not self.sfx_muted
+                set_sfx_muted(self.sfx_muted)
+            elif action == "back":
+                self.state = self._settings_return_state
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = self._settings_return_state
 
     def _select_build_by_number(self, key: int) -> None:
         key_map = {
@@ -351,7 +468,7 @@ class Game:
             self.skill_ui.toggle()
             return
 
-        spell = magic_panel.handle_click(screen_pos, top_bar.left_box_bottom())
+        spell = magic_panel.handle_click(screen_pos, top_bar.left_box_bottom(), self.font)
         if spell is not None:
             if not self.paused:  # casting affects sim state, stays frozen with everything else
                 _CAST_SPELL[spell](self.world, self.monsters)
@@ -456,10 +573,19 @@ class Game:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
             return
 
+        if self.game_over_state.is_over:
+            hovering = self._game_over_restart_button_rect().collidepoint(pygame.mouse.get_pos())
+            cursor = pygame.SYSTEM_CURSOR_HAND if hovering else pygame.SYSTEM_CURSOR_ARROW
+            try:
+                pygame.mouse.set_cursor(cursor)
+            except pygame.error:
+                pass
+            return
+
         pos = pygame.mouse.get_pos()
         hovering = (
             top_buttons.is_hovering(pos)
-            or magic_panel.is_hovering(pos, top_bar.left_box_bottom())
+            or magic_panel.is_hovering(pos, top_bar.left_box_bottom(), self.font)
             or self.build_bar.is_hovering(pos)
             or self.sanctuary_ui.is_hovering(pos)
             or self.is_dragging
@@ -485,6 +611,8 @@ class Game:
             pass  # headless/dummy video drivers (smoke tests, CI) can't create system cursors
 
     def update(self, dt: float) -> None:
+        if self.state != PLAYING:
+            return
         self._update_cursor()
 
         if not self.priority_ui.visible and not self.skill_ui.visible:
@@ -620,8 +748,11 @@ class Game:
                 )
             for monster in self.monsters:
                 monster.update(dt)
-                if monster.has_arrived:
-                    retarget_monster(monster, self.world)
+                # Every tick, not just on arrival - retarget_monster only
+                # actually re-paths when the target has moved to a new tile
+                # or the monster has no path left, so this doesn't mean
+                # recomputing a route every frame.
+                retarget_monster(monster, self.world)
 
             # Trigger Death VFX for any monster that died before combat resolution (e.g. spell / burn)
             for monster in self.monsters:
@@ -757,9 +888,12 @@ class Game:
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None
 
-            self.game_over_state.check(self.world.npcs, self.cycle.round_number)
-            if self.game_over_state.is_over:
+            just_ended = self.game_over_state.check(self.world.npcs, self.cycle.round_number)
+            if just_ended:
                 stop_bgm()
+                if self.game_over_state.score > self.best_score:
+                    self.best_score = self.game_over_state.score
+                    save_best_score(self.best_score)
 
             if transitioned and self.cycle.phase == DAY:
                 play_sfx("dawn")
@@ -923,6 +1057,22 @@ class Game:
 
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
+        if self.state == TITLE:
+            self.title_screen.render(self.screen, self.font, self.save_exists)
+            pygame.display.flip()
+            return
+        if self.state == CONFIRM_OVERWRITE:
+            self.confirm_dialog.render(self.screen, self.font)
+            pygame.display.flip()
+            return
+        if self.state == PAUSE_MENU:
+            self.pause_menu.render(self.screen, self.font)
+            pygame.display.flip()
+            return
+        if self.state == SETTINGS:
+            self.settings_screen.render(self.screen, self.font, self.fullscreen, self.sfx_muted)
+            pygame.display.flip()
+            return
         self.render_grid()
         self.render_nests()
         render_overlays(self.screen, self.world, self.camera)  # buildings: ground layer, under characters
@@ -948,6 +1098,7 @@ class Game:
         magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom())
         top_buttons.render(self.screen, self.font, self.paused, self.skill_points_available)
         self.build_bar.render(self.screen, self.font, self.world)
+        minimap.render(self.screen, self.world.grid, self.camera, self.build_bar.panel_top())
         self.action_menu.render(self.screen, self.font)
         self.animal_menu.render(self.screen, self.font)
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
@@ -1602,20 +1753,13 @@ class Game:
 
         # One task per target tile in practice (can_queue rejects duplicates
         # on an already-queued tile) - built once per frame instead of
-        # rescanning world.tasks.tasks for every visible tile. Tasks that can
-        # no longer actually be performed (target already gone/claimed by
-        # something else) are skipped rather than counted as "still open" -
-        # a dead queue entry can otherwise sit lit forever since nothing else
-        # currently purges it (task.py's own unassign-on-invalid doesn't
-        # remove it from the queue either), which would make the yellow
-        # count a lie about how much work is genuinely left.
-        queued_by_tile = {}
-        for task in self.world.tasks.tasks:
-            task_type = TASK_TYPES.get(task.type)
-            if task_type is not None and task_type.can_perform is not None:
-                if not task_type.can_perform(self.world, task):
-                    continue
-            queued_by_tile[task.target] = task
+        # rescanning world.tasks.tasks for every visible tile. task.py's own
+        # per-tick purge keeps dead tasks out of the queue entirely now, but
+        # this still guards the one-tick window between a task going invalid
+        # mid-work and the next purge sweep picking it up.
+        queued_by_tile = {
+            task.target: task for task in self.world.tasks.tasks if task_can_perform(self.world, task)
+        }
 
         time_s = time.monotonic()
         for row in range(start_row, min(grid.height, start_row + VIEWPORT_TILES_Y + 2)):
@@ -1636,7 +1780,7 @@ class Game:
 
                 # Material indicator for resource blocks
                 if tile.revealed and tile.resource:
-                    sprite = resource_sprite(tile.resource)
+                    sprite = map_resource_sprite(tile.resource)
                     if sprite is not None:
                         center = (screen_x + TILE_SIZE // 2, screen_y + TILE_SIZE // 2)
                         self.screen.blit(sprite, sprite.get_rect(center=center))
@@ -1679,106 +1823,61 @@ class Game:
                     continue
                 self.screen.blit(claim_tile, (x * TILE_SIZE - cam_x, y * TILE_SIZE - cam_y))
 
-    def _hover_tile_info(self) -> str:
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        gx, gy = tile_at(mouse_x + self.camera.x, mouse_y + self.camera.y)
-        if not self.world.grid.in_bounds(gx, gy):
-            return ""
-
-        tile = self.world.grid.get(gx, gy)
-        if not tile.revealed:
-            return f"Tile ({gx}, {gy}): Fog of War (Unexplored)"
-
-        task = next((t for t in self.world.tasks.tasks if t.target == (gx, gy)), None)
-        click_hint = self._click_hint((gx, gy), already_queued=task is not None)
-
-        if not tile.claimed:
-            res_str = f" [Material: {tile.resource.capitalize()}]" if tile.resource else ""
-            return f"Tile ({gx}, {gy}): Unclaimed Land{res_str}{click_hint}"
-
-        building = next((b for b in self.world.buildings if b.x == gx and b.y == gy), None)
-        npc = next((n for n in self.world.npcs if tile_at(n.x, n.y) == (gx, gy)), None)
-
-        if building:
-            if building.type == "Farmland":
-                if building.ready:
-                    info = "Building: Farmland (Ready to Harvest!)"
-                else:
-                    info = f"Building: Farmland (Growing: {int(building.growth_timer)}/{int(FARMLAND_GROW_SECONDS)}s)"
-            else:
-                info = f"Building: {building.type} (Block: {building.block}, Attack: {building.attack})"
-        elif tile.resource:
-            info = f"Material: {tile.resource.capitalize()}"
-        else:
-            info = "Claimed Land (Empty)"
-
-        if task:
-            info += f" [Queued Task: {task.type}]"
-        if npc:
-            role_str = f" [{npc.role}]" if npc.role else ""
-            info += (
-                f" | NPC{role_str} (HP: {int(npc.health)}/{int(npc.max_health)}, "
-                f"Hunger: {int(npc.hunger)}/{int(NPC_MAX_HUNGER)})"
-            )
-
-        return f"Tile ({gx}, {gy}): {info}{click_hint}"
-
-    def _click_hint(self, tile: tuple[int, int], already_queued: bool) -> str:
-        """' - Click to Gather'-style suffix so hovering a workable tile
-        reads as an invitation to click, not just a status readout. Silent
-        when there's nothing new a click would do: already queued, a
-        building's armed (that hint lives in the build panel instead), or
-        the tile genuinely has no applicable task."""
-        if already_queued or self.build_bar.selected is not None:
-            return ""
-        options = applicable_tasks(self.world, tile)
-        if not options:
-            return ""
-        if len(options) == 1:
-            if options[0] == "Destroy":
-                return "  ->  Click for menu: Destroy"
-            return f"  ->  Click to {options[0]}"
-        return f"  ->  Click to choose: {', '.join(options)}"
-
-
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
 
-        build_hint = (
-            f"Building: {self.build_bar.selected}  [Esc to cancel]"
-            if self.build_bar.selected is not None
-            else "Click a tile to work it - buttons below to build"
-        )
-        # PAUSED/NPC count/Skill points/Priority used to be plain-text lines
-        # here - now shown by the top-right buttons (pause highlights, skill
-        # lights up when points are available) and the NPC box, so they're
-        # not duplicated as hint text too.
-        hint_lines = [
-            (build_hint, COLOR_TEXT),
-            *((text, COLOR_TEXT) for text in hud_lines(self.world)),
-            (self._hover_tile_info(), COLOR_TEXT),
-        ]
+        # Tile-hover status text and the "Click to X" suffix were dropped -
+        # the cursor (hand vs arrow), the queued-task tile border, and the
+        # armed build button's own highlight already show all of that
+        # visually now. Only the genuinely actionable tips/alerts remain.
+        hint_lines = [(text, COLOR_TEXT) for text in hud_lines(self.world)]
         inventory_items = sorted(self.world.inventory.items().items())
 
         top_bar.render(
-            self.screen, self.font, self.big_font,
-            self.cycle.round_number, self.cycle.phase.upper(), self.cycle.remaining(), banner_color,
-            len(self.world.npcs), inventory_items, hint_lines,
-            timer=self.cycle.timer, duration=self.cycle.duration(),
+            self.screen, self.font,
+            self.cycle.round_number, self.cycle.phase.upper(),
+            self.cycle.remaining(), self.cycle.duration(), banner_color,
+            inventory_items,
+            big_font=self.big_font,
+            timer=self.cycle.timer,
         )
+        side_top = self.sanctuary_ui.PANEL_Y + self.sanctuary_ui.PANEL_HEIGHT + 10
+        top_bar.render_side_info(
+            self.screen, self.font, len(self.world.npcs), len(self.world.tasks.tasks), hint_lines, side_top,
+        )
+
+    def _game_over_panel_rect(self) -> pygame.Rect:
+        panel_w, panel_h = 460, 280
+        return pygame.Rect((WINDOW_WIDTH - panel_w) // 2, (WINDOW_HEIGHT - panel_h) // 2, panel_w, panel_h)
+
+    def _game_over_restart_button_rect(self) -> pygame.Rect:
+        panel = self._game_over_panel_rect()
+        btn_w, btn_h = 200, 48
+        return pygame.Rect(panel.centerx - btn_w // 2, panel.bottom - btn_h - 24, btn_w, btn_h)
 
 
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:
             return
-        lines = [
-            ("GAME OVER", COLOR_GAME_OVER),
-            (f"Score: Round {self.game_over_state.score}", COLOR_GAME_OVER),
-            ("[R] Restart", COLOR_TEXT),
-        ]
-        y = WINDOW_HEIGHT // 2 - 40
-        for text, color in lines:
-            surf = self.font.render(text, True, color)
-            rect = surf.get_rect(center=(WINDOW_WIDTH // 2, y))
-            self.screen.blit(surf, rect)
-            y += surf.get_height() + 8
+
+        panel = self._game_over_panel_rect()
+        overlay = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
+        overlay.fill((20, 22, 28, 235))
+        self.screen.blit(overlay, panel.topleft)
+        pygame.draw.rect(self.screen, COLOR_GAME_OVER, panel, 3, border_radius=8)
+
+        title_surf = self.big_font.render("GAME OVER", True, COLOR_GAME_OVER)
+        self.screen.blit(title_surf, title_surf.get_rect(center=(panel.centerx, panel.top + 54)))
+
+        score_surf = self.font.render(f"Score: Round {self.game_over_state.score}", True, COLOR_TEXT)
+        self.screen.blit(score_surf, score_surf.get_rect(center=(panel.centerx, panel.top + 108)))
+
+        best_surf = self.font.render(f"Best Score: Round {self.best_score}", True, COLOR_DAY_BANNER)
+        self.screen.blit(best_surf, best_surf.get_rect(center=(panel.centerx, panel.top + 138)))
+
+        button = self._game_over_restart_button_rect()
+        hovered = button.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(self.screen, (48, 56, 72) if hovered else (30, 33, 40), button, border_radius=6)
+        pygame.draw.rect(self.screen, COLOR_GAME_OVER, button, 2, border_radius=6)
+        btn_label = self.font.render("Restart  [R]", True, COLOR_TEXT)
+        self.screen.blit(btn_label, btn_label.get_rect(center=button.center))

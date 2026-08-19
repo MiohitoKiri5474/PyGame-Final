@@ -1,15 +1,15 @@
 WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 800  # both divide evenly by TILE_SIZE (40x25 tile viewport)
+WINDOW_HEIGHT = 800  # both divide evenly by TILE_SIZE (32x20 tile viewport)
 FPS = 60
 
-TILE_SIZE = 32
+TILE_SIZE = 40  # was 32 - bumped per feedback that the default zoom showed too much map at once
 GRID_WIDTH = 60
 GRID_HEIGHT = 45
 
 VIEWPORT_TILES_X = WINDOW_WIDTH // TILE_SIZE
 VIEWPORT_TILES_Y = WINDOW_HEIGHT // TILE_SIZE
 
-CAMERA_PAN_SPEED = 400  # pixels/sec
+CAMERA_PAN_SPEED = 500  # pixels/sec (scaled with the TILE_SIZE 32->40 zoom bump, same tiles/sec pan speed)
 
 DAY_SECONDS = 120
 NIGHT_SECONDS = 60
@@ -49,7 +49,7 @@ NPC_ATTACK = 12
 NPC_DEFENSE = 4
 
 # --- Combat (ticket 06) ---
-MONSTER_SPEED = 60.0  # pixels/sec, slower than NPC_DEFAULT_SPEED
+MONSTER_SPEED = 75.0  # pixels/sec, slower than NPC_DEFAULT_SPEED (scaled with the TILE_SIZE 32->40 zoom bump, same tiles/sec pacing)
 MONSTER_MAX_HEALTH = 40
 MONSTER_ATTACK = 10
 MONSTER_DEFENSE = 2
@@ -182,9 +182,10 @@ MONSTER_VAMPIRE = "Vampire"
 MONSTER_ZOMBIE = "Zombie"
 
 MONSTER_STATS = {
-    MONSTER_WEREWOLF: {"speed": 80.0, "max_health": 50, "attack": 14, "defense": 2, "life_steal": False},
-    MONSTER_VAMPIRE: {"speed": 70.0, "max_health": 40, "attack": 12, "defense": 3, "life_steal": True},
-    MONSTER_ZOMBIE: {"speed": 40.0, "max_health": 90, "attack": 8, "defense": 4, "life_steal": False},
+    # speeds scaled with the TILE_SIZE 32->40 zoom bump, same tiles/sec pacing
+    MONSTER_WEREWOLF: {"speed": 100.0, "max_health": 50, "attack": 14, "defense": 2, "life_steal": False},
+    MONSTER_VAMPIRE: {"speed": 87.5, "max_health": 40, "attack": 12, "defense": 3, "life_steal": True},
+    MONSTER_ZOMBIE: {"speed": 50.0, "max_health": 90, "attack": 8, "defense": 4, "life_steal": False},
 }
 
 MONSTER_SPAWN_WEIGHTS = {MONSTER_WEREWOLF: 4, MONSTER_VAMPIRE: 3, MONSTER_ZOMBIE: 3}
@@ -214,14 +215,15 @@ ANIMAL_INITIAL_COUNT = 10
 ANIMAL_MAX_COUNT = 20
 ANIMAL_SPAWN_INTERVAL = 30.0  # seconds between top-up spawn attempts while under cap
 
-# species -> (speed px/s, dangerous, health)
+# species -> (speed px/s, dangerous, health) - speeds scaled with the
+# TILE_SIZE 32->40 zoom bump, same tiles/sec pacing
 ANIMAL_SPECIES = {
-    "FlyingSquirrel": (100.0, False, 10),
-    "Fish": (60.0, False, 10),
-    "WildBoar": (70.0, False, 30),
-    "Horse": (140.0, False, 40),
-    "Wolf": (90.0, True, 35),
-    "Bear": (50.0, True, 60),
+    "FlyingSquirrel": (125.0, False, 10),
+    "Fish": (75.0, False, 10),
+    "WildBoar": (87.5, False, 30),
+    "Horse": (175.0, False, 40),
+    "Wolf": (112.5, True, 35),
+    "Bear": (62.5, True, 60),
 }
 
 COLOR_ANIMAL = (150, 190, 90)
@@ -257,7 +259,8 @@ ANIMAL_PEN_ATTACK = 0
 COLOR_ANIMAL_PEN = (160, 130, 90)
 
 PEN_PRODUCTION_INTERVAL = 30.0  # seconds between food production ticks
-HORSE_SPEED_BONUS = 30.0  # travel speed buff for colony NPCs when horse is penned
+HORSE_SPEED_BONUS = 37.5  # travel speed buff for colony NPCs when horse is penned (scaled with the TILE_SIZE 32->40 zoom bump)
+PET_FOLLOW_MIN_DISTANCE = TILE_SIZE * 0.9  # a following animal won't close in past this - keeps it from sitting on top of an idle tamer
 
 # --- Food Spoilage (ticket 27) ---
 DAY_NIGHT_CYCLE_SECONDS = DAY_SECONDS + NIGHT_SECONDS  # 180s per game day

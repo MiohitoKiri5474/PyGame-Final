@@ -21,18 +21,18 @@ from world import World
 
 class TestHuntQueueing:
     def test_can_queue_hunt_true_when_living_animal_present(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="WildBoar", speed=70.0, dangerous=False, health=30)
         world.animals.append(animal)
 
         assert can_queue_hunt(world, (10, 10))
 
     def test_can_queue_hunt_false_when_no_animal_on_tile(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         assert not can_queue_hunt(world, (10, 10))
 
     def test_can_queue_hunt_false_when_animal_is_dead(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="WildBoar", speed=70.0, dangerous=False, health=0)
         world.animals.append(animal)
 
@@ -41,7 +41,7 @@ class TestHuntQueueing:
 
 class TestHuntRepathing:
     def test_npc_repaths_when_animal_moves_out_of_combat_range(self):
-        world = World(npc_count=1)
+        world = World(npc_count=1, animal_count=0)
         # Position animal at (12, 10) initially
         animal = Animal(*tile_center(12, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
@@ -69,7 +69,7 @@ class TestHuntRepathing:
         assert len(npc.path) > 0  # Re-pathed toward (16, 10)
 
     def test_npc_holds_position_and_works_once_in_range(self):
-        world = World(npc_count=1)
+        world = World(npc_count=1, animal_count=0)
         # Animal one tile away - within the default NPC's combat_range
         animal = Animal(*tile_center(11, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
@@ -86,7 +86,7 @@ class TestHuntRepathing:
         assert npc.task_progress > 0  # work actually accumulated this tick
 
     def test_progress_pauses_instead_of_resetting_when_animal_leaves_range(self):
-        world = World(npc_count=1)
+        world = World(npc_count=1, animal_count=0)
         animal = Animal(*tile_center(11, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
 
@@ -108,7 +108,7 @@ class TestHuntRepathing:
 
 class TestHuntCombatAndKnightBonus:
     def test_regular_npc_deals_base_attack_damage(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="Bear", speed=50.0, dangerous=True, health=60)
         world.animals.append(animal)
 
@@ -123,7 +123,7 @@ class TestHuntCombatAndKnightBonus:
         assert not finished  # Still alive
 
     def test_knight_gets_crit_bonus(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="Bear", speed=50.0, dangerous=True, health=60)
         world.animals.append(animal)
 
@@ -143,7 +143,7 @@ class TestHuntCombatAndKnightBonus:
         assert animal.health == 60 - (10 * KNIGHT_CRIT_MULTIPLIER)
 
     def test_dangerous_animal_retaliates_against_npc(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="Wolf", speed=90.0, dangerous=True, health=35)
         world.animals.append(animal)
 
@@ -161,7 +161,7 @@ class TestHuntCombatAndKnightBonus:
 
 class TestHuntCompletion:
     def test_animal_death_removes_animal_and_completes_task(self):
-        world = World()
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
         animal = Animal(*tile_center(10, 10), species="FlyingSquirrel", speed=100.0, dangerous=False, health=5)
         world.animals.append(animal)
 

@@ -5,3 +5,4 @@ __pycache__/
 .agents/
 mcp_config.json
 save.json
+highscore.json

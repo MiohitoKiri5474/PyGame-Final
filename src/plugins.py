@@ -15,3 +15,4 @@ import wildlife  # noqa: F401
 import hunt_task  # noqa: F401
 import tame_task  # noqa: F401
 import spoilage  # noqa: F401
+import onboarding_hints  # noqa: F401

@@ -247,6 +247,64 @@ def test_npc_aborts_task_if_it_becomes_blocked_in_progress(monkeypatch):
     assert t1.assigned_npc is None
     assert npc.task is t2
 
+    # It's still in the queue this same tick (purge already ran before the
+    # per-NPC loop unassigned it) - one more tick sweeps it away for good,
+    # rather than it lingering forever as a zombie entry.
+    assert t1 in world.tasks.tasks
+    update_npc_tasks(world, 1 / 60)
+    assert t1 not in world.tasks.tasks
+
+
+def test_unassigned_stale_task_is_purged_without_ever_being_claimed(monkeypatch):
+    # Nothing else ever touches an unassigned task's validity - claim_for
+    # just skips over it every scan. Without the purge it would sit in the
+    # queue forever once it goes stale before anyone claims it (e.g. two
+    # overlapping Expand targets, ticket 03).
+    monkeypatch.setattr(
+        task_module,
+        "TASK_TYPES",
+        {
+            "DeadOnArrival": TaskType(
+                work_seconds=5.0,
+                can_queue=lambda w, t: True,
+                on_complete=lambda w, t: True,
+                can_perform=lambda w, t: False,
+            ),
+        },
+    )
+    world = World(npc_count=0)
+    task = world.tasks.add("DeadOnArrival", (0, 0))
+
+    update_npc_tasks(world, 1 / 60)
+    assert task not in world.tasks.tasks
+
+
+def test_purge_leaves_still_valid_unassigned_tasks_alone(monkeypatch):
+    monkeypatch.setattr(
+        task_module,
+        "TASK_TYPES",
+        {
+            "StillGood": TaskType(
+                work_seconds=5.0,
+                can_queue=lambda w, t: True,
+                on_complete=lambda w, t: True,
+                can_perform=lambda w, t: True,
+            ),
+            "NoCanPerform": TaskType(
+                work_seconds=5.0,
+                can_queue=lambda w, t: True,
+                on_complete=lambda w, t: True,
+            ),
+        },
+    )
+    world = World(npc_count=0)
+    t1 = world.tasks.add("StillGood", (0, 0))
+    t2 = world.tasks.add("NoCanPerform", (1, 1))  # no can_perform at all - always considered valid
+
+    update_npc_tasks(world, 1 / 60)
+    assert t1 in world.tasks.tasks
+    assert t2 in world.tasks.tasks
+
 
 def test_npc_skips_unreachable_task_and_claims_reachable_task(monkeypatch):
     from build_task import Building
