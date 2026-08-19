@@ -27,6 +27,7 @@ class Monster:
         self.speed = speed if speed is not None else stats.get("speed", MONSTER_SPEED)
         self.max_health = stats.get("max_health", MONSTER_MAX_HEALTH)
         self.path: list[tuple[int, int]] = []
+        self.target_tile: tuple[int, int] | None = None  # tile retarget_monster last computed a path toward
         self.health = self.max_health
         self.attack = stats.get("attack", MONSTER_ATTACK)
         self.defense = stats.get("defense", MONSTER_DEFENSE)
@@ -175,14 +176,16 @@ def spawn_monster(tile: tuple[int, int], grid, buildings=(), monster_type: str |
 
 
 def retarget_monster(monster: Monster, world) -> None:
-    """Call once a monster's path is empty (fresh from spawn_monster's
-    initial fallback-free path, or because it just walked its previous
-    target's path to completion) - picks a new target and paths to it, so
-    monsters keep actively closing in instead of freezing in place once
-    they reach wherever they were first sent. Prefers the nearest living
-    NPC (this is the actual "chase" behavior); falls back to the nearest
-    claimed tile if the colony has no NPCs left, so monsters still
-    advance on the territory itself rather than idling forever."""
+    """Call every tick, not just once a monster's path empties out - picks
+    the nearest living NPC (falls back to the nearest claimed tile if the
+    colony has none left) and re-paths toward it whenever that target has
+    moved to a new tile since the last path was computed, or the monster
+    has no path left to follow. A monster used to commit to a single
+    snapshot of "where the NPC was" and only re-evaluate after walking that
+    entire (possibly now-stale) route, which read as sluggish/indirect
+    pursuit rather than an active chase. The target-tile check keeps this
+    cheap: real re-pathing (the expensive part) only fires when the target
+    actually moved to a different tile, not every single tick."""
     start = tile_at(monster.x, monster.y)
 
     target = None
@@ -193,7 +196,10 @@ def retarget_monster(monster: Monster, world) -> None:
         target = nearest_claimed_tile(world.grid, start)
     if target is None or target == start:
         return
+    if target == monster.target_tile and monster.path:
+        return  # already chasing this exact tile, path still in progress
 
     path = _path_toward(start, target, world.grid, world.buildings)
     if path:
+        monster.target_tile = target
         monster.set_path(path)

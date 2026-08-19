@@ -42,11 +42,16 @@ def mountain() -> pygame.Surface:
 
 
 def mud() -> pygame.Surface:
+    if (_ASSETS_DIR / "swamp.png").exists():
+        return _load("swamp.png")
     return _load("mud.png")
 
 
 def scorched() -> pygame.Surface:
+    if (_ASSETS_DIR / "scorched_earth.png").exists():
+        return _load("scorched_earth.png")
     return _load("scorched.png")
+
 
 
 def get_terrain_surface(terrain_type: str, is_claimed: bool = True) -> pygame.Surface:

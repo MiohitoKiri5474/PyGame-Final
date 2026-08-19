@@ -19,11 +19,11 @@ from constants import (
 from coords import tile_at
 from movement import step_toward_path
 
-
-DEFAULT_SPEED = 120.0  # pixels/sec
+DEFAULT_SPEED = 150.0  # pixels/sec (scaled with the TILE_SIZE 32->40 zoom bump, same tiles/sec pacing)
 
 
 class NPC:
+
     """A single controllable character in the colony."""
 
     _next_id = 0

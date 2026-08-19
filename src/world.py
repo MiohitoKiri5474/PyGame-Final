@@ -14,7 +14,7 @@ from wildlife import create_initial_animals
 
 
 class World:
-    def __init__(self, npc_count: int = STARTING_NPC_COUNT):
+    def __init__(self, npc_count: int = STARTING_NPC_COUNT, animal_count: int = ANIMAL_INITIAL_COUNT):
         self.grid = Grid()
         self.inventory = Inventory()
         self.tasks = TaskQueue()
@@ -25,7 +25,12 @@ class World:
         # reused (not re-created per spawn) for the periodic top-up in
         # wildlife._tick_wildlife.
         self.wildlife_rng = random.Random()
-        self.animals = create_initial_animals(self.grid, ANIMAL_INITIAL_COUNT, rng=self.wildlife_rng)
+        # animal_count=0 is the standard way Hunt/Tame tests get a clean
+        # slate: these spawn on random unclaimed tiles via an unseeded RNG,
+        # so a test placing its own Animal at a specific tile could
+        # otherwise collide with one of these and have a tile-based lookup
+        # silently resolve to the wrong animal.
+        self.animals = create_initial_animals(self.grid, animal_count, rng=self.wildlife_rng)
         self.animal_spawn_timer = 0.0
 
         center_x, center_y = self.grid.width // 2, self.grid.height // 2

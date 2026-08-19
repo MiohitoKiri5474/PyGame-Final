@@ -27,6 +27,14 @@ _RESOURCE_PATHS = {
     "mushrooms": "building/mushroom.png",
 }
 
+# Tile-drawn resource nodes read better as the thing actually growing there
+# (a tree) rather than the harvested material - collected-resource icons
+# everywhere else (inventory, build costs) keep showing what you actually
+# end up holding (a log), via plain resource_sprite/_RESOURCE_PATHS above.
+_MAP_RESOURCE_OVERRIDES = {
+    "wood": "building/tree.png",
+}
+
 _BUILDING_PATHS = {
     "Wall": "building/wall.png",
     "Tower": "building/tower.png",
@@ -55,14 +63,25 @@ _ANIMAL_PATHS = {
 _cache: dict[tuple[str, int], pygame.Surface] = {}
 
 
+def _load_image(path: Path | str) -> pygame.Surface:
+    img = pygame.image.load(str(path))
+    if pygame.display.get_surface() is not None:
+        try:
+            return img.convert_alpha()
+        except pygame.error:
+            pass
+    return img
+
+
 def _load_scaled(rel_path: str, height: int) -> pygame.Surface:
     key = (rel_path, height)
     if key not in _cache:
-        image = pygame.image.load(str(_ASSETS_DIR / rel_path)).convert_alpha()
+        image = _load_image(_ASSETS_DIR / rel_path)
         w, h = image.get_size()
         width = max(1, round(w * height / h))
         _cache[key] = pygame.transform.smoothscale(image, (width, height))
     return _cache[key]
+
 
 
 def npc_sprite(role: str | None = None) -> pygame.Surface:
@@ -72,6 +91,14 @@ def npc_sprite(role: str | None = None) -> pygame.Surface:
 
 def resource_sprite(resource: str) -> pygame.Surface | None:
     path = _RESOURCE_PATHS.get(resource)
+    return _load_scaled(path, TILE_SIZE - 6) if path else None
+
+
+def map_resource_sprite(resource: str) -> pygame.Surface | None:
+    """Like resource_sprite, but specifically for the tile drawn on the map
+    itself - falls back to resource_sprite's own mapping for anything with
+    no map-specific override."""
+    path = _MAP_RESOURCE_OVERRIDES.get(resource, _RESOURCE_PATHS.get(resource))
     return _load_scaled(path, TILE_SIZE - 6) if path else None
 
 
@@ -203,5 +230,126 @@ def get_magic_orb_sprite() -> pygame.Surface:
 
     _PROJECTILE_CACHE["magic_orb"] = surf
     return surf
+
+
+_CLOUD_RAW_SLICES: list[pygame.Surface] = []
+
+
+def _load_cloud_sheet() -> list[pygame.Surface]:
+    global _CLOUD_RAW_SLICES
+    if _CLOUD_RAW_SLICES:
+        return _CLOUD_RAW_SLICES
+
+    path = _ASSETS_DIR / "terrain" / "cloud.png"
+    if not path.exists():
+        c_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
+        pygame.draw.ellipse(c_surf, (245, 250, 255, 240), pygame.Rect(0, 0, 64, 32))
+        _CLOUD_RAW_SLICES = [c_surf]
+        return _CLOUD_RAW_SLICES
+
+    img = _load_image(path)
+    w, h = img.get_size()
+
+    # If it's a 5x3 sprite sheet (15 clouds)
+    if w >= 256 and h >= 256 and w % 5 == 0 and h % 3 == 0:
+        cols, rows = 5, 3
+        cw, ch = w // cols, h // rows
+        for idx in range(15):
+            r = idx // cols
+            c = idx % cols
+            cell = img.subsurface(pygame.Rect(c * cw, r * ch, cw, ch))
+            # Tight bounding box crop
+            min_x, max_x = cw, 0
+            min_y, max_y = ch, 0
+            has_pixels = False
+            for y in range(0, ch, 2):
+                for x in range(0, cw, 2):
+                    rgba = cell.get_at((x, y))
+                    if rgba[3] > 8:
+                        has_pixels = True
+                        if x < min_x: min_x = x
+                        if x > max_x: max_x = x
+                        if y < min_y: min_y = y
+                        if y > max_y: max_y = y
+            if has_pixels and max_x >= min_x and max_y >= min_y:
+                sub = cell.subsurface(pygame.Rect(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1))
+                _CLOUD_RAW_SLICES.append(sub)
+            else:
+                _CLOUD_RAW_SLICES.append(cell)
+    else:
+        _CLOUD_RAW_SLICES = [img]
+
+    return _CLOUD_RAW_SLICES
+
+
+def cloud_sprite(index: int = 0, width: int = 48, alpha: int = 255) -> pygame.Surface:
+    """Returns cloud sprite #index (0..14) from the 15-cloud sheet, scaled to requested width and alpha, fully cached."""
+    slices = _load_cloud_sheet()
+    idx = index % len(slices)
+    key = ("cloud_sprite", idx, width, alpha)
+    if key not in _cache:
+        raw = slices[idx]
+        rw, rh = raw.get_size()
+        height = max(1, round(rh * width / rw))
+        scaled = pygame.transform.smoothscale(raw, (width, height))
+        if alpha < 255:
+            scaled = scaled.copy()
+            scaled.fill((255, 255, 255, alpha), special_flags=pygame.BLEND_RGBA_MULT)
+        _cache[key] = scaled
+    return _cache[key]
+
+
+
+
+def fog_sprite(size: int = TILE_SIZE) -> pygame.Surface:
+    """Returns the fog PNG sprite from assets/terrain/fog.png, scaled to requested size."""
+    path = _ASSETS_DIR / "terrain" / "fog.png"
+    key = ("terrain/fog.png", size)
+    if key not in _cache:
+        if path.exists():
+            img = _load_image(path)
+            _cache[key] = pygame.transform.smoothscale(img, (size, size))
+        else:
+            f_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            pygame.draw.rect(f_surf, (16, 14, 24, 255), pygame.Rect(0, 0, size, size))
+            _cache[key] = f_surf
+    return _cache[key]
+
+
+def sun_sprite(size: int = 44) -> pygame.Surface | None:
+    """Returns the custom sun PNG sprite from assets/terrain/sun.png if it exists, scaled to size."""
+    path = _ASSETS_DIR / "terrain" / "sun.png"
+    key = ("terrain/sun.png", size)
+    if key not in _cache:
+        if path.exists():
+            img = _load_image(path)
+            w, h = img.get_size()
+            dim = max(w, h)
+            width = max(1, round(w * size / dim))
+            height = max(1, round(h * size / dim))
+            _cache[key] = pygame.transform.smoothscale(img, (width, height))
+        else:
+            return None
+    return _cache[key]
+
+
+def moon_sprite(size: int = 38) -> pygame.Surface | None:
+    """Returns the custom moon PNG sprite from assets/terrain/moon.png if it exists, scaled to size."""
+    path = _ASSETS_DIR / "terrain" / "moon.png"
+    key = ("terrain/moon.png", size)
+    if key not in _cache:
+        if path.exists():
+            img = _load_image(path)
+            w, h = img.get_size()
+            dim = max(w, h)
+            width = max(1, round(w * size / dim))
+            height = max(1, round(h * size / dim))
+            _cache[key] = pygame.transform.smoothscale(img, (width, height))
+        else:
+            return None
+    return _cache[key]
+
+
+
 
 
