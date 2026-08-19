@@ -88,6 +88,35 @@ _TERRAIN_PREFIXES = {
 }
 
 
+def _load_composite_river(filename: str) -> pygame.Surface:
+    """Blends the rich seamless watercolor texture of river.png with the 16-tile
+    edge-blended autotiling mask so rivers look solid, vibrant, and natural."""
+    cache_key = f"composite_{filename}"
+    if cache_key not in _cache:
+        raw = pygame.image.load(str(_ASSETS_DIR / filename)).convert_alpha()
+        raw_scaled = pygame.transform.smoothscale(raw, (TILE_SIZE, TILE_SIZE))
+        r_base = river()
+
+        res = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        for y in range(TILE_SIZE):
+            for x in range(TILE_SIZE):
+                p_col = raw_scaled.get_at((x, y))
+                r_col = r_base.get_at((x, y))
+                a = p_col.a
+                if a > 0:
+                    # Boost river stream alpha to solid opacity while preserving soft edge falloff
+                    boosted_a = min(255, int((a / 255.0) ** 0.45 * 255))
+                    # Blend seamless watercolor texture (65%) with edge shading (35%)
+                    final_r = int(r_col.r * 0.65 + p_col.r * 0.35)
+                    final_g = int(r_col.g * 0.65 + p_col.g * 0.35)
+                    final_b = int(r_col.b * 0.65 + p_col.b * 0.35)
+                    res.set_at((x, y), (final_r, final_g, final_b, boosted_a))
+                else:
+                    res.set_at((x, y), (0, 0, 0, 0))
+        _cache[cache_key] = res
+    return _cache[cache_key]
+
+
 def get_terrain_9slice_surface(
     terrain_type: str, top: bool, bot: bool, left: bool, right: bool
 ) -> pygame.Surface:
@@ -95,7 +124,14 @@ def get_terrain_9slice_surface(
     piece = get_16tile_piece_name(top, bot, left, right)
     prefix = _TERRAIN_PREFIXES.get(terrain_type, terrain_type)
 
-    # 1. Primary check (e.g. swamp_isolated.png, river_vertical.png, mountain_end_top.png, scorched_center.png)
+    if terrain_type == "river":
+        filename = f"river_{piece}.png"
+        if (_ASSETS_DIR / filename).exists():
+            return _load_composite_river(filename)
+        if (_ASSETS_DIR / f"river_illustration_raw_{piece}.png").exists():
+            return _load_composite_river(f"river_illustration_raw_{piece}.png")
+
+    # 1. Primary check (e.g. swamp_isolated.png, mountain_end_top.png, scorched_center.png)
     filename = f"{prefix}_{piece}.png"
     if (_ASSETS_DIR / filename).exists():
         return _load(filename)
@@ -103,12 +139,11 @@ def get_terrain_9slice_surface(
     # 2. Secondary fallback checks (for raw or alternative naming)
     if terrain_type == "scorched" and (_ASSETS_DIR / f"scorched_earth_{piece}.png").exists():
         return _load(f"scorched_earth_{piece}.png")
-    if terrain_type == "river" and (_ASSETS_DIR / f"river_illustration_raw_{piece}.png").exists():
-        return _load(f"river_illustration_raw_{piece}.png")
     if terrain_type == "mountain" and (_ASSETS_DIR / f"mountain_illustration_raw_{piece}.png").exists():
         return _load(f"mountain_illustration_raw_{piece}.png")
 
     return get_terrain_surface(terrain_type, is_claimed=True)
+
 
 
 
