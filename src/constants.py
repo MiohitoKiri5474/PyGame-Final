@@ -1,5 +1,5 @@
-WINDOW_WIDTH = 1024
-WINDOW_HEIGHT = 768
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 800  # both divide evenly by TILE_SIZE (40x25 tile viewport)
 FPS = 60
 
 TILE_SIZE = 32

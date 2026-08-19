@@ -26,14 +26,12 @@ from constants import (
     COLOR_GAME_OVER,
     COLOR_ANIMAL,
 )
+from action_menu import ActionMenu
 from audio import play_bgm, play_sfx, stop_bgm
-
+from build_bar import BuildBar
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
-
-
-
 from coords import tile_at, tile_center
 from game_over import GameOverState
 from magic import cast_fire, cast_freeze, cast_lightning
@@ -44,13 +42,20 @@ from pathfinding import find_path
 from settlement import evaluate_wave
 from population import maybe_spawn_npc
 from task import TASK_TYPES, update_npc_tasks
-from extensions import hud_lines, render_overlays, run_ticks
+from extensions import hud_lines, render_fx_overlays, render_overlays, run_ticks
+from tile_actions import applicable_tasks
 from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
-from save import load_checkpoint, save_checkpoint
+from npc_status_ui import NpcStatusUI
+import top_bar
+import top_buttons
+import magic_panel
+from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
+
+_CAST_SPELL = {"Fire": cast_fire, "Lightning": cast_lightning, "Freeze": cast_freeze}
 
 
 class Game:
@@ -60,15 +65,18 @@ class Game:
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
+        self.big_font = pygame.font.Font(None, 40)  # top bar's countdown number
 
         self.camera = Camera()
         self.paused = False
         self.running = True
 
         self.selected_npc: NPC | None = None
-        self.selected_task_type: str | None = next(iter(TASK_TYPES), None)
+        self.build_bar = BuildBar()
+        self.action_menu = ActionMenu()
         self.priority_ui = PriorityTableUI()
         self.skill_ui = SkillUI()
+        self.npc_status_ui = NpcStatusUI()
 
         checkpoint = load_checkpoint()
         if checkpoint is not None:
@@ -79,16 +87,35 @@ class Game:
             if self.skill_points_available > 0:
                 self.paused = True  # restore the auto-pause a full/partial clear set before save
         else:
-            self.world = World()
-            self.cycle = DayNightCycle()
-            initial_nests = create_initial_nests(
-                self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
-            )
-            self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
-            self.monsters = []
-            self.game_over_state = GameOverState()
-            self.skill_points_available = 0
-            self._monsters_killed_this_night = 0
+            self._new_game()
+
+    def _new_game(self) -> None:
+        """Fresh colony from scratch - used both for a no-checkpoint startup
+        and for restarting after game over (R key)."""
+        self.world = World()
+        self.cycle = DayNightCycle()
+        initial_nests = create_initial_nests(
+            self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
+        )
+        self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
+        self.monsters = []
+        self.game_over_state = GameOverState()
+        self.skill_points_available = 0
+        self._monsters_killed_this_night = 0
+
+    def restart(self) -> None:
+        """Only meaningful after game over - starts a brand new colony and
+        clears any stale checkpoint, so relaunching the app later doesn't
+        reload straight back into the game-over state that's being left."""
+        if not self.game_over_state.is_over:
+            return
+        SAVE_PATH.unlink(missing_ok=True)
+        self._new_game()
+        self.camera = Camera()
+        self.selected_npc = None
+        self.build_bar.clear()
+        self.action_menu.close()
+        self.paused = False
 
         play_bgm(self.cycle.phase)
 
@@ -115,16 +142,29 @@ class Game:
                         event.key, self.world, self.skill_points_available
                     )
                     continue
+                if self.npc_status_ui.visible:
+                    if event.key in (pygame.K_n, pygame.K_ESCAPE):
+                        self.npc_status_ui.close()
+                    continue
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    if self.action_menu.visible:
+                        self.action_menu.close()
+                    elif self.build_bar.selected is not None:
+                        self.build_bar.clear()
+                    else:
+                        self.running = False
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
+                elif event.key == pygame.K_r:
+                    self.restart()  # no-op unless game_over_state.is_over
                 elif event.key == pygame.K_TAB:
-                    self._cycle_selected_task_type()
+                    self.build_bar.cycle()
                 elif event.key == pygame.K_p:
                     self.priority_ui.toggle()
                 elif event.key == pygame.K_k:
                     self.skill_ui.toggle()
+                elif event.key == pygame.K_n:
+                    self.npc_status_ui.toggle()
                 elif event.key == pygame.K_F1:
                     if not self.paused:  # casting affects sim state, stays frozen with everything else
                         cast_fire(self.world, self.monsters)
@@ -140,12 +180,12 @@ class Game:
                     pygame.K_KP1, pygame.K_KP2, pygame.K_KP3, pygame.K_KP4,
                     pygame.K_KP5, pygame.K_KP6, pygame.K_KP7, pygame.K_KP8, pygame.K_KP9,
                 ):
-                    self._select_task_by_number(event.key)
+                    self._select_build_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if not self.priority_ui.visible and not self.skill_ui.visible:
+                if not self.priority_ui.visible and not self.skill_ui.visible and not self.npc_status_ui.visible:
                     self.handle_click(event.pos)
 
-    def _select_task_by_number(self, key: int) -> None:
+    def _select_build_by_number(self, key: int) -> None:
         key_map = {
             pygame.K_1: 0, pygame.K_KP1: 0,
             pygame.K_2: 1, pygame.K_KP2: 1,
@@ -159,22 +199,43 @@ class Game:
         }
         idx = key_map.get(key)
         if idx is not None:
-            types = list(TASK_TYPES.keys())
-            if idx < len(types):
-                self.selected_task_type = types[idx]
-
-    def _cycle_selected_task_type(self) -> None:
-        types = list(TASK_TYPES.keys())
-        if not types:
-            self.selected_task_type = None
-            return
-        if self.selected_task_type not in types:
-            self.selected_task_type = types[0]
-            return
-        next_index = (types.index(self.selected_task_type) + 1) % len(types)
-        self.selected_task_type = types[next_index]
+            self.build_bar.select_index(idx)
 
     def handle_click(self, screen_pos: tuple[int, int]) -> None:
+        # Top-right buttons and the magic panel are always-on-top overlay
+        # controls, so they get first claim on every click - same mouse
+        # actions the Space/P/K/F1-F3 hotkeys already trigger.
+        button = top_buttons.handle_click(screen_pos)
+        if button == "pause":
+            self.paused = not self.paused
+            return
+        if button == "priority":
+            self.priority_ui.toggle()
+            return
+        if button == "skill":
+            self.skill_ui.toggle()
+            return
+
+        spell = magic_panel.handle_click(screen_pos, top_bar.left_box_bottom())
+        if spell is not None:
+            if not self.paused:  # casting affects sim state, stays frozen with everything else
+                _CAST_SPELL[spell](self.world, self.monsters)
+            return
+
+        # Action menu takes first crack at every click: while it's open, a
+        # click either picks one of its rows or (clicking elsewhere) just
+        # closes it - either way the click is consumed, not also treated as
+        # a map click underneath.
+        if self.action_menu.visible:
+            tile = self.action_menu.tile  # handle_click() closes the menu (clears .tile) before returning
+            choice = self.action_menu.handle_click(screen_pos)
+            if choice is not None and tile is not None:
+                self.world.tasks.add(choice, tile)
+            return
+
+        if self.build_bar.handle_click(screen_pos):
+            return
+
         world_x = screen_pos[0] + self.camera.x
         world_y = screen_pos[1] + self.camera.y
 
@@ -187,9 +248,21 @@ class Game:
         if not self.world.grid.in_bounds(gx, gy):
             return
 
-        task_type = TASK_TYPES.get(self.selected_task_type) if self.selected_task_type else None
-        if task_type is not None and task_type.can_queue(self.world, (gx, gy)):
-            self.world.tasks.add(self.selected_task_type, (gx, gy))
+        # A building is armed: place it here (or fall through, if this tile
+        # can't take one - can_queue rejects it silently, same as before).
+        if self.build_bar.selected is not None:
+            task_type = TASK_TYPES.get(self.build_bar.selected)
+            if task_type is not None and task_type.can_queue(self.world, (gx, gy)):
+                self.world.tasks.add(self.build_bar.selected, (gx, gy))
+            return
+
+        # Otherwise infer from what's actually on the tile: queue directly
+        # when exactly one task applies, ask when there's a real choice.
+        options = applicable_tasks(self.world, (gx, gy))
+        if len(options) == 1:
+            self.world.tasks.add(options[0], (gx, gy))
+        elif len(options) > 1:
+            self.action_menu.open(options, (gx, gy), screen_pos)
 
     def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
         for npc in self.world.npcs:
@@ -265,13 +338,19 @@ class Game:
         self.screen.fill(COLOR_BG)
         self.render_grid()
         self.render_nests()
+        render_overlays(self.screen, self.world, self.camera)  # buildings: ground layer, under characters
         self.render_animals()
         self.render_npcs()
         self.render_monsters()
-        render_overlays(self.screen, self.world, self.camera)
+        render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
         self.render_hud()
+        magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom())
+        top_buttons.render(self.screen, self.font, self.paused, self.skill_points_available)
+        self.build_bar.render(self.screen, self.font, self.world)
+        self.action_menu.render(self.screen, self.font)
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
         self.skill_ui.render(self.screen, self.font, self.world, self.skill_points_available)
+        self.npc_status_ui.render(self.screen, self.font, self.world.npcs)
         self.render_game_over()
         pygame.display.flip()
 
@@ -420,39 +499,40 @@ class Game:
 
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
-        hover_info = self._hover_tile_info()
 
-        options_list = []
-        for i, t_name in enumerate(TASK_TYPES.keys(), start=1):
-            marker = "*" if t_name == self.selected_task_type else ""
-            options_list.append(f"[{i}] {t_name}{marker}")
-        options_str = "  ".join(options_list)
-
-        lines = [
-            f"Round {self.cycle.round_number} - {self.cycle.phase.upper()}  ({self.cycle.remaining():.0f}s)",
-            f"NPCs alive: {len(self.world.npcs)}",
-            f"Skill points available: {self.skill_points_available} [K to spend]" if self.skill_points_available else "",
-            "PAUSED" if self.paused else "",
-            f"Tasks: {options_str}  [Keys 1-{len(TASK_TYPES)} / Tab, P for Priority]",
-            hover_info,
-            *hud_lines(self.world),
+        build_hint = (
+            f"Building: {self.build_bar.selected}  [Esc to cancel]"
+            if self.build_bar.selected is not None
+            else "Click a tile to work it - buttons below to build"
+        )
+        # PAUSED/NPC count/Skill points/Priority used to be plain-text lines
+        # here - now shown by the top-right buttons (pause highlights, skill
+        # lights up when points are available) and the NPC box, so they're
+        # not duplicated as hint text too.
+        hint_lines = [
+            (build_hint, COLOR_TEXT),
+            *((text, COLOR_TEXT) for text in hud_lines(self.world)),
+            (self._hover_tile_info(), COLOR_TEXT),
         ]
-        y = 8
-        for i, text in enumerate(lines):
-            if not text:
-                continue
-            color = banner_color if i == 0 else COLOR_TEXT
-            surf = self.font.render(text, True, color)
-            self.screen.blit(surf, (8, y))
-            y += surf.get_height() + 4
+        inventory_items = sorted(self.world.inventory.items().items())
+
+        top_bar.render(
+            self.screen, self.font, self.big_font,
+            self.cycle.round_number, self.cycle.phase.upper(), self.cycle.remaining(), banner_color,
+            len(self.world.npcs), inventory_items, hint_lines,
+        )
 
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:
             return
-        lines = ["GAME OVER", f"Score: Round {self.game_over_state.score}"]
+        lines = [
+            ("GAME OVER", COLOR_GAME_OVER),
+            (f"Score: Round {self.game_over_state.score}", COLOR_GAME_OVER),
+            ("[R] Restart", COLOR_TEXT),
+        ]
         y = WINDOW_HEIGHT // 2 - 40
-        for text in lines:
-            surf = self.font.render(text, True, COLOR_GAME_OVER)
+        for text, color in lines:
+            surf = self.font.render(text, True, color)
             rect = surf.get_rect(center=(WINDOW_WIDTH // 2, y))
             self.screen.blit(surf, rect)
             y += surf.get_height() + 8

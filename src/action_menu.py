@@ -1,0 +1,74 @@
+"""Small popup listing task-type choices for a tile with more than one
+applicable task (e.g. Hunt vs Tame on a wild animal). Most clicks resolve
+to exactly one task and never touch this - see tile_actions.py.
+
+Thin rendering/hit-test layer, not itself unit tested, matching
+priority_ui.py's precedent.
+"""
+
+from __future__ import annotations
+
+import pygame
+
+_ROW_H = 30
+_PADDING = 8
+_BG = (24, 26, 32)
+_BORDER = (255, 214, 100)
+_ROW_HOVER = (50, 60, 80)
+_TEXT = (225, 225, 230)
+
+
+class ActionMenu:
+    def __init__(self):
+        self.options: list[str] = []
+        self.tile: tuple[int, int] | None = None
+        self.screen_pos: tuple[int, int] = (0, 0)
+
+    @property
+    def visible(self) -> bool:
+        return bool(self.options)
+
+    def open(self, options: list[str], tile: tuple[int, int], screen_pos: tuple[int, int]) -> None:
+        self.options = options
+        self.tile = tile
+        self.screen_pos = screen_pos
+
+    def close(self) -> None:
+        self.options = []
+        self.tile = None
+
+    def _rows(self) -> list[tuple[str, pygame.Rect]]:
+        x, y = self.screen_pos
+        return [
+            (option, pygame.Rect(x, y + i * _ROW_H, 160, _ROW_H))
+            for i, option in enumerate(self.options)
+        ]
+
+    def handle_click(self, pos: tuple[int, int]) -> str | None:
+        """Returns the chosen task type and closes the menu, or closes it
+        with no choice if the click missed every row (click-away-to-cancel)."""
+        for option, rect in self._rows():
+            if rect.collidepoint(pos):
+                self.close()
+                return option
+        self.close()
+        return None
+
+    def render(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        if not self.visible:
+            return
+        mouse_pos = pygame.mouse.get_pos()
+        rows = self._rows()
+        panel = pygame.Rect(
+            self.screen_pos[0] - _PADDING,
+            self.screen_pos[1] - _PADDING,
+            160 + _PADDING * 2,
+            len(rows) * _ROW_H + _PADDING * 2,
+        )
+        pygame.draw.rect(surface, _BG, panel, border_radius=6)
+        pygame.draw.rect(surface, _BORDER, panel, 2, border_radius=6)
+
+        for option, rect in rows:
+            if rect.collidepoint(mouse_pos):
+                pygame.draw.rect(surface, _ROW_HOVER, rect)
+            surface.blit(font.render(option, True, _TEXT), (rect.x + 6, rect.y + 6))
