@@ -66,6 +66,7 @@ import top_buttons
 import magic_panel
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite, get_tool_sprite
+from tame_task import idle_spot_near_pen
 from terrain import parchment, grass
 
 
@@ -88,6 +89,8 @@ class Game:
         self.selected_npc: NPC | None = None
         self.build_bar = BuildBar()
         self.action_menu = ActionMenu()
+        self.animal_menu = ActionMenu()  # separate instance: "Keep Following"/"Back to Pen", not a tile task choice
+        self._follow_menu_animal_id: int | None = None
         self.priority_ui = PriorityTableUI()
         self.skill_ui = SkillUI()
         self.npc_status_ui = NpcStatusUI()
@@ -262,6 +265,16 @@ class Game:
                 self.world.tasks.add(choice, tile)
             return
 
+        # Same click-consuming precedence as the tile action menu above, for
+        # the "Keep Following"/"Back to Pen" popup on an already-following animal.
+        if self.animal_menu.visible:
+            animal_id = self._follow_menu_animal_id
+            choice = self.animal_menu.handle_click(screen_pos)
+            self._follow_menu_animal_id = None
+            if choice == "Back to Pen" and animal_id is not None:
+                self._send_animal_back_to_pen(animal_id)
+            return
+
         if self.build_bar.handle_click(screen_pos):
             return
 
@@ -271,6 +284,16 @@ class Game:
         clicked_npc = self._npc_at_world_pos(world_x, world_y)
         if clicked_npc is not None:
             self.selected_npc = clicked_npc
+            return
+
+        clicked_animal = self._tamed_animal_at_world_pos(world_x, world_y)
+        if clicked_animal is not None:
+            if clicked_animal.is_following:
+                disabled = set() if clicked_animal.pen_tile is not None else {"Back to Pen"}
+                self.animal_menu.open(["Keep Following", "Back to Pen"], None, screen_pos, disabled=disabled)
+                self._follow_menu_animal_id = clicked_animal.id
+            else:
+                clicked_animal.is_following = True
             return
 
         gx, gy = tile_at(world_x, world_y)
@@ -299,6 +322,22 @@ class Game:
                 return npc
         return None
 
+    def _tamed_animal_at_world_pos(self, wx: float, wy: float):
+        # Only tamed animals are click-interactive this way - a wild one
+        # under the cursor still falls through to the ordinary tile-click
+        # Hunt/Tame task queueing further down in handle_click().
+        for animal in self.world.animals:
+            if animal.is_tamed and math.hypot(animal.x - wx, animal.y - wy) <= NPC_RADIUS * 1.5:
+                return animal
+        return None
+
+    def _send_animal_back_to_pen(self, animal_id: int) -> None:
+        animal = next((a for a in self.world.animals if a.id == animal_id), None)
+        if animal is None or animal.pen_tile is None:
+            return
+        animal.is_following = False
+        animal.idle_target = idle_spot_near_pen(self.world, *animal.pen_tile)
+
     def _update_cursor(self) -> None:
         """Hand cursor over anything a click would actually do something
         to - the keyboard-only overlays (priority/skill/NPC-status) block
@@ -313,10 +352,12 @@ class Game:
             or magic_panel.is_hovering(pos, top_bar.left_box_bottom())
             or self.build_bar.is_hovering(pos)
             or (self.action_menu.visible and self.action_menu.is_hovering(pos))
+            or (self.animal_menu.visible and self.animal_menu.is_hovering(pos))
             or self._npc_at_world_pos(pos[0] + self.camera.x, pos[1] + self.camera.y) is not None
+            or self._tamed_animal_at_world_pos(pos[0] + self.camera.x, pos[1] + self.camera.y) is not None
         )
 
-        if not hovering and not self.action_menu.visible:
+        if not hovering and not self.action_menu.visible and not self.animal_menu.visible:
             gx, gy = tile_at(pos[0] + self.camera.x, pos[1] + self.camera.y)
             if self.world.grid.in_bounds(gx, gy):
                 if self.build_bar.selected is not None:
@@ -616,6 +657,7 @@ class Game:
         top_buttons.render(self.screen, self.font, self.paused, self.skill_points_available)
         self.build_bar.render(self.screen, self.font, self.world)
         self.action_menu.render(self.screen, self.font)
+        self.animal_menu.render(self.screen, self.font)
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
         self.skill_ui.render(self.screen, self.font, self.world, self.skill_points_available)
         self.npc_status_ui.render(self.screen, self.font, self.world.npcs)
