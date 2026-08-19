@@ -26,6 +26,13 @@ COLOR_NPC = (220, 220, 60)
 COLOR_NPC_SELECTED = (255, 255, 255)
 COLOR_HOVER_BORDER = (100, 220, 255)
 
+# --- Gather UX polish: queued-task marker, work progress, Expand preview ---
+COLOR_QUEUED_WAITING = (255, 200, 90)   # task queued, no NPC assigned yet
+COLOR_QUEUED_ASSIGNED = (140, 255, 140)  # an NPC has claimed it and is en route/working
+COLOR_PROGRESS_BAR = (120, 200, 255)
+COLOR_EXPAND_PREVIEW_CLAIM = (140, 255, 140, 90)   # will become claimed - alpha-blended overlay
+COLOR_EXPAND_PREVIEW_REVEAL = (140, 200, 255, 55)  # will become revealed only
+
 STARTING_NPC_COUNT = 3
 NPC_RADIUS = TILE_SIZE // 3
 

@@ -37,6 +37,10 @@ def _rects() -> dict[str, pygame.Rect]:
     return rects
 
 
+def is_hovering(pos: tuple[int, int]) -> bool:
+    return any(rect.collidepoint(pos) for rect in _rects().values())
+
+
 def handle_click(pos: tuple[int, int]) -> str | None:
     """Returns which button ("pause"/"priority"/"skill") was clicked, or
     None - caller decides what each one actually does."""
