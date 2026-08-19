@@ -1885,8 +1885,9 @@ class Game:
         inventory_items = sorted(self.world.inventory.items().items())
 
         top_bar.render(
-            self.screen, self.font, self.big_font,
-            self.cycle.round_number, self.cycle.phase.upper(), self.cycle.remaining(), banner_color,
+            self.screen, self.font,
+            self.cycle.round_number, self.cycle.phase.upper(),
+            self.cycle.remaining(), self.cycle.duration(), banner_color,
             len(self.world.npcs), inventory_items, hint_lines,
         )
 
