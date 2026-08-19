@@ -8,7 +8,9 @@ size.
 Sits directly below the top bar's round/phase/countdown box - `y` is that
 box's own bottom (top_bar.render()'s return value), not the whole bar's,
 since the middle/right columns can end up taller without pushing this
-panel down (different x-range, no overlap either way).
+panel down (different x-range, no overlap either way). The outer box's
+width matches top_bar.LEFT_W exactly, so it lines up with that box above
+it and never encroaches on the middle column beside it.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
+import top_bar
 import ui_tooltip
 from constants import FIRE_COOLDOWN, FREEZE_COOLDOWN, LIGHTNING_COOLDOWN
 
@@ -24,13 +27,13 @@ if TYPE_CHECKING:
     from world import World
 
 _MARGIN = 10
-_WIDTH = 170
 _BUTTON_H = 56
 _GAP = 8
 
 _OUTER_PAD = 10
 _HEADER_H = 22
-_DESC_H = 18
+_DESC_LINE_H = 16
+_WIDTH = top_bar.LEFT_W - _OUTER_PAD * 2  # button content width, box matches top_bar's left box exactly
 
 _BG = (24, 26, 32)
 _OUTER_BG = (18, 20, 26)
@@ -58,29 +61,53 @@ _COLORS = {"Fire": (195, 90, 30), "Lightning": (195, 165, 40), "Freeze": (55, 13
 _MAX_COOLDOWN = {"Fire": FIRE_COOLDOWN, "Lightning": LIGHTNING_COOLDOWN, "Freeze": FREEZE_COOLDOWN}
 
 
-def _outer_rect(y: int) -> pygame.Rect:
-    height = _OUTER_PAD * 2 + _HEADER_H + _DESC_H + len(_ORDER) * _BUTTON_H + (len(_ORDER) - 1) * _GAP
-    return pygame.Rect(_MARGIN, y + _MARGIN, _WIDTH + _OUTER_PAD * 2, height)
+def _wrap_text(text: str, font: pygame.font.Font, max_width: int) -> list[str]:
+    """Greedy word-wrap: packs words onto a line until the next one would
+    overflow max_width, then starts a new line."""
+    words = text.split(" ")
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if current and font.size(candidate)[0] > max_width:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
 
 
-def _rects(y: int) -> dict[str, pygame.Rect]:
-    outer = _outer_rect(y)
+def _desc_lines(font: pygame.font.Font) -> list[str]:
+    return _wrap_text(_DESC_TEXT, font, _WIDTH)
+
+
+def _outer_rect(y: int, font: pygame.font.Font) -> pygame.Rect:
+    desc_h = len(_desc_lines(font)) * _DESC_LINE_H
+    height = _OUTER_PAD * 2 + _HEADER_H + desc_h + len(_ORDER) * _BUTTON_H + (len(_ORDER) - 1) * _GAP
+    return pygame.Rect(_MARGIN, y + _MARGIN, top_bar.LEFT_W, height)
+
+
+def _rects(y: int, font: pygame.font.Font) -> dict[str, pygame.Rect]:
+    outer = _outer_rect(y, font)
+    desc_h = len(_desc_lines(font)) * _DESC_LINE_H
     rects = {}
-    top = outer.y + _OUTER_PAD + _HEADER_H + _DESC_H
+    top = outer.y + _OUTER_PAD + _HEADER_H + desc_h
     for spell in _ORDER:
         rects[spell] = pygame.Rect(outer.x + _OUTER_PAD, top, _WIDTH, _BUTTON_H)
         top += _BUTTON_H + _GAP
     return rects
 
 
-def is_hovering(pos: tuple[int, int], y: int) -> bool:
-    return any(rect.collidepoint(pos) for rect in _rects(y).values())
+def is_hovering(pos: tuple[int, int], y: int, font: pygame.font.Font) -> bool:
+    return any(rect.collidepoint(pos) for rect in _rects(y, font).values())
 
 
-def handle_click(pos: tuple[int, int], y: int) -> str | None:
+def handle_click(pos: tuple[int, int], y: int, font: pygame.font.Font) -> str | None:
     """Returns the spell name clicked, or None - caller checks readiness
     and casts (same as pressing its hotkey)."""
-    for spell, rect in _rects(y).items():
+    for spell, rect in _rects(y, font).items():
         if rect.collidepoint(pos):
             return spell
     return None
@@ -88,7 +115,7 @@ def handle_click(pos: tuple[int, int], y: int) -> str | None:
 
 def render(surface: pygame.Surface, font: pygame.font.Font, world: "World", y: int) -> int:
     """Returns the panel's bottom y."""
-    outer = _outer_rect(y)
+    outer = _outer_rect(y, font)
     pygame.draw.rect(surface, _OUTER_BG, outer, border_radius=8)
     pygame.draw.rect(surface, _OUTER_BORDER, outer, 2, border_radius=8)
 
@@ -96,13 +123,16 @@ def render(surface: pygame.Surface, font: pygame.font.Font, world: "World", y: i
     header_surf = font.render(_HEADER_TEXT, True, _HEADER_COLOR)
     font.set_bold(False)
     surface.blit(header_surf, (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD - 2))
-    desc_surf = font.render(_DESC_TEXT, True, _DESC_COLOR)
-    surface.blit(desc_surf, (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD + _HEADER_H - 4))
+
+    dy = outer.y + _OUTER_PAD + _HEADER_H - 4
+    for line in _desc_lines(font):
+        surface.blit(font.render(line, True, _DESC_COLOR), (outer.x + _OUTER_PAD, dy))
+        dy += _DESC_LINE_H
 
     mouse_pos = pygame.mouse.get_pos()
     hovered_rect = None
     hovered_spell = None
-    for spell, rect in _rects(y).items():
+    for spell, rect in _rects(y, font).items():
         pygame.draw.rect(surface, _BG, rect, border_radius=6)
 
         remaining = world.spellbook.remaining(spell)
