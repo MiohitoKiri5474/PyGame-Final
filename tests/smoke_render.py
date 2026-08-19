@@ -212,8 +212,130 @@ def check_continue_corrupt_save() -> None:
     print("continue-corrupt OK: a broken save clears save_exists instead of a dead Continue button")
 
 
+def check_no_adjacent_screen_overlaps() -> None:
+    """Regression guard, generalized past the one incident: no two screens
+    that can transition into each other with a single click may share
+    screen coordinates (see ui_layout.py's module docstring) - checked
+    exhaustively for every state-adjacent pair, not just the pair that
+    actually shipped a bug once."""
+    import pygame
+
+    from game import Game
+
+    with _preserved_save() as save_path:
+        save_path.unlink(missing_ok=True)
+        game = Game()
+
+        title = game.title_screen
+        confirm = game.confirm_dialog
+        pause = game.pause_menu
+        settings = game.settings_screen
+
+        # TITLE <-> CONFIRM_OVERWRITE (Start can lead there when a save exists)
+        for title_rect in (title.start_rect, title.continue_rect, title.settings_rect):
+            for confirm_rect in (confirm.yes_rect, confirm.no_rect):
+                assert not title_rect.colliderect(confirm_rect)
+
+        # TITLE <-> SETTINGS (the Settings button leads there)
+        for title_rect in (title.start_rect, title.continue_rect, title.settings_rect):
+            for settings_rect in (settings.fullscreen_rect, settings.back_rect):
+                assert not title_rect.colliderect(settings_rect)
+
+        # PAUSE_MENU <-> SETTINGS (the Settings button leads there)
+        for pause_rect in (pause.resume_rect, pause.settings_rect, pause.quit_rect):
+            for settings_rect in (settings.fullscreen_rect, settings.back_rect):
+                assert not pause_rect.colliderect(settings_rect)
+
+        pygame.quit()
+
+    print("no-overlap OK: every state-adjacent screen pair has disjoint button rects")
+
+
+def check_pause_menu_and_settings() -> None:
+    """New feature: Esc during PLAYING opens a pause menu (Resume/Settings/
+    Quit) instead of quitting instantly; Settings (reachable from both the
+    title screen and the pause menu) holds a session-only Fullscreen toggle
+    and returns to whichever screen opened it."""
+    import pygame
+
+    from game import Game, TITLE, PLAYING, PAUSE_MENU, SETTINGS
+
+    with _preserved_save() as save_path:
+        save_path.unlink(missing_ok=True)
+
+        # Settings from the title screen returns to the title screen.
+        game = Game()
+        assert not game.fullscreen
+        _click(game, game.title_screen.settings_rect.center)
+        assert game.state == SETTINGS
+        _click(game, game.settings_screen.fullscreen_rect.center)
+        assert game.fullscreen
+        _click(game, game.settings_screen.fullscreen_rect.center)
+        assert not game.fullscreen  # toggles back off, and set_mode doesn't crash either direction
+        _click(game, game.settings_screen.back_rect.center)
+        assert game.state == TITLE
+        pygame.quit()
+
+        # Esc also closes Settings, same as Back.
+        game = Game()
+        _click(game, game.title_screen.settings_rect.center)
+        assert game.state == SETTINGS
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        game.handle_events()
+        assert game.state == TITLE
+        pygame.quit()
+
+        # Esc during PLAYING opens the pause menu instead of quitting.
+        game = Game()
+        _click(game, game.title_screen.start_rect.center)
+        assert game.state == PLAYING
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        game.handle_events()
+        assert game.state == PAUSE_MENU
+        assert game.running  # unchanged: opening the menu must not quit the app
+
+        # Simulation is fully frozen while the pause menu is open.
+        round_before = game.cycle.round_number
+        for _ in range(TICKS):
+            game.update(1 / 60)
+            game.render()
+        assert game.cycle.round_number == round_before
+
+        # Resume returns to PLAYING and the sim ticks again.
+        _click(game, game.pause_menu.resume_rect.center)
+        assert game.state == PLAYING
+        game.update(1 / 60)
+        game.render()
+
+        # Esc from the pause menu also resumes, same as clicking Resume.
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        game.handle_events()
+        assert game.state == PAUSE_MENU
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        game.handle_events()
+        assert game.state == PLAYING
+
+        # Settings reached from the pause menu returns to the pause menu, not the title screen.
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        game.handle_events()
+        assert game.state == PAUSE_MENU
+        _click(game, game.pause_menu.settings_rect.center)
+        assert game.state == SETTINGS
+        _click(game, game.settings_screen.back_rect.center)
+        assert game.state == PAUSE_MENU
+
+        # Quit from the pause menu stops the app, same as the old direct-Esc-quit did.
+        _click(game, game.pause_menu.quit_rect.center)
+        assert not game.running
+        pygame.quit()
+
+    print("pause-menu/settings OK: Esc opens a real menu, Settings round-trips fullscreen and returns correctly")
+
+
 if __name__ == "__main__":
     main()
     check_continue()
     check_overwrite_confirm()
     check_continue_corrupt_save()
+    check_no_adjacent_screen_overlaps()
+    check_pause_menu_and_settings()

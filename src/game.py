@@ -51,6 +51,8 @@ from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
 from title_screen import ConfirmOverwriteDialog, TitleScreen
+from pause_menu import PauseMenu
+from settings_screen import SettingsScreen
 
 # Game.state values. Bare-string constants mirror day_night.py's DAY/NIGHT
 # pattern - they live here, not in title_screen.py, because self.state is
@@ -59,6 +61,8 @@ from title_screen import ConfirmOverwriteDialog, TitleScreen
 TITLE = "title"
 PLAYING = "playing"
 CONFIRM_OVERWRITE = "confirm_overwrite"
+PAUSE_MENU = "pause_menu"
+SETTINGS = "settings"
 
 
 class Game:
@@ -82,6 +86,10 @@ class Game:
         self.save_exists = SAVE_PATH.exists()
         self.title_screen = TitleScreen()
         self.confirm_dialog = ConfirmOverwriteDialog()
+        self.pause_menu = PauseMenu()
+        self.settings_screen = SettingsScreen()
+        self.fullscreen = False  # session-only, always starts windowed
+        self._settings_return_state = TITLE  # which screen Settings' Back returns to
 
     def _start_new_game(self) -> None:
         self.world = World()
@@ -113,6 +121,25 @@ class Game:
             self.paused = True  # restore the auto-pause a full/partial clear set before save
         self.state = PLAYING
 
+    def _set_fullscreen(self, enabled: bool) -> None:
+        self.fullscreen = enabled
+        if not enabled:
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), 0)
+            return
+        try:
+            # SCALED lets SDL letterbox/scale our fixed logical resolution to
+            # whatever the real display is, instead of changing the actual
+            # display mode to match ours.
+            self.screen = pygame.display.set_mode(
+                (WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN | pygame.SCALED
+            )
+        except pygame.error:
+            # SCALED needs a renderer backend some drivers don't provide
+            # (e.g. the dummy driver used for headless testing, or some
+            # minimal/software display setups) - fall back to plain
+            # fullscreen rather than crash on toggle.
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN)
+
     def run(self) -> None:
         while self.running:
             dt = self.clock.tick(FPS) / 1000
@@ -129,6 +156,10 @@ class Game:
                 self._handle_title_event(event)
             elif self.state == CONFIRM_OVERWRITE:
                 self._handle_confirm_event(event)
+            elif self.state == PAUSE_MENU:
+                self._handle_pause_menu_event(event)
+            elif self.state == SETTINGS:
+                self._handle_settings_event(event)
             elif event.type == pygame.KEYDOWN:
                 # Priority UI and Skill UI intercept keys when open
                 if self.priority_ui.visible:
@@ -140,7 +171,7 @@ class Game:
                     )
                     continue
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    self.state = PAUSE_MENU
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
                 elif event.key == pygame.K_TAB:
@@ -179,6 +210,9 @@ class Game:
                     self._start_new_game()
             elif action == "continue":
                 self._continue_game()
+            elif action == "settings":
+                self._settings_return_state = TITLE
+                self.state = SETTINGS
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.running = False
 
@@ -191,6 +225,29 @@ class Game:
                 self.state = TITLE
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.state = TITLE
+
+    def _handle_pause_menu_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.pause_menu.handle_click(event.pos)
+            if action == "resume":
+                self.state = PLAYING
+            elif action == "settings":
+                self._settings_return_state = PAUSE_MENU
+                self.state = SETTINGS
+            elif action == "quit":
+                self.running = False
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = PLAYING  # Esc closes the pause menu the same as clicking Resume
+
+    def _handle_settings_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.settings_screen.handle_click(event.pos)
+            if action == "toggle_fullscreen":
+                self._set_fullscreen(not self.fullscreen)
+            elif action == "back":
+                self.state = self._settings_return_state
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = self._settings_return_state
 
     def _select_task_by_number(self, key: int) -> None:
         key_map = {
@@ -308,6 +365,14 @@ class Game:
             return
         if self.state == CONFIRM_OVERWRITE:
             self.confirm_dialog.render(self.screen, self.font)
+            pygame.display.flip()
+            return
+        if self.state == PAUSE_MENU:
+            self.pause_menu.render(self.screen, self.font)
+            pygame.display.flip()
+            return
+        if self.state == SETTINGS:
+            self.settings_screen.render(self.screen, self.font, self.fullscreen)
             pygame.display.flip()
             return
         self.render_grid()
