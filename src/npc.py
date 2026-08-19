@@ -55,7 +55,9 @@ class NPC:
         self.hunger = NPC_MAX_HUNGER
         self.alive = True
         self.is_resting = False
+        self.sanctuary_orig_pos: tuple[float, float] | None = None
         self.priority = priority  # None = fall back to task-type registration order
+
         self.task = None  # set by task.update_npc_tasks; typed loosely to avoid a task.py<->npc.py import cycle
         self.task_progress = 0.0
 

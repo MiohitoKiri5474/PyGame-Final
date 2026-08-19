@@ -239,8 +239,11 @@ class Game:
                     deployed = self.sanctuary_ui.handle_click(event.pos, self.world)
                     if deployed is not None:
                         deployed.is_resting = False
-                        cx, cy = self.world.grid.width // 2, self.world.grid.height // 2
-                        deployed.x, deployed.y = tile_center(cx, cy)
+                        if getattr(deployed, "sanctuary_orig_pos", None) is not None:
+                            deployed.x, deployed.y = deployed.sanctuary_orig_pos
+                        else:
+                            cx, cy = self.world.grid.width // 2, self.world.grid.height // 2
+                            deployed.x, deployed.y = tile_center(cx, cy)
                         deployed.path = []
                         play_sfx("dawn")
                         for _ in range(12):
@@ -276,12 +279,14 @@ class Game:
                         resting_count = sum(1 for n in self.world.npcs if getattr(n, "is_resting", False))
                         if resting_count < 3:
                             self.dragging_npc.is_resting = True
+                            self.dragging_npc.sanctuary_orig_pos = (self.dragging_npc.x, self.dragging_npc.y)
                             if self.dragging_npc.task is not None:
                                 self.dragging_npc.task.assigned_npc = None
                                 self.dragging_npc.task = None
                             self.dragging_npc.path = []
                             self.dragging_npc.is_moving = False
                             play_sfx("dawn")
+
                             for _ in range(16):
                                 self.particles.append({
                                     "type": "star",
