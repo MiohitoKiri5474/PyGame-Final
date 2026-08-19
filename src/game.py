@@ -25,12 +25,13 @@ from constants import (
     COLOR_BAR_BG,
     COLOR_GAME_OVER,
     COLOR_ANIMAL,
-    COLOR_ANIMAL_DANGEROUS,
 )
-from audio import play_sfx
+from audio import play_bgm, play_sfx, stop_bgm
+
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
+
 
 
 from coords import tile_at, tile_center
@@ -89,7 +90,10 @@ class Game:
             self.skill_points_available = 0
             self._monsters_killed_this_night = 0
 
+        play_bgm(self.cycle.phase)
+
     def run(self) -> None:
+
         while self.running:
             dt = self.clock.tick(FPS) / 1000
             self.handle_events()
@@ -205,6 +209,7 @@ class Game:
             if transitioned and self.cycle.phase == NIGHT:
                 self._monsters_killed_this_night = 0
                 play_sfx("night_howl")
+                play_bgm("night")
 
             update_npc_tasks(self.world, dt)
             run_ticks(self.world, dt)
@@ -230,9 +235,12 @@ class Game:
                 self.selected_npc = None
 
             self.game_over_state.check(self.world.npcs, self.cycle.round_number)
+            if self.game_over_state.is_over:
+                stop_bgm()
 
             if transitioned and self.cycle.phase == DAY:
                 play_sfx("dawn")
+                play_bgm("day")
                 # Full clear is judged by no monster being alive at day start
                 # - evaluated here, before the retreat below clears the list,
                 # so it still reflects "were they actually killed" and not
