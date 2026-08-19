@@ -20,6 +20,7 @@ from constants import (
     COLOR_NIGHT_BANNER,
     COLOR_NPC_SELECTED,
     COLOR_HOVER_BORDER,
+    COLOR_NIGHT_OVERLAY,
     COLOR_MONSTER,
     COLOR_HUNGER_BAR,
     COLOR_BAR_BG,
@@ -608,6 +609,8 @@ class Game:
         self.render_monsters()
         self.render_particles()
         render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
+        if self.cycle.phase == NIGHT:
+            self._render_night_overlay()  # map only - HUD below draws its own opaque panels on top
         self.render_hud()
         magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom())
         top_buttons.render(self.screen, self.font, self.paused, self.skill_points_available)
@@ -696,6 +699,10 @@ class Game:
                 sz = max(2, int(p.get("size", 3.0) * alpha))
                 pygame.draw.circle(self.screen, p["color"], (sx, sy), sz)
 
+    def _render_night_overlay(self) -> None:
+        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        overlay.fill(COLOR_NIGHT_OVERLAY)
+        self.screen.blit(overlay, (0, 0))
 
     def render_npcs(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y
