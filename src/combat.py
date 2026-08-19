@@ -17,7 +17,10 @@ def resolve_combat(npcs: list, monsters: list, buildings=(), on_damage=None) -> 
     back - buildings have no health in this step); Walls never attack, purely
     a path obstruction. Dead entities are removed from both lists in place."""
     for npc in npcs:
+        if getattr(npc, "is_resting", False):
+            continue
         for monster in monsters:
+
             if monster.is_dead:
                 # A monster killed earlier in this same resolve_combat() call
                 # (e.g. by a different NPC paired against it a few
