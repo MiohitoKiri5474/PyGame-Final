@@ -20,6 +20,41 @@ def get_celestial_position(rect: pygame.Rect, progress: float) -> tuple[float, f
     return cur_x, cur_y
 
 
+def _draw_paper_cloud(
+    surface: pygame.Surface,
+    cx: float,
+    cy: float,
+    scale: float = 1.0,
+    alpha: int = 210,
+) -> None:
+    """Draws a fluffy Paper Mario cloud with soft depth shading and highlights."""
+    cw = int(36 * scale)
+    ch = int(18 * scale)
+    c_surf = pygame.Surface((cw + 12, ch + 12), pygame.SRCALPHA)
+
+    r1 = int(7 * scale)
+    r2 = int(9 * scale)
+    r3 = int(6 * scale)
+
+    # Base bottom body
+    base_rect = pygame.Rect(4, int(ch * 0.45), cw, int(ch * 0.45))
+    pygame.draw.rect(c_surf, (215, 232, 248, alpha), base_rect, border_radius=int(4 * scale))
+
+    # Fluffy overlapping puffy circles
+    p1 = (int(cw * 0.25 + 4), int(ch * 0.52))
+    p2 = (int(cw * 0.52 + 4), int(ch * 0.38))
+    p3 = (int(cw * 0.78 + 4), int(ch * 0.55))
+
+    pygame.draw.circle(c_surf, (255, 255, 255, alpha), p1, r1)
+    pygame.draw.circle(c_surf, (255, 255, 255, alpha), p2, r2)
+    pygame.draw.circle(c_surf, (255, 255, 255, alpha), p3, r3)
+
+    # Top highlight sheen
+    pygame.draw.circle(c_surf, (255, 255, 255, min(255, alpha + 35)), (p2[0] - 2, p2[1] - 2), max(1, int(r2 * 0.55)))
+
+    surface.blit(c_surf, (int(cx - cw // 2), int(cy - ch // 2)))
+
+
 def render_celestial_dial(
     surface: pygame.Surface,
     rect: pygame.Rect,
@@ -31,7 +66,7 @@ def render_celestial_dial(
     duration: float,
 ) -> None:
     """Draws the Paper Mario style Celestial Skybox with Sun/Moon rising arc,
-    twinkling stars, rotating sun rays, and countdown timer."""
+    daytime drifting clouds, twinkling night stars, and countdown timer."""
     p = max(0.0, min(1.0, timer / max(1.0, duration)))
     remaining = max(0.0, duration - timer)
     time_s = time.monotonic()
@@ -60,7 +95,7 @@ def render_celestial_dial(
 
     pygame.draw.rect(sky_surf, sky_bg, pygame.Rect(0, 0, rect.width, rect.height), border_radius=8)
 
-    # 2. Celestial Atmosphere Details (Night Stars & Sun Aura)
+    # 2. Celestial Atmosphere Details (Night Stars or Background Cloud Wisps)
     if not is_day:
         # Twinkling Paper Stars
         star_positions = [
@@ -80,7 +115,14 @@ def render_celestial_dial(
 
     surface.blit(sky_surf, rect.topleft)
 
-    # 3. Sun / Moon Trajectory & Celestial Body
+    # 3. Daytime Background Cloud Layer (Behind Sun)
+    if is_day:
+        # Distant background cloud drifting gently
+        c3_x = rect.x + ((time_s * 5.0 + rect.width * 0.7) % (rect.width + 50)) - 25
+        c3_y = rect.y + 36 + math.sin(time_s * 1.2 + 1.0) * 1.5
+        _draw_paper_cloud(surface, c3_x, c3_y, scale=0.70, alpha=150)
+
+    # 4. Sun / Moon Trajectory & Celestial Body
     cx, cy = get_celestial_position(rect, p)
 
     if is_day:
@@ -107,6 +149,17 @@ def render_celestial_dial(
         pygame.draw.circle(sun_surf, (255, 165, 30), sun_center, 9, 2)
         pygame.draw.circle(sun_surf, (255, 255, 255), (sun_center[0] - 3, sun_center[1] - 3), 2)
         surface.blit(sun_surf, (int(cx - 22), int(cy - 22)))
+
+        # 5. Daytime Foreground Drifting Clouds (In Front of Sky and Sun)
+        # Cloud 1 (Upper sky drifting)
+        c1_x = rect.x + ((time_s * 11.0 + 15) % (rect.width + 60)) - 30
+        c1_y = rect.y + 28 + math.sin(time_s * 1.4) * 2.0
+        _draw_paper_cloud(surface, c1_x, c1_y, scale=0.88, alpha=220)
+
+        # Cloud 2 (Middle/lower sky drifting at a relaxed pace)
+        c2_x = rect.x + ((time_s * 7.5 + rect.width * 0.45) % (rect.width + 70)) - 35
+        c2_y = rect.y + 52 + math.cos(time_s * 1.0) * 2.5
+        _draw_paper_cloud(surface, c2_x, c2_y, scale=1.05, alpha=235)
     else:
         # Silver-Cyan Crescent Moon
         moon_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
@@ -123,10 +176,10 @@ def render_celestial_dial(
         pygame.draw.circle(moon_surf, sky_bg, cutout_pos, 7)
         surface.blit(moon_surf, (int(cx - 19), int(cy - 19)))
 
-    # 4. Box Outline (Paper Mario Dark Frame)
+    # 6. Box Outline (Paper Mario Dark Frame)
     pygame.draw.rect(surface, (70, 74, 86), rect, 2, border_radius=8)
 
-    # 5. Badges & Digital Countdown Text
+    # 7. Badges & Digital Countdown Text
     # Top Round Pill
     round_text = f"Round {round_number}"
     round_surf = font.render(round_text, True, (240, 240, 245))
