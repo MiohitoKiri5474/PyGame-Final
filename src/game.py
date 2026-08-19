@@ -1839,6 +1839,29 @@ class Game:
                         unclaimed_tint.fill((0, 0, 0, 50))
                         self.screen.blit(unclaimed_tint, rect)
 
+                    # River shoreline autotiling: natural sandy banks & foam along non-river edges
+                    if terrain_type == "river":
+                        bank_col = (185, 165, 125)
+                        foam_col = (225, 245, 255)
+                        top_nbr = grid.get(col, row - 1) if row > 0 else None
+                        bot_nbr = grid.get(col, row + 1) if row < grid.height - 1 else None
+                        left_nbr = grid.get(col - 1, row) if col > 0 else None
+                        right_nbr = grid.get(col + 1, row) if col < grid.width - 1 else None
+
+                        if top_nbr is None or getattr(top_nbr, "terrain", "plain") != "river":
+                            pygame.draw.line(self.screen, bank_col, (rect.left, rect.top), (rect.right, rect.top), 3)
+                            pygame.draw.line(self.screen, foam_col, (rect.left, rect.top + 2), (rect.right, rect.top + 2), 1)
+                        if bot_nbr is None or getattr(bot_nbr, "terrain", "plain") != "river":
+                            pygame.draw.line(self.screen, bank_col, (rect.left, rect.bottom - 1), (rect.right, rect.bottom - 1), 3)
+                            pygame.draw.line(self.screen, foam_col, (rect.left, rect.bottom - 3), (rect.right, rect.bottom - 3), 1)
+                        if left_nbr is None or getattr(left_nbr, "terrain", "plain") != "river":
+                            pygame.draw.line(self.screen, bank_col, (rect.left, rect.top), (rect.left, rect.bottom), 3)
+                            pygame.draw.line(self.screen, foam_col, (rect.left + 2, rect.top), (rect.left + 2, rect.bottom), 1)
+                        if right_nbr is None or getattr(right_nbr, "terrain", "plain") != "river":
+                            pygame.draw.line(self.screen, bank_col, (rect.right - 1, rect.top), (rect.right - 1, rect.bottom), 3)
+                            pygame.draw.line(self.screen, foam_col, (rect.right - 3, rect.top), (rect.right - 3, rect.bottom), 1)
+
+
 
 
 
