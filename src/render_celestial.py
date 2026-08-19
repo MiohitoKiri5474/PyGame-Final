@@ -204,43 +204,26 @@ def render_celestial_dial(
     pygame.draw.rect(surface, (70, 74, 86), rect, 2, border_radius=8)
 
     # 7. Badges & Digital Countdown Text
-    # Top Round Pill
-    round_text = f"Round {round_number}"
-    round_surf = font.render(round_text, True, (240, 240, 245))
-    round_bg_w = round_surf.get_width() + 14
-    round_bg_h = round_surf.get_height() + 4
-    round_bg = pygame.Surface((round_bg_w, round_bg_h), pygame.SRCALPHA)
-    pygame.draw.rect(round_bg, (18, 20, 28, 210), pygame.Rect(0, 0, round_bg_w, round_bg_h), border_radius=4)
-    pygame.draw.rect(round_bg, (70, 74, 86, 220), pygame.Rect(0, 0, round_bg_w, round_bg_h), 1, border_radius=4)
-    surface.blit(round_bg, (rect.centerx - round_bg_w // 2, rect.y + 6))
-    surface.blit(round_surf, (rect.centerx - round_surf.get_width() // 2, rect.y + 8))
+    # Top Day Pill Badge
+    day_text = f"Day {round_number}"
+    day_surf = font.render(day_text, True, (240, 240, 245))
+    day_bg_w = day_surf.get_width() + 16
+    day_bg_h = day_surf.get_height() + 4
+    day_bg = pygame.Surface((day_bg_w, day_bg_h), pygame.SRCALPHA)
+    pygame.draw.rect(day_bg, (18, 20, 28, 210), pygame.Rect(0, 0, day_bg_w, day_bg_h), border_radius=4)
+    pygame.draw.rect(day_bg, (70, 74, 86, 220), pygame.Rect(0, 0, day_bg_w, day_bg_h), 1, border_radius=4)
+    surface.blit(day_bg, (rect.centerx - day_bg_w // 2, rect.y + 6))
+    surface.blit(day_surf, (rect.centerx - day_surf.get_width() // 2, rect.y + 8))
 
-    # Bottom Phase & Countdown Display
-    phase_label = "DAY" if is_day else "NIGHT"
-    phase_col = (255, 230, 80) if is_day else (135, 220, 255)
-    phase_surf = font.render(phase_label, True, phase_col)
-
-    # High-visibility large digital countdown
+    # Bottom High-visibility large digital countdown (Centered)
     t_font = _get_timer_font()
     countdown_text = f"{int(remaining)}s"
     count_surf = t_font.render(countdown_text, True, (255, 255, 255))
     count_shadow = t_font.render(countdown_text, True, (12, 14, 20))
 
-    bottom_y = rect.bottom - count_surf.get_height() - 4
-
-    # Phase badge background
-    phase_bg_w = phase_surf.get_width() + 10
-    phase_bg_h = phase_surf.get_height() + 4
-    phase_bg = pygame.Surface((phase_bg_w, phase_bg_h), pygame.SRCALPHA)
-    pygame.draw.rect(phase_bg, (18, 20, 28, 200), pygame.Rect(0, 0, phase_bg_w, phase_bg_h), border_radius=4)
-    pygame.draw.rect(phase_bg, (70, 74, 86, 210), pygame.Rect(0, 0, phase_bg_w, phase_bg_h), 1, border_radius=4)
-
-    phase_y = rect.bottom - phase_bg_h - 10
-    surface.blit(phase_bg, (rect.x + 10, phase_y))
-    surface.blit(phase_surf, (rect.x + 15, phase_y + 2))
-
-    # Large shadowed digital countdown
-    count_x = rect.right - count_surf.get_width() - 10
+    count_x = rect.centerx - count_surf.get_width() // 2
+    bottom_y = rect.bottom - count_surf.get_height() - 5
     surface.blit(count_shadow, (count_x + 2, bottom_y + 2))
     surface.blit(count_surf, (count_x, bottom_y))
+
 
