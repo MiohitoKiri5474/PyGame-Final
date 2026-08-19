@@ -148,9 +148,12 @@ class Game:
                     self.priority_ui.handle_key(event.key, self.world.npcs)
                     continue
                 if self.skill_ui.visible:
+                    pts_before = self.skill_points_available
                     self.skill_points_available = self.skill_ui.handle_key(
                         event.key, self.world, self.skill_points_available
                     )
+                    if self.skill_points_available < pts_before:
+                        self._spawn_skill_upgrade_fx()
                     continue
                 if self.npc_status_ui.visible:
                     if event.key in (pygame.K_n, pygame.K_ESCAPE):
@@ -192,8 +195,16 @@ class Game:
                 ):
                     self._select_build_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if not self.priority_ui.visible and not self.skill_ui.visible and not self.npc_status_ui.visible:
+                if self.skill_ui.visible:
+                    pts_before = self.skill_points_available
+                    self.skill_points_available = self.skill_ui.handle_click(
+                        event.pos, self.world, self.skill_points_available
+                    )
+                    if self.skill_points_available < pts_before:
+                        self._spawn_skill_upgrade_fx()
+                elif not self.priority_ui.visible and not self.npc_status_ui.visible:
                     self.handle_click(event.pos)
+
 
     def _select_build_by_number(self, key: int) -> None:
         key_map = {
@@ -300,7 +311,7 @@ class Game:
             for p in self.particles:
                 p["x"] += p["vx"] * dt
                 p["y"] += p["vy"] * dt
-                p["vy"] += 120.0 * dt
+                p["vy"] += p.get("gravity", 120.0) * dt
                 p["life"] -= dt
                 if "rot" in p:
                     p["rot"] = (p["rot"] + p.get("vrot", 0.0) * dt) % 360
@@ -319,6 +330,12 @@ class Game:
                     # keep actively chasing instead of freezing in place.
                     retarget_monster(monster, self.world)
 
+            # Trigger Death VFX for any monster that died before combat resolution (e.g. spell / burn)
+            for monster in self.monsters:
+                if monster.is_dead and not getattr(monster, "_death_fx_spawned", False):
+                    monster._death_fx_spawned = True
+                    self._spawn_monster_death_fx(monster.x, monster.y)
+
             monster_count_before_combat = len(self.monsters)
 
             def _on_damage(src, target, dmg):
@@ -334,6 +351,7 @@ class Game:
                     "color": col,
                     "life": 0.65,
                     "max_life": 0.65,
+                    "gravity": 40.0,
                 })
                 confetti_colors = [
                     (255, 220, 50),
@@ -355,12 +373,25 @@ class Game:
                         "vrot": random.uniform(-360, 360),
                     })
 
+                if target.is_dead and not getattr(target, "_death_fx_spawned", False):
+                    target._death_fx_spawned = True
+                    if is_npc_target:
+                        self._spawn_npc_death_fx(target.x, target.y, target.role)
+                    else:
+                        self._spawn_monster_death_fx(target.x, target.y)
+
             resolve_combat(self.world.npcs, self.monsters, self.world.buildings, on_damage=_on_damage)
             self._monsters_killed_this_night += monster_count_before_combat - len(self.monsters)
+
+            # Trigger Death VFX for any colonist that died (hunger or combat)
+            for npc in self.world.npcs:
+                if npc.is_dead and not getattr(npc, "_death_fx_spawned", False):
+                    npc._death_fx_spawned = True
+                    self._spawn_npc_death_fx(npc.x, npc.y, npc.role)
+
             self.world.npcs[:] = [npc for npc in self.world.npcs if not npc.is_dead]
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None
-
 
             self.game_over_state.check(self.world.npcs, self.cycle.round_number)
             if self.game_over_state.is_over:
@@ -369,11 +400,6 @@ class Game:
             if transitioned and self.cycle.phase == DAY:
                 play_sfx("dawn")
                 play_bgm("day")
-                # Full clear is judged by no monster being alive at day start
-                # - evaluated here, before the retreat below clears the list,
-                # so it still reflects "were they actually killed" and not
-                # "did they just retreat" (both would otherwise look like a
-                # full clear once retreat empties self.monsters every dawn).
                 self.skill_points_available += evaluate_wave(
                     len(self.monsters) == 0, self._monsters_killed_this_night
                 )
@@ -388,6 +414,148 @@ class Game:
                     self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
                     self.skill_points_available, self._monsters_killed_this_night,
                 )
+
+    def _spawn_monster_death_fx(self, x: float, y: float) -> None:
+        """Paper Mario: Monster Defeat Confetti Fireworks & Smoke Poof!"""
+        confetti_colors = [
+            (255, 220, 50),   # Star Yellow
+            (255, 60, 60),    # Mario Red
+            (60, 190, 255),   # Sky Blue
+            (85, 230, 95),    # Origami Green
+            (215, 95, 255),   # Magic Violet
+            (255, 140, 30),   # Origami Orange
+            (255, 255, 255),  # Paper White
+        ]
+        # 24 colorful confetti scraps bursting outward with rotation
+        for _ in range(24):
+            self.particles.append({
+                "x": x + random.uniform(-6, 6),
+                "y": y + random.uniform(-6, 6),
+                "vx": random.uniform(-110, 110),
+                "vy": random.uniform(-140, -40),
+                "color": random.choice(confetti_colors),
+                "size": random.uniform(3.5, 6.0),
+                "life": random.uniform(0.65, 0.95),
+                "max_life": 0.95,
+                "rot": random.uniform(0, 360),
+                "vrot": random.uniform(-400, 400),
+                "gravity": 160.0,
+            })
+        # Expanding comic POOF smoke puff rings
+        for _ in range(5):
+            self.particles.append({
+                "type": "poof",
+                "x": x + random.uniform(-8, 8),
+                "y": y + random.uniform(-8, 8),
+                "vx": random.uniform(-20, 20),
+                "vy": random.uniform(-30, 0),
+                "radius_start": 6.0,
+                "radius_end": random.uniform(22.0, 34.0),
+                "color": (240, 240, 245),
+                "life": 0.45,
+                "max_life": 0.45,
+                "gravity": 0.0,
+            })
+        # Floating defeat gold star
+        self.particles.append({
+            "type": "star",
+            "x": x,
+            "y": y - 8,
+            "vx": 0.0,
+            "vy": -45.0,
+            "color": (255, 225, 60),
+            "size": 8.0,
+            "life": 0.75,
+            "max_life": 0.75,
+            "gravity": 20.0,
+        })
+
+    def _spawn_npc_death_fx(self, x: float, y: float, role: str) -> None:
+        """Paper Mario: Colonist Paper Soul Ascension & Angelic Halo!"""
+        # Translucent ascending paper soul
+        self.particles.append({
+            "type": "paper_soul",
+            "x": x,
+            "y": y,
+            "vx": 0.0,
+            "vy": -24.0,
+            "role": role,
+            "life": 2.2,
+            "max_life": 2.2,
+            "gravity": 0.0,
+        })
+        # Delicate halo & star sparkles shower
+        soul_colors = [
+            (255, 255, 255),
+            (255, 235, 120),
+            (160, 220, 255),
+        ]
+        for _ in range(16):
+            self.particles.append({
+                "type": "star",
+                "x": x + random.uniform(-10, 10),
+                "y": y + random.uniform(-12, 12),
+                "vx": random.uniform(-35, 35),
+                "vy": random.uniform(-60, -10),
+                "color": random.choice(soul_colors),
+                "size": random.uniform(3.0, 5.0),
+                "life": random.uniform(1.0, 1.8),
+                "max_life": 1.8,
+                "gravity": -10.0,
+            })
+        # Soft RIP Memorial Text
+        self.particles.append({
+            "type": "damage_num",
+            "text": f"RIP {role}...",
+            "x": x,
+            "y": y - 24,
+            "vx": 0.0,
+            "vy": -18.0,
+            "color": (240, 240, 255),
+            "life": 2.0,
+            "max_life": 2.0,
+            "gravity": 0.0,
+        })
+
+    def _spawn_skill_upgrade_fx(self) -> None:
+        """Paper Mario: Radiant Skill Upgrade Starburst Banner & Confetti!"""
+        play_sfx("skill_point")
+        center_x = self.camera.x + WINDOW_WIDTH // 2
+        center_y = self.camera.y + WINDOW_HEIGHT // 2
+
+        self.particles.append({
+            "type": "skill_banner",
+            "text": "★ SKILL UPGRADED! ★",
+            "x": center_x,
+            "y": center_y - 80,
+            "vx": 0.0,
+            "vy": -12.0,
+            "color": (255, 230, 80),
+            "life": 1.6,
+            "max_life": 1.6,
+            "gravity": 0.0,
+        })
+
+        star_colors = [
+            (255, 230, 70),
+            (255, 255, 255),
+            (100, 220, 255),
+            (255, 120, 180),
+            (130, 255, 130),
+        ]
+        for _ in range(35):
+            self.particles.append({
+                "type": "star",
+                "x": center_x + random.uniform(-40, 40),
+                "y": center_y - 80 + random.uniform(-20, 20),
+                "vx": random.uniform(-160, 160),
+                "vy": random.uniform(-180, 20),
+                "color": random.choice(star_colors),
+                "size": random.uniform(4.0, 7.0),
+                "life": random.uniform(0.9, 1.4),
+                "max_life": 1.4,
+                "gravity": 80.0,
+            })
 
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
@@ -417,7 +585,8 @@ class Game:
             sx = int(p["x"] - cam_x)
             sy = int(p["y"] - cam_y)
 
-            if p.get("type") == "damage_num":
+            p_type = p.get("type")
+            if p_type == "damage_num":
                 txt = p["text"]
                 col = p["color"]
                 txt_surf = self.font.render(txt, True, col)
@@ -425,6 +594,56 @@ class Game:
                 for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1)]:
                     self.screen.blit(outline_surf, (sx + ox, sy + oy))
                 self.screen.blit(txt_surf, (sx, sy))
+            elif p_type == "poof":
+                prog = 1.0 - alpha
+                r = int(p.get("radius_start", 6.0) + (p.get("radius_end", 28.0) - p.get("radius_start", 6.0)) * prog)
+                poof_surf = pygame.Surface((r * 2 + 6, r * 2 + 6), pygame.SRCALPHA)
+                poof_col = (245, 245, 250, int(200 * alpha))
+                pygame.draw.circle(poof_surf, poof_col, (r + 3, r + 3), r, 3)
+                self.screen.blit(poof_surf, (sx - r - 3, sy - r - 3))
+            elif p_type == "star":
+                sz = max(2, int(p.get("size", 4.0) * (0.5 + 0.5 * alpha)))
+                col = p["color"]
+                star_surf = pygame.Surface((sz * 2 + 4, sz * 2 + 4), pygame.SRCALPHA)
+                star_col = (col[0], col[1], col[2], int(255 * alpha))
+                cx_s, cy_s = sz + 2, sz + 2
+                points = [
+                    (cx_s, cy_s - sz),
+                    (cx_s + sz // 3, cy_s - sz // 3),
+                    (cx_s + sz, cy_s),
+                    (cx_s + sz // 3, cy_s + sz // 3),
+                    (cx_s, cy_s + sz),
+                    (cx_s - sz // 3, cy_s + sz // 3),
+                    (cx_s - sz, cy_s),
+                    (cx_s - sz // 3, cy_s - sz // 3),
+                ]
+                pygame.draw.polygon(star_surf, star_col, points)
+                self.screen.blit(star_surf, (sx - sz - 2, sy - sz - 2))
+            elif p_type == "paper_soul":
+                role = p.get("role", "villager")
+                base_sprite = npc_sprite(role)
+                time_s = time.monotonic() * 4.0
+                sway = math.sin(time_s) * 8.0
+                ghost_w = max(1, int(base_sprite.get_width() * 0.95))
+                ghost_h = max(1, int(base_sprite.get_height() * 0.95))
+                scaled = pygame.transform.smoothscale(base_sprite, (ghost_w, ghost_h))
+                soul_surf = pygame.Surface((ghost_w + 16, ghost_h + 16), pygame.SRCALPHA)
+                soul_surf.blit(scaled, (8, 12))
+                halo_rect = pygame.Rect(ghost_w // 2, 2, 16, 6)
+                pygame.draw.ellipse(soul_surf, (255, 235, 100, int(230 * alpha)), halo_rect, 2)
+                soul_surf.fill((255, 255, 255, int(190 * alpha)), special_flags=pygame.BLEND_RGBA_MULT)
+                rotated = pygame.transform.rotate(soul_surf, sway)
+                self.screen.blit(rotated, rotated.get_rect(center=(sx, sy)))
+            elif p_type == "skill_banner":
+                txt = p["text"]
+                txt_surf = self.font.render(txt, True, p["color"])
+                bg_w = txt_surf.get_width() + 24
+                bg_h = txt_surf.get_height() + 12
+                bg_surf = pygame.Surface((bg_w, bg_h), pygame.SRCALPHA)
+                bg_surf.fill((20, 24, 35, int(220 * alpha)))
+                pygame.draw.rect(bg_surf, (255, 215, 80, int(240 * alpha)), pygame.Rect(0, 0, bg_w, bg_h), 2, border_radius=6)
+                self.screen.blit(bg_surf, (sx - bg_w // 2, sy - bg_h // 2))
+                self.screen.blit(txt_surf, (sx - txt_surf.get_width() // 2, sy - txt_surf.get_height() // 2))
             elif "rot" in p:
                 sz = max(2, int(p.get("size", 3.0) * alpha))
                 p_surf = pygame.Surface((sz, max(2, int(sz * 1.5))), pygame.SRCALPHA)
@@ -435,6 +654,7 @@ class Game:
             else:
                 sz = max(2, int(p.get("size", 3.0) * alpha))
                 pygame.draw.circle(self.screen, p["color"], (sx, sy), sz)
+
 
     def render_npcs(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y
