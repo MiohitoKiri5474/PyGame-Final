@@ -1,5 +1,6 @@
 import math
 import random
+import warnings
 
 import pygame
 
@@ -102,7 +103,7 @@ class Game:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("Colony Defense (WIP)")
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.screen = self._create_display(pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
         self.big_font = pygame.font.Font(None, 40)  # top bar's countdown number
@@ -184,24 +185,31 @@ class Game:
         self.state = PLAYING
         play_bgm(self.cycle.phase)
 
+    def _create_display(self, extra_flags: int) -> pygame.Surface:
+        """SCALED lets SDL letterbox/scale our fixed logical resolution to
+        whatever the real window/display size is, instead of gameplay and
+        HUD staying pinned at WINDOW_WIDTH x WINDOW_HEIGHT regardless of
+        the actual window size (windowed is RESIZABLE; fullscreen matches
+        the display) - covers both without any per-widget layout math.
+        Falls back without it on drivers that don't provide the renderer
+        backend SCALED needs (e.g. the dummy driver used for headless
+        testing, or some minimal/software display setups) - that failure
+        surfaces as a "no fast renderer available" warning rather than a
+        pygame.error, so it's promoted to one here to actually trigger the
+        fallback instead of silently keeping a broken renderer."""
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                return pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), extra_flags | pygame.SCALED)
+        except (pygame.error, Warning):
+            return pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), extra_flags)
+
     def _set_fullscreen(self, enabled: bool) -> None:
         self.fullscreen = enabled
         if not enabled:
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), 0)
+            self.screen = self._create_display(pygame.RESIZABLE)
             return
-        try:
-            # SCALED lets SDL letterbox/scale our fixed logical resolution to
-            # whatever the real display is, instead of changing the actual
-            # display mode to match ours.
-            self.screen = pygame.display.set_mode(
-                (WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN | pygame.SCALED
-            )
-        except pygame.error:
-            # SCALED needs a renderer backend some drivers don't provide
-            # (e.g. the dummy driver used for headless testing, or some
-            # minimal/software display setups) - fall back to plain
-            # fullscreen rather than crash on toggle.
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN)
+        self.screen = self._create_display(pygame.FULLSCREEN)
 
     def restart(self) -> None:
         """Only meaningful after game over - starts a brand new colony and
