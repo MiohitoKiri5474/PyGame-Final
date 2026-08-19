@@ -78,15 +78,15 @@ def render_drifting_fog_layer(
                     break
 
             if has_revealed_adj:
-                # On the explorable frontier edge: keep clouds sparse and faint so players can clearly explore
-                if (seed % 10) >= 3:
-                    continue  # Skip 70% of edge clouds to keep border clear
-                cloud_width = 80 + (seed % 4) * 12  # Small wispy clouds (80px - 116px)
-                cloud_alpha = 110
+                # On the explorable frontier edge: abundant clouds with high transparency (very see-through)
+                # so the terrain, trees, resources, and grid below remain clearly visible
+                cloud_width = 100 + (seed % 5) * 16  # 100px - 164px
+                cloud_alpha = 65 + (seed % 20)       # Alpha 65..84 (ethereal, highly translucent)
             else:
-                # Deep unexplored interior: full thick cloud cover
+                # Deep unexplored interior: full thick dense cloud cover
                 cloud_width = 140 + (seed % 6) * 18  # Large plush clouds (140px - 230px)
                 cloud_alpha = 240
+
 
             # Screen coordinates
             sx = int(wx - cam_x)
