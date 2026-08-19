@@ -15,6 +15,17 @@ _SOUND_CACHE: dict[str, pygame.mixer.Sound | None] = {}
 _LAST_PLAYED: dict[str, float] = {}
 _SFX_DIR = Path(__file__).parent.parent / "assets" / "sfx"
 
+_sfx_muted = False
+
+
+def set_sfx_muted(muted: bool) -> None:
+    global _sfx_muted
+    _sfx_muted = muted
+
+
+def is_sfx_muted() -> bool:
+    return _sfx_muted
+
 # Default volume by SFX name (soft ambient background work sounds and crisp combat/event cues)
 _DEFAULT_VOLUMES = {
     "chop": 0.15,
@@ -45,8 +56,9 @@ _SFX_COOLDOWN = {
 
 def play_sfx(name: str, volume: float | None = None, min_interval: float | None = None) -> None:
     """Safely play a sound effect by name with anti-clutter throttling.
-    Silently no-ops if pygame mixer is uninitialized or file is missing."""
-    if not pygame.mixer.get_init():
+    Silently no-ops if muted, pygame mixer is uninitialized, or the file
+    is missing."""
+    if _sfx_muted or not pygame.mixer.get_init():
         return
 
     now = time.monotonic()

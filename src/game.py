@@ -39,11 +39,9 @@ from constants import (
     ROLE_MAGE,
     FARMLAND_GROW_SECONDS,
 )
-
-
 import time
 from action_menu import ActionMenu
-from audio import play_bgm, play_sfx, stop_bgm
+from audio import play_bgm, play_sfx, set_sfx_muted, stop_bgm
 from build_bar import BuildBar
 from camera import Camera
 from combat import resolve_combat
@@ -82,9 +80,21 @@ from sprites import (
 )
 from tame_task import idle_spot_near_pen
 from terrain import grass, parchment
-
+from title_screen import ConfirmOverwriteDialog, TitleScreen
+from pause_menu import PauseMenu
+from settings_screen import SettingsScreen
 
 _CAST_SPELL = {"Fire": cast_fire, "Lightning": cast_lightning, "Freeze": cast_freeze}
+
+# Game.state values. Bare-string constants mirror day_night.py's DAY/NIGHT
+# pattern - they live here, not in title_screen.py, because self.state is
+# Game's own field and PLAYING covers all non-title-screen gameplay, not
+# just a title-screen concept.
+TITLE = "title"
+PLAYING = "playing"
+CONFIRM_OVERWRITE = "confirm_overwrite"
+PAUSE_MENU = "pause_menu"
+SETTINGS = "settings"
 
 
 class Game:
@@ -114,25 +124,20 @@ class Game:
         self.is_dragging: bool = False
         self.best_score = load_best_score()  # survives restart() wiping the checkpoint - separate file on purpose
 
-        checkpoint = load_checkpoint()
-        if checkpoint is not None:
-            (
-                self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
-                self.skill_points_available, self._monsters_killed_this_night,
-            ) = checkpoint
-            if self.skill_points_available > 0:
-                self.paused = True  # restore the auto-pause a full/partial clear set before save
-        else:
-            self._new_game()
-
-        self.particles: list[dict] = []
-        self.projectiles: list[dict] = []
-        play_bgm(self.cycle.phase)
-
+        self.state = TITLE
+        self.save_exists = SAVE_PATH.exists()
+        self.title_screen = TitleScreen()
+        self.confirm_dialog = ConfirmOverwriteDialog()
+        self.pause_menu = PauseMenu()
+        self.settings_screen = SettingsScreen()
+        self.fullscreen = False  # session-only, always starts windowed
+        self.sfx_muted = False  # session-only, mirrors audio.py's module-level mute flag
+        self._settings_return_state = TITLE  # which screen Settings' Back returns to
 
     def _new_game(self) -> None:
-        """Fresh colony from scratch - used both for a no-checkpoint startup
-        and for restarting after game over (R key)."""
+        """Fresh colony from scratch - used for a no-checkpoint startup, the
+        title screen's Start/overwrite-confirm Yes, and restarting after
+        game over (R key)."""
         self.world = World()
         self.cycle = DayNightCycle()
         initial_nests = create_initial_nests(
@@ -149,7 +154,53 @@ class Game:
         self.drag_start_pos = None
         self.is_dragging = False
 
+    def _start_new_game(self) -> None:
+        """Title screen's Start (no save) / overwrite-confirm's Yes: those
+        UI elements are all still at their fresh __init__ defaults at this
+        point (nothing's been touched yet), so unlike restart() this needs
+        no build_bar/action_menu/paused/selected_npc cleanup."""
+        self._new_game()
+        self.state = PLAYING
+        play_bgm(self.cycle.phase)
 
+    def _continue_game(self) -> None:
+        checkpoint = load_checkpoint()
+        if checkpoint is None:
+            # Save vanished or is corrupt since the title screen booted: drop
+            # save_exists so the (now-broken) Continue button stops being
+            # offered, rather than staying clickable and silently no-op'ing
+            # forever - stay on title either way.
+            self.save_exists = False
+            return
+        (
+            self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
+            self.skill_points_available, self._monsters_killed_this_night,
+        ) = checkpoint
+        if self.skill_points_available > 0:
+            self.paused = True  # restore the auto-pause a full/partial clear set before save
+        self.particles: list[dict] = []
+        self.projectiles: list[dict] = []
+        self.state = PLAYING
+        play_bgm(self.cycle.phase)
+
+    def _set_fullscreen(self, enabled: bool) -> None:
+        self.fullscreen = enabled
+        if not enabled:
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), 0)
+            return
+        try:
+            # SCALED lets SDL letterbox/scale our fixed logical resolution to
+            # whatever the real display is, instead of changing the actual
+            # display mode to match ours.
+            self.screen = pygame.display.set_mode(
+                (WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN | pygame.SCALED
+            )
+        except pygame.error:
+            # SCALED needs a renderer backend some drivers don't provide
+            # (e.g. the dummy driver used for headless testing, or some
+            # minimal/software display setups) - fall back to plain
+            # fullscreen rather than crash on toggle.
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN)
 
     def restart(self) -> None:
         """Only meaningful after game over - starts a brand new colony and
@@ -180,6 +231,14 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            elif self.state == TITLE:
+                self._handle_title_event(event)
+            elif self.state == CONFIRM_OVERWRITE:
+                self._handle_confirm_event(event)
+            elif self.state == PAUSE_MENU:
+                self._handle_pause_menu_event(event)
+            elif self.state == SETTINGS:
+                self._handle_settings_event(event)
             elif event.type == pygame.KEYDOWN:
                 # Priority UI and Skill UI intercept keys when open
                 if self.priority_ui.visible:
@@ -203,7 +262,7 @@ class Game:
                     elif self.build_bar.selected is not None:
                         self.build_bar.clear()
                     else:
-                        self.running = False
+                        self.state = PAUSE_MENU
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
                 elif event.key == pygame.K_r:
@@ -295,7 +354,6 @@ class Game:
                             self.dragging_npc.path = []
                             self.dragging_npc.is_moving = False
                             play_sfx("dawn")
-
                             for _ in range(16):
                                 self.particles.append({
                                     "type": "star",
@@ -319,8 +377,57 @@ class Game:
                     self.is_dragging = False
                     self.drag_start_pos = None
 
+    def _handle_title_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.title_screen.handle_click(event.pos, self.save_exists)
+            if action == "start":
+                if self.save_exists:
+                    self.state = CONFIRM_OVERWRITE
+                else:
+                    self._start_new_game()
+            elif action == "continue":
+                self._continue_game()
+            elif action == "settings":
+                self._settings_return_state = TITLE
+                self.state = SETTINGS
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.running = False
 
+    def _handle_confirm_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.confirm_dialog.handle_click(event.pos)
+            if action == "yes":
+                self._start_new_game()
+            elif action == "no":
+                self.state = TITLE
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = TITLE
 
+    def _handle_pause_menu_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.pause_menu.handle_click(event.pos)
+            if action == "resume":
+                self.state = PLAYING
+            elif action == "settings":
+                self._settings_return_state = PAUSE_MENU
+                self.state = SETTINGS
+            elif action == "quit":
+                self.running = False
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = PLAYING  # Esc closes the pause menu the same as clicking Resume
+
+    def _handle_settings_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            action = self.settings_screen.handle_click(event.pos)
+            if action == "toggle_fullscreen":
+                self._set_fullscreen(not self.fullscreen)
+            elif action == "toggle_sfx_muted":
+                self.sfx_muted = not self.sfx_muted
+                set_sfx_muted(self.sfx_muted)
+            elif action == "back":
+                self.state = self._settings_return_state
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = self._settings_return_state
 
     def _select_build_by_number(self, key: int) -> None:
         key_map = {
@@ -496,6 +603,8 @@ class Game:
             pass  # headless/dummy video drivers (smoke tests, CI) can't create system cursors
 
     def update(self, dt: float) -> None:
+        if self.state != PLAYING:
+            return
         self._update_cursor()
 
         if not self.priority_ui.visible and not self.skill_ui.visible:
@@ -937,6 +1046,22 @@ class Game:
 
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
+        if self.state == TITLE:
+            self.title_screen.render(self.screen, self.font, self.save_exists)
+            pygame.display.flip()
+            return
+        if self.state == CONFIRM_OVERWRITE:
+            self.confirm_dialog.render(self.screen, self.font)
+            pygame.display.flip()
+            return
+        if self.state == PAUSE_MENU:
+            self.pause_menu.render(self.screen, self.font)
+            pygame.display.flip()
+            return
+        if self.state == SETTINGS:
+            self.settings_screen.render(self.screen, self.font, self.fullscreen, self.sfx_muted)
+            pygame.display.flip()
+            return
         self.render_grid()
         self.render_nests()
         render_overlays(self.screen, self.world, self.camera)  # buildings: ground layer, under characters
