@@ -28,6 +28,7 @@ COLOR_HOVER_BORDER = (100, 220, 255)
 COLOR_BAR_BG = (40, 40, 50)
 COLOR_HUNGER_BAR = (230, 180, 50)
 COLOR_NIGHT_OVERLAY = (8, 8, 30, 130)  # flat dark tint over the map only, while phase == NIGHT
+DAY_NIGHT_FADE_SECONDS = 5.0  # crossfade the tint in/out over the first N seconds of each phase
 
 # --- Gather UX polish: queued-task marker, work progress, Expand preview ---
 COLOR_QUEUED_WAITING = (255, 200, 90)   # task queued, no NPC assigned yet

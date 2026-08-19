@@ -21,6 +21,7 @@ from constants import (
     COLOR_NPC_SELECTED,
     COLOR_HOVER_BORDER,
     COLOR_NIGHT_OVERLAY,
+    DAY_NIGHT_FADE_SECONDS,
     COLOR_MONSTER,
     COLOR_HUNGER_BAR,
     COLOR_BAR_BG,
@@ -804,8 +805,16 @@ class Game:
         self.render_projectiles()
         self.render_particles()
         render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
+        # Crossfades in over the first few seconds of night and back out over
+        # the first few seconds of day, rather than snapping instantly at
+        # the phase boundary - reuses cycle.timer (seconds into the current
+        # phase), which already resets to 0 exactly on each transition.
         if self.cycle.phase == NIGHT:
-            self._render_night_overlay()  # map only - HUD below draws its own opaque panels on top
+            fade = min(1.0, self.cycle.timer / DAY_NIGHT_FADE_SECONDS)
+        else:
+            fade = max(0.0, 1.0 - self.cycle.timer / DAY_NIGHT_FADE_SECONDS)
+        if fade > 0.0:
+            self._render_night_overlay(fade)  # map only - HUD below draws its own opaque panels on top
         self.render_hud()
         magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom())
         top_buttons.render(self.screen, self.font, self.paused, self.skill_points_available)
@@ -919,9 +928,10 @@ class Game:
                 sz = max(2, int(p.get("size", 3.0) * alpha))
                 pygame.draw.circle(self.screen, p["color"], (sx, sy), sz)
 
-    def _render_night_overlay(self) -> None:
+    def _render_night_overlay(self, fade: float) -> None:
         overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-        overlay.fill(COLOR_NIGHT_OVERLAY)
+        r, g, b, a = COLOR_NIGHT_OVERLAY
+        overlay.fill((r, g, b, int(a * fade)))
         self.screen.blit(overlay, (0, 0))
 
     def render_npcs(self) -> None:
@@ -1243,6 +1253,17 @@ class Game:
                     squash = abs(hop)
                     scale_y = 1.0 - 0.14 * squash
                     scale_x = 1.0 + 0.14 * squash
+            elif getattr(animal, "is_tamed", False) and not getattr(animal, "is_following", False) and getattr(animal, "idle_target", None) is None:
+                # 4. Settled Idle Hop - gentler and slower than the walk
+                # bounce, just enough to read as "parked here on purpose"
+                # rather than a frozen/stuck sprite once it's done walking
+                # to its spot beside the pen.
+                timer = getattr(animal, "anim_timer", 0.0)
+                hop = max(0.0, math.sin(timer * 3.0))
+                if hop > 0:
+                    draw_y -= hop * 3.0
+                    scale_y = 1.0 + 0.05 * hop
+                    scale_x = 1.0 - 0.03 * hop
 
             screen_x = int(draw_x - self.camera.x)
             screen_y = int(draw_y - self.camera.y)
@@ -1405,8 +1426,20 @@ class Game:
 
         # One task per target tile in practice (can_queue rejects duplicates
         # on an already-queued tile) - built once per frame instead of
-        # rescanning world.tasks.tasks for every visible tile.
-        queued_by_tile = {task.target: task for task in self.world.tasks.tasks}
+        # rescanning world.tasks.tasks for every visible tile. Tasks that can
+        # no longer actually be performed (target already gone/claimed by
+        # something else) are skipped rather than counted as "still open" -
+        # a dead queue entry can otherwise sit lit forever since nothing else
+        # currently purges it (task.py's own unassign-on-invalid doesn't
+        # remove it from the queue either), which would make the yellow
+        # count a lie about how much work is genuinely left.
+        queued_by_tile = {}
+        for task in self.world.tasks.tasks:
+            task_type = TASK_TYPES.get(task.type)
+            if task_type is not None and task_type.can_perform is not None:
+                if not task_type.can_perform(self.world, task):
+                    continue
+            queued_by_tile[task.target] = task
 
         for row in range(start_row, min(grid.height, start_row + VIEWPORT_TILES_Y + 2)):
             for col in range(start_col, min(grid.width, start_col + VIEWPORT_TILES_X + 2)):
