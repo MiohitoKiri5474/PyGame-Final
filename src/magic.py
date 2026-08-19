@@ -19,7 +19,7 @@ from constants import (
 )
 from audio import play_sfx
 from coords import tile_at
-from extensions import register_hud_line, register_tick
+from extensions import register_tick
 from monster import nearest_claimed_tile
 from skills import aoe_radius, magic_damage_multiplier
 
@@ -178,14 +178,4 @@ def _tick_magic(world: "World", dt: float) -> None:
     world.spellbook.tick(dt)
 
 
-def _magic_hud_line(world: "World") -> str:
-    parts = []
-    for spell, hotkey in (("Fire", "F1"), ("Lightning", "F2"), ("Freeze", "F3")):
-        remaining = world.spellbook.remaining(spell)
-        status = "ready" if remaining <= 0 else f"{remaining:.0f}s"
-        parts.append(f"{spell}: {status} [{hotkey}]")
-    return "  ".join(parts)
-
-
 register_tick(_tick_magic)
-register_hud_line(_magic_hud_line)

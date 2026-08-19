@@ -49,9 +49,13 @@ from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
 from npc_status_ui import NpcStatusUI
 import top_bar
+import top_buttons
+import magic_panel
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
+
+_CAST_SPELL = {"Fire": cast_fire, "Lightning": cast_lightning, "Freeze": cast_freeze}
 
 
 class Game:
@@ -198,6 +202,26 @@ class Game:
             self.build_bar.select_index(idx)
 
     def handle_click(self, screen_pos: tuple[int, int]) -> None:
+        # Top-right buttons and the magic panel are always-on-top overlay
+        # controls, so they get first claim on every click - same mouse
+        # actions the Space/P/K/F1-F3 hotkeys already trigger.
+        button = top_buttons.handle_click(screen_pos)
+        if button == "pause":
+            self.paused = not self.paused
+            return
+        if button == "priority":
+            self.priority_ui.toggle()
+            return
+        if button == "skill":
+            self.skill_ui.toggle()
+            return
+
+        spell = magic_panel.handle_click(screen_pos, top_bar.left_box_bottom())
+        if spell is not None:
+            if not self.paused:  # casting affects sim state, stays frozen with everything else
+                _CAST_SPELL[spell](self.world, self.monsters)
+            return
+
         # Action menu takes first crack at every click: while it's open, a
         # click either picks one of its rows or (clicking elsewhere) just
         # closes it - either way the click is consumed, not also treated as
@@ -320,6 +344,8 @@ class Game:
         self.render_monsters()
         render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
         self.render_hud()
+        magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom())
+        top_buttons.render(self.screen, self.font, self.paused, self.skill_points_available)
         self.build_bar.render(self.screen, self.font, self.world)
         self.action_menu.render(self.screen, self.font)
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
@@ -479,23 +505,21 @@ class Game:
             if self.build_bar.selected is not None
             else "Click a tile to work it - buttons below to build"
         )
-
-        items = [
-            ("PAUSED" if self.paused else "", COLOR_TEXT),
-            (f"NPCs alive: {len(self.world.npcs)}  [N: Status]", COLOR_TEXT),
-            (
-                f"Skill points: {self.skill_points_available} [K]" if self.skill_points_available else "",
-                COLOR_TEXT,
-            ),
+        # PAUSED/NPC count/Skill points/Priority used to be plain-text lines
+        # here - now shown by the top-right buttons (pause highlights, skill
+        # lights up when points are available) and the NPC box, so they're
+        # not duplicated as hint text too.
+        hint_lines = [
             (build_hint, COLOR_TEXT),
-            ("[P] Priority", COLOR_TEXT),
             *((text, COLOR_TEXT) for text in hud_lines(self.world)),
             (self._hover_tile_info(), COLOR_TEXT),
         ]
+        inventory_items = sorted(self.world.inventory.items().items())
+
         top_bar.render(
             self.screen, self.font, self.big_font,
             self.cycle.round_number, self.cycle.phase.upper(), self.cycle.remaining(), banner_color,
-            items,
+            len(self.world.npcs), inventory_items, hint_lines,
         )
 
     def render_game_over(self) -> None:
