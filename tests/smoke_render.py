@@ -242,7 +242,7 @@ def check_no_adjacent_screen_overlaps() -> None:
                 assert not title_rect.colliderect(settings_rect)
 
         # PAUSE_MENU <-> SETTINGS (the Settings button leads there)
-        for pause_rect in (pause.resume_rect, pause.settings_rect, pause.quit_rect):
+        for pause_rect in (pause.resume_rect, pause.save_rect, pause.settings_rect, pause.quit_rect):
             for settings_rect in (settings.fullscreen_rect, settings.mute_sfx_rect, settings.back_rect):
                 assert not pause_rect.colliderect(settings_rect)
 
@@ -259,6 +259,7 @@ def check_pause_menu_and_settings() -> None:
     import pygame
 
     from game import Game, TITLE, PLAYING, PAUSE_MENU, SETTINGS
+    from save import load_checkpoint
 
     with _preserved_save() as save_path:
         save_path.unlink(missing_ok=True)
@@ -333,6 +334,16 @@ def check_pause_menu_and_settings() -> None:
         assert game.state == SETTINGS
         _click(game, game.settings_screen.back_rect.center)
         assert game.state == PAUSE_MENU
+
+        # Manual save from the pause menu saves without navigating away.
+        assert not save_path.exists()
+        _click(game, game.pause_menu.save_rect.center)
+        assert game.state == PAUSE_MENU
+        assert save_path.exists()
+        checkpoint = load_checkpoint(save_path)
+        assert checkpoint is not None
+        assert checkpoint[1].round_number == game.cycle.round_number
+        game.render()
 
         # Quit from the pause menu stops the app, same as the old direct-Esc-quit did.
         _click(game, game.pause_menu.quit_rect.center)
