@@ -460,7 +460,7 @@ class Game:
             self.skill_ui.toggle()
             return
 
-        spell = magic_panel.handle_click(screen_pos, top_bar.left_box_bottom())
+        spell = magic_panel.handle_click(screen_pos, top_bar.left_box_bottom(self._inventory_item_count()))
         if spell is not None:
             if not self.paused:  # casting affects sim state, stays frozen with everything else
                 _CAST_SPELL[spell](self.world, self.monsters)
@@ -577,7 +577,7 @@ class Game:
         pos = pygame.mouse.get_pos()
         hovering = (
             top_buttons.is_hovering(pos)
-            or magic_panel.is_hovering(pos, top_bar.left_box_bottom())
+            or magic_panel.is_hovering(pos, top_bar.left_box_bottom(self._inventory_item_count()))
             or self.build_bar.is_hovering(pos)
             or self.sanctuary_ui.is_hovering(pos)
             or self.is_dragging
@@ -1082,7 +1082,7 @@ class Game:
         if fade > 0.0:
             self._render_night_overlay(fade)  # map only - HUD below draws its own opaque panels on top
         self.render_hud()
-        magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom())
+        magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom(self._inventory_item_count()))
         top_buttons.render(self.screen, self.font, self.paused, self.skill_points_available)
         self.build_bar.render(self.screen, self.font, self.world)
         self.action_menu.render(self.screen, self.font)
@@ -1864,6 +1864,10 @@ class Game:
             return f"  ->  Click to {options[0]}"
         return f"  ->  Click to choose: {', '.join(options)}"
 
+    def _inventory_item_count(self) -> int:
+        """Must match len(inventory_items) passed to top_bar.render() -
+        magic_panel's y-position depends on both agreeing."""
+        return len(self.world.inventory.items())
 
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
