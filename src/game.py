@@ -50,7 +50,7 @@ from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
 from npc_status_ui import NpcStatusUI
 import top_bar
-from save import load_checkpoint, save_checkpoint
+from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
 
@@ -84,16 +84,35 @@ class Game:
             if self.skill_points_available > 0:
                 self.paused = True  # restore the auto-pause a full/partial clear set before save
         else:
-            self.world = World()
-            self.cycle = DayNightCycle()
-            initial_nests = create_initial_nests(
-                self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
-            )
-            self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
-            self.monsters = []
-            self.game_over_state = GameOverState()
-            self.skill_points_available = 0
-            self._monsters_killed_this_night = 0
+            self._new_game()
+
+    def _new_game(self) -> None:
+        """Fresh colony from scratch - used both for a no-checkpoint startup
+        and for restarting after game over (R key)."""
+        self.world = World()
+        self.cycle = DayNightCycle()
+        initial_nests = create_initial_nests(
+            self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
+        )
+        self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
+        self.monsters = []
+        self.game_over_state = GameOverState()
+        self.skill_points_available = 0
+        self._monsters_killed_this_night = 0
+
+    def restart(self) -> None:
+        """Only meaningful after game over - starts a brand new colony and
+        clears any stale checkpoint, so relaunching the app later doesn't
+        reload straight back into the game-over state that's being left."""
+        if not self.game_over_state.is_over:
+            return
+        SAVE_PATH.unlink(missing_ok=True)
+        self._new_game()
+        self.camera = Camera()
+        self.selected_npc = None
+        self.build_bar.clear()
+        self.action_menu.close()
+        self.paused = False
 
     def run(self) -> None:
         while self.running:
@@ -130,6 +149,8 @@ class Game:
                         self.running = False
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
+                elif event.key == pygame.K_r:
+                    self.restart()  # no-op unless game_over_state.is_over
                 elif event.key == pygame.K_TAB:
                     self.build_bar.cycle()
                 elif event.key == pygame.K_p:
@@ -474,10 +495,14 @@ class Game:
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:
             return
-        lines = ["GAME OVER", f"Score: Round {self.game_over_state.score}"]
+        lines = [
+            ("GAME OVER", COLOR_GAME_OVER),
+            (f"Score: Round {self.game_over_state.score}", COLOR_GAME_OVER),
+            ("[R] Restart", COLOR_TEXT),
+        ]
         y = WINDOW_HEIGHT // 2 - 40
-        for text in lines:
-            surf = self.font.render(text, True, COLOR_GAME_OVER)
+        for text, color in lines:
+            surf = self.font.render(text, True, color)
             rect = surf.get_rect(center=(WINDOW_WIDTH // 2, y))
             self.screen.blit(surf, rect)
             y += surf.get_height() + 8
