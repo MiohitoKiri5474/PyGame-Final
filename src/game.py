@@ -285,7 +285,7 @@ class Game:
                             for _ in range(16):
                                 self.particles.append({
                                     "type": "star",
-                                    "x": float(self.sanctuary_ui.PANEL_X + self.sanctuary_ui.PANEL_WIDTH // 2 + random.uniform(-40, 40)),
+                                    "x": float(self.sanctuary_ui.PANEL_X + self.sanctuary_ui.PANEL_WIDTH // 2 + random.uniform(-30, 30)),
                                     "y": float(self.sanctuary_ui.PANEL_Y + 40 + random.uniform(-20, 20)),
                                     "vx": random.uniform(-60, 60),
                                     "vy": random.uniform(-80, 10),
@@ -295,13 +295,7 @@ class Game:
                                     "max_life": 0.55,
                                     "gravity": 40.0,
                                 })
-                    elif not self.sanctuary_ui.is_hovering(event.pos):
-                        world_x = event.pos[0] + self.camera.x
-                        world_y = event.pos[1] + self.camera.y
-                        gx, gy = tile_at(world_x, world_y)
-                        if self.world.grid.in_bounds(gx, gy) and self.world.grid.get(gx, gy).revealed:
-                            self.dragging_npc.x, self.dragging_npc.y = tile_center(gx, gy)
-                            self.dragging_npc.path = []
+                    # If released outside sanctuary, drag is simply canceled - no map teleportation!
                     self.dragging_npc = None
                     self.is_dragging = False
                     self.drag_start_pos = None
@@ -310,6 +304,7 @@ class Game:
                     self.dragging_npc = None
                     self.is_dragging = False
                     self.drag_start_pos = None
+
 
 
 

@@ -95,8 +95,8 @@ def test_sanctuary_ui_deploy_click():
     world.npcs[0].is_resting = True
 
     # Click on the deploy button of the first slot
-    slot_y = ui.PANEL_Y + 42
-    btn_x = ui.PANEL_X + ui.PANEL_WIDTH - 50
+    slot_y = ui.PANEL_Y + 38
+    btn_x = ui.PANEL_X + ui.PANEL_WIDTH - 30
     btn_y = slot_y + 50
 
     clicked_npc = ui.handle_click((btn_x, btn_y), world)
@@ -104,3 +104,4 @@ def test_sanctuary_ui_deploy_click():
 
     # Click outside sanctuary
     assert ui.handle_click((10, 10), world) is None
+
