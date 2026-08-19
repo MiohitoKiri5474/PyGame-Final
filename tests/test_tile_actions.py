@@ -25,6 +25,7 @@ def test_resource_tile_offers_only_gather():
 
 def test_frontier_tile_offers_only_expand():
     world = World(npc_count=0)
+    world.animals = []
     cx, cy = world.grid.width // 2, world.grid.height // 2
     frontier = (cx + START_CLAIM_RADIUS + 1, cy)  # unclaimed, adjacent to the claimed blob
     world.grid.get(*frontier).resource = None
@@ -34,6 +35,7 @@ def test_frontier_tile_offers_only_expand():
 
 def test_unreachable_unclaimed_tile_offers_nothing():
     world = World(npc_count=0)
+    world.animals = []
     assert applicable_tasks(world, (0, 0)) == []
 
 

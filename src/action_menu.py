@@ -16,6 +16,7 @@ _BG = (24, 26, 32)
 _BORDER = (255, 214, 100)
 _ROW_HOVER = (50, 60, 80)
 _TEXT = (225, 225, 230)
+_TEXT_DISABLED = (110, 110, 116)
 
 
 class ActionMenu:
@@ -23,19 +24,28 @@ class ActionMenu:
         self.options: list[str] = []
         self.tile: tuple[int, int] | None = None
         self.screen_pos: tuple[int, int] = (0, 0)
+        self.disabled: set[str] = set()
 
     @property
     def visible(self) -> bool:
         return bool(self.options)
 
-    def open(self, options: list[str], tile: tuple[int, int], screen_pos: tuple[int, int]) -> None:
+    def open(
+        self,
+        options: list[str],
+        tile: tuple[int, int] | None,
+        screen_pos: tuple[int, int],
+        disabled: set[str] | None = None,
+    ) -> None:
         self.options = options
         self.tile = tile
         self.screen_pos = screen_pos
+        self.disabled = disabled or set()
 
     def close(self) -> None:
         self.options = []
         self.tile = None
+        self.disabled = set()
 
     def _rows(self) -> list[tuple[str, pygame.Rect]]:
         x, y = self.screen_pos
@@ -49,11 +59,13 @@ class ActionMenu:
 
     def handle_click(self, pos: tuple[int, int]) -> str | None:
         """Returns the chosen task type and closes the menu, or closes it
-        with no choice if the click missed every row (click-away-to-cancel)."""
+        with no choice if the click missed every row (click-away-to-cancel)
+        or landed on a disabled row (consumed, but inert)."""
         for option, rect in self._rows():
             if rect.collidepoint(pos):
+                disabled = option in self.disabled
                 self.close()
-                return option
+                return None if disabled else option
         self.close()
         return None
 
@@ -72,6 +84,7 @@ class ActionMenu:
         pygame.draw.rect(surface, _BORDER, panel, 2, border_radius=6)
 
         for option, rect in rows:
-            if rect.collidepoint(mouse_pos):
+            disabled = option in self.disabled
+            if not disabled and rect.collidepoint(mouse_pos):
                 pygame.draw.rect(surface, _ROW_HOVER, rect)
-            surface.blit(font.render(option, True, _TEXT), (rect.x + 6, rect.y + 6))
+            surface.blit(font.render(option, True, _TEXT_DISABLED if disabled else _TEXT), (rect.x + 6, rect.y + 6))
