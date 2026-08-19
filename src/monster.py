@@ -1,3 +1,5 @@
+import math
+
 from blocking import is_wall_blocked
 from constants import (
     FIRE_BURN_TICK_INTERVAL,
@@ -7,7 +9,7 @@ from constants import (
     MONSTER_SPEED,
     MONSTER_STATS,
 )
-from coords import tile_center
+from coords import tile_at, tile_center
 from movement import step_toward_path
 from pathfinding import find_path
 
@@ -93,21 +95,50 @@ def nearest_claimed_tile(grid, from_tile: tuple[int, int]) -> tuple[int, int] | 
     return best
 
 
+def _path_toward(start: tuple[int, int], target: tuple[int, int], grid, buildings) -> list[tuple[int, int]] | None:
+    """Monsters walk in from outside territory, so unlike NPCs they treat
+    every in-bounds tile as walkable (fog/unclaimed included) — except Wall
+    tiles, which block like they do for NPCs (ticket 07)."""
+    return find_path(
+        lambda x, y: grid.in_bounds(x, y) and not is_wall_blocked(buildings, x, y),
+        grid.width,
+        grid.height,
+        start,
+        target,
+    )
+
+
 def spawn_monster(tile: tuple[int, int], grid, buildings=(), monster_type: str | None = None) -> Monster:
-    """Create a Monster at `tile` and path it toward the nearest claimed tile.
-    Monsters walk in from outside territory, so unlike NPCs they treat every
-    in-bounds tile as walkable (fog/unclaimed included) — except Wall tiles,
-    which block like they do for NPCs (ticket 07)."""
+    """Create a Monster at `tile` and path it toward the nearest claimed tile."""
     monster = Monster(*tile_center(*tile), type=monster_type)
     target = nearest_claimed_tile(grid, tile)
     if target is not None:
-        path = find_path(
-            lambda x, y: grid.in_bounds(x, y) and not is_wall_blocked(buildings, x, y),
-            grid.width,
-            grid.height,
-            tile,
-            target,
-        )
+        path = _path_toward(tile, target, grid, buildings)
         if path:
             monster.set_path(path)
     return monster
+
+
+def retarget_monster(monster: Monster, world) -> None:
+    """Call once a monster's path is empty (fresh from spawn_monster's
+    initial fallback-free path, or because it just walked its previous
+    target's path to completion) - picks a new target and paths to it, so
+    monsters keep actively closing in instead of freezing in place once
+    they reach wherever they were first sent. Prefers the nearest living
+    NPC (this is the actual "chase" behavior); falls back to the nearest
+    claimed tile if the colony has no NPCs left, so monsters still
+    advance on the territory itself rather than idling forever."""
+    start = tile_at(monster.x, monster.y)
+
+    target = None
+    if world.npcs:
+        nearest_npc = min(world.npcs, key=lambda npc: math.hypot(npc.x - monster.x, npc.y - monster.y))
+        target = tile_at(nearest_npc.x, nearest_npc.y)
+    if target is None:
+        target = nearest_claimed_tile(world.grid, start)
+    if target is None or target == start:
+        return
+
+    path = _path_toward(start, target, world.grid, world.buildings)
+    if path:
+        monster.set_path(path)

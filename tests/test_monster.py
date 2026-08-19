@@ -9,7 +9,7 @@ from constants import (
     MONSTER_ZOMBIE,
 )
 from coords import tile_center
-from monster import Monster, nearest_claimed_tile, spawn_monster
+from monster import Monster, nearest_claimed_tile, retarget_monster, spawn_monster
 
 
 class _FakeTile:
@@ -55,6 +55,63 @@ def test_spawn_monster_paths_toward_nearest_claimed_tile():
 def test_spawn_monster_has_no_path_when_no_claimed_tile_exists():
     grid = _FakeGrid(3, 3, claimed=set())
     monster = spawn_monster((0, 0), grid)
+    assert monster.path == []
+
+
+class _FakeNpc:
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+
+class _FakeWorld:
+    def __init__(self, grid, npcs=None, buildings=()):
+        self.grid = grid
+        self.npcs = npcs or []
+        self.buildings = buildings
+
+
+def test_retarget_monster_chases_the_nearest_npc():
+    grid = _FakeGrid(5, 5, claimed=set())
+    monster = Monster(*tile_center(0, 0))
+    near_npc = _FakeNpc(*tile_center(1, 0))
+    far_npc = _FakeNpc(*tile_center(4, 4))
+    world = _FakeWorld(grid, npcs=[far_npc, near_npc])
+
+    retarget_monster(monster, world)
+
+    assert monster.path
+    assert monster.path[-1] == (1, 0)
+
+
+def test_retarget_monster_falls_back_to_nearest_claimed_tile_with_no_npcs():
+    grid = _FakeGrid(5, 5, claimed={(3, 3)})
+    monster = Monster(*tile_center(0, 0))
+    world = _FakeWorld(grid, npcs=[])
+
+    retarget_monster(monster, world)
+
+    assert monster.path
+    assert monster.path[-1] == (3, 3)
+
+
+def test_retarget_monster_is_a_no_op_with_nothing_to_target():
+    grid = _FakeGrid(3, 3, claimed=set())
+    monster = Monster(*tile_center(0, 0))
+    world = _FakeWorld(grid, npcs=[])
+
+    retarget_monster(monster, world)
+
+    assert monster.path == []
+
+
+def test_retarget_monster_is_a_no_op_when_already_on_the_only_target_tile():
+    grid = _FakeGrid(3, 3, claimed={(0, 0)})
+    monster = Monster(*tile_center(0, 0))
+    world = _FakeWorld(grid, npcs=[])
+
+    retarget_monster(monster, world)
+
     assert monster.path == []
 
 
