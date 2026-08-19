@@ -22,7 +22,9 @@ from constants import (
     COLOR_HOVER_BORDER,
     COLOR_MONSTER,
     COLOR_HUNGER_BAR,
+    COLOR_BAR_BG,
     COLOR_GAME_OVER,
+
     COLOR_ANIMAL,
     ROLE_FARMER,
     ROLE_KNIGHT,
@@ -92,6 +94,10 @@ class Game:
                 self.paused = True  # restore the auto-pause a full/partial clear set before save
         else:
             self._new_game()
+
+        self.particles: list[dict] = []
+        play_bgm(self.cycle.phase)
+
 
     def _new_game(self) -> None:
         """Fresh colony from scratch - used both for a no-checkpoint startup
