@@ -7,7 +7,8 @@ import pygame
 from constants import DAY_SECONDS, NIGHT_SECONDS
 
 
-from sprites import cloud_sprite
+from sprites import cloud_sprite, moon_sprite, sun_sprite
+
 
 
 def get_celestial_position(rect: pygame.Rect, progress: float) -> tuple[float, float]:
@@ -123,29 +124,33 @@ def render_celestial_dial(
     cx, cy = get_celestial_position(rect, p)
 
     if is_day:
-        # Golden Paper Sun with rotating rays
-        sun_surf = pygame.Surface((44, 44), pygame.SRCALPHA)
-        sun_center = (22, 22)
-        # Soft outer aura
-        pygame.draw.circle(sun_surf, (255, 230, 100, 75), sun_center, 20)
-        pygame.draw.circle(sun_surf, (255, 240, 140, 120), sun_center, 15)
+        custom_sun = sun_sprite(44)
+        if custom_sun is not None:
+            surface.blit(custom_sun, custom_sun.get_rect(center=(int(cx), int(cy))))
+        else:
+            # Golden Paper Sun with rotating rays
+            sun_surf = pygame.Surface((44, 44), pygame.SRCALPHA)
+            sun_center = (22, 22)
+            # Soft outer aura
+            pygame.draw.circle(sun_surf, (255, 230, 100, 75), sun_center, 20)
+            pygame.draw.circle(sun_surf, (255, 240, 140, 120), sun_center, 15)
 
-        # 8 Rotating Solar Rays
-        ray_rot = time_s * 1.8
-        for i in range(8):
-            ang = ray_rot + i * (math.pi / 4.0)
-            r_in = 10.0
-            r_out = 15.0 + math.sin(time_s * 3.0 + i) * 2.0
-            p1 = (sun_center[0] + math.cos(ang) * r_out, sun_center[1] + math.sin(ang) * r_out)
-            p2 = (sun_center[0] + math.cos(ang - 0.22) * r_in, sun_center[1] + math.sin(ang - 0.22) * r_in)
-            p3 = (sun_center[0] + math.cos(ang + 0.22) * r_in, sun_center[1] + math.sin(ang + 0.22) * r_in)
-            pygame.draw.polygon(sun_surf, (255, 215, 60, 230), [p1, p2, p3])
+            # 8 Rotating Solar Rays
+            ray_rot = time_s * 1.8
+            for i in range(8):
+                ang = ray_rot + i * (math.pi / 4.0)
+                r_in = 10.0
+                r_out = 15.0 + math.sin(time_s * 3.0 + i) * 2.0
+                p1 = (sun_center[0] + math.cos(ang) * r_out, sun_center[1] + math.sin(ang) * r_out)
+                p2 = (sun_center[0] + math.cos(ang - 0.22) * r_in, sun_center[1] + math.sin(ang - 0.22) * r_in)
+                p3 = (sun_center[0] + math.cos(ang + 0.22) * r_in, sun_center[1] + math.sin(ang + 0.22) * r_in)
+                pygame.draw.polygon(sun_surf, (255, 215, 60, 230), [p1, p2, p3])
 
-        # Sun Core
-        pygame.draw.circle(sun_surf, (255, 235, 70), sun_center, 9)
-        pygame.draw.circle(sun_surf, (255, 165, 30), sun_center, 9, 2)
-        pygame.draw.circle(sun_surf, (255, 255, 255), (sun_center[0] - 3, sun_center[1] - 3), 2)
-        surface.blit(sun_surf, (int(cx - 22), int(cy - 22)))
+            # Sun Core
+            pygame.draw.circle(sun_surf, (255, 235, 70), sun_center, 9)
+            pygame.draw.circle(sun_surf, (255, 165, 30), sun_center, 9, 2)
+            pygame.draw.circle(sun_surf, (255, 255, 255), (sun_center[0] - 3, sun_center[1] - 3), 2)
+            surface.blit(sun_surf, (int(cx - 22), int(cy - 22)))
 
         # 5. Daytime Foreground Drifting Clouds (In Front of Sky and Sun)
         # Cloud 1 (Upper sky drifting)
@@ -159,20 +164,25 @@ def render_celestial_dial(
         _draw_paper_cloud(surface, c2_x, c2_y, scale=1.05, alpha=235, cloud_index=5)
 
     else:
-        # Silver-Cyan Crescent Moon
-        moon_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
-        moon_center = (19, 19)
-        # Lunar halo
-        pygame.draw.circle(moon_surf, (140, 200, 255, 60), moon_center, 17)
-        pygame.draw.circle(moon_surf, (200, 235, 255, 100), moon_center, 12)
+        custom_moon = moon_sprite(38)
+        if custom_moon is not None:
+            surface.blit(custom_moon, custom_moon.get_rect(center=(int(cx), int(cy))))
+        else:
+            # Silver-Cyan Crescent Moon
+            moon_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
+            moon_center = (19, 19)
+            # Lunar halo
+            pygame.draw.circle(moon_surf, (140, 200, 255, 60), moon_center, 17)
+            pygame.draw.circle(moon_surf, (200, 235, 255, 100), moon_center, 12)
 
-        # Crescent Moon
-        pygame.draw.circle(moon_surf, (235, 245, 255), moon_center, 9)
-        pygame.draw.circle(moon_surf, (170, 210, 245), moon_center, 9, 1)
-        # Cutout to form crescent
-        cutout_pos = (moon_center[0] + 4, moon_center[1] - 3)
-        pygame.draw.circle(moon_surf, sky_bg, cutout_pos, 7)
-        surface.blit(moon_surf, (int(cx - 19), int(cy - 19)))
+            # Crescent Moon
+            pygame.draw.circle(moon_surf, (235, 245, 255), moon_center, 9)
+            pygame.draw.circle(moon_surf, (170, 210, 245), moon_center, 9, 1)
+            # Cutout to form crescent
+            cutout_pos = (moon_center[0] + 4, moon_center[1] - 3)
+            pygame.draw.circle(moon_surf, sky_bg, cutout_pos, 7)
+            surface.blit(moon_surf, (int(cx - 19), int(cy - 19)))
+
 
     # 6. Box Outline (Paper Mario Dark Frame)
     pygame.draw.rect(surface, (70, 74, 86), rect, 2, border_radius=8)

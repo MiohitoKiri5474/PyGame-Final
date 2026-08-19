@@ -298,5 +298,40 @@ def fog_sprite(size: int = TILE_SIZE) -> pygame.Surface:
     return _cache[key]
 
 
+def sun_sprite(size: int = 44) -> pygame.Surface | None:
+    """Returns the custom sun PNG sprite from assets/terrain/sun.png if it exists, scaled to size."""
+    path = _ASSETS_DIR / "terrain" / "sun.png"
+    key = ("terrain/sun.png", size)
+    if key not in _cache:
+        if path.exists():
+            img = _load_image(path)
+            w, h = img.get_size()
+            dim = max(w, h)
+            width = max(1, round(w * size / dim))
+            height = max(1, round(h * size / dim))
+            _cache[key] = pygame.transform.smoothscale(img, (width, height))
+        else:
+            return None
+    return _cache[key]
+
+
+def moon_sprite(size: int = 38) -> pygame.Surface | None:
+    """Returns the custom moon PNG sprite from assets/terrain/moon.png if it exists, scaled to size."""
+    path = _ASSETS_DIR / "terrain" / "moon.png"
+    key = ("terrain/moon.png", size)
+    if key not in _cache:
+        if path.exists():
+            img = _load_image(path)
+            w, h = img.get_size()
+            dim = max(w, h)
+            width = max(1, round(w * size / dim))
+            height = max(1, round(h * size / dim))
+            _cache[key] = pygame.transform.smoothscale(img, (width, height))
+        else:
+            return None
+    return _cache[key]
+
+
+
 
 
