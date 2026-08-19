@@ -23,10 +23,10 @@ from tile_actions import build_task_types, building_label
 if TYPE_CHECKING:
     from world import World
 
-_BUTTON_W = 172
-_BUTTON_H = 62
-_GAP = 6
-_MARGIN_BOTTOM = 8
+_BUTTON_W = 200
+_BUTTON_H = 64
+_GAP = 12
+_MARGIN_BOTTOM = 10
 _ICON = 26
 
 _BG = (24, 26, 32)
@@ -114,14 +114,14 @@ class BuildBar:
             label = building_label(task_type)
             icon = building_icon(label, _ICON)
             if icon is not None:
-                surface.blit(icon, icon.get_rect(topleft=(rect.x + 6, rect.y + 5)))
+                surface.blit(icon, icon.get_rect(topleft=(rect.x + 10, rect.y + 6)))
 
-            surface.blit(font.render(label, True, _LABEL), (rect.x + 6 + _ICON + 6, rect.y + 8))
-            surface.blit(font.render(f"[{i}]", True, _KEY_HINT), (rect.right - 26, rect.y + 8))
+            surface.blit(font.render(label, True, _LABEL), (rect.x + 10 + _ICON + 10, rect.y + 9))
+            surface.blit(font.render(f"[{i}]", True, _KEY_HINT), (rect.right - 30, rect.y + 9))
 
             cost = build_cost(task_type)
             if cost:
                 affordable = all(world.inventory.get(res) >= amt for res, amt in cost.items())
                 text = ", ".join(f"{amt} {res}" for res, amt in cost.items())
                 color = _COST_OK if affordable else _COST_SHORT
-                surface.blit(font.render(text, True, color), (rect.x + 6, rect.y + 36))
+                surface.blit(font.render(text, True, color), (rect.x + 10, rect.y + 38))
