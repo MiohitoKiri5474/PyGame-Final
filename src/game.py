@@ -68,7 +68,8 @@ from sanctuary_ui import SanctuaryUI
 import top_bar
 import top_buttons
 import magic_panel
-from render_fog import render_fog_tile
+from render_fog import render_fog_base_tile, render_drifting_fog_layer, render_fog_tile
+
 
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
@@ -931,7 +932,9 @@ class Game:
         self.render_projectiles()
         self.render_particles()
         render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
+        self.render_fog_layer()
         # Crossfades in over the first few seconds of night and back out over
+
         # the first few seconds of day, rather than snapping instantly at
         # the phase boundary - reuses cycle.timer (seconds into the current
         # phase), which already resets to 0 exactly on each transition.
@@ -1583,7 +1586,12 @@ class Game:
             sprite = nest_sprite()
             self.screen.blit(sprite, sprite.get_rect(center=rect.center))
 
+    def render_fog_layer(self) -> None:
+        """Renders continuous drifting clouds and mist floating over unexplored regions."""
+        render_drifting_fog_layer(self.screen, self.world.grid, self.camera, time.monotonic())
+
     def render_grid(self) -> None:
+
         cam_x, cam_y = self.camera.x, self.camera.y
         start_col = cam_x // TILE_SIZE
         start_row = cam_y // TILE_SIZE
@@ -1618,17 +1626,12 @@ class Game:
                 rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
 
                 if not tile.revealed:
-                    has_revealed_adj = False
-                    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                        nx, ny = col + dx, row + dy
-                        if grid.in_bounds(nx, ny) and grid.get(nx, ny).revealed:
-                            has_revealed_adj = True
-                            break
-                    render_fog_tile(self.screen, rect, col, row, time_s, has_revealed_neighbor=has_revealed_adj)
+                    render_fog_base_tile(self.screen, rect)
                 elif tile.claimed:
                     self.screen.blit(grass(), rect)
                 else:
                     self.screen.blit(parchment(), rect)
+
 
 
                 # Material indicator for resource blocks

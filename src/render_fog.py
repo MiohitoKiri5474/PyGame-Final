@@ -3,15 +3,111 @@ from __future__ import annotations
 import math
 import pygame
 
-from constants import TILE_SIZE
-
-from sprites import fog_sprite
+from constants import (
+    TILE_SIZE,
+    WINDOW_WIDTH,
+    WINDOW_HEIGHT,
+    COLOR_FOG,
+)
+from coords import tile_at
+from sprites import cloud_sprite, fog_sprite
 
 _COLOR_VOID = (16, 14, 24)
-_COLOR_MIST_SMOKE = (72, 68, 92)
-_COLOR_MIST_SILVER = (175, 190, 218)
-_COLOR_MIST_WHITE = (230, 240, 255)
-_COLOR_MIST_CORE = (250, 252, 255)
+
+
+def render_fog_base_tile(surface: pygame.Surface, rect: pygame.Rect) -> None:
+    """Renders the dark ground void under unrevealed territory."""
+    pygame.draw.rect(surface, _COLOR_VOID, rect)
+
+
+def render_drifting_fog_layer(
+    surface: pygame.Surface,
+    grid,
+    camera,
+    time_s: float,
+) -> None:
+    """Renders large, organic, continuous clouds and mist floating smoothly across
+    unexplored regions of the map (not confined to individual grid squares)."""
+    cam_x, cam_y = camera.x, camera.y
+
+    # Calculate world bounds visible on screen plus margin for large clouds
+    margin = 120
+    min_wx = max(0, int(cam_x - margin))
+    max_wx = min(grid.width * TILE_SIZE, int(cam_x + WINDOW_WIDTH + margin))
+    min_wy = max(0, int(cam_y - margin))
+    max_wy = min(grid.height * TILE_SIZE, int(cam_y + WINDOW_HEIGHT + margin))
+
+    # Cloud cluster spacing across the world
+    step_x = 72
+    step_y = 64
+
+    start_cx = min_wx // step_x
+    end_cx = (max_wx // step_x) + 1
+    start_cy = min_wy // step_y
+    end_cy = (max_wy // step_y) + 1
+
+    # Large cloud sprites from assets/terrain/cloud.png & fog.png
+    base_cloud_lg = cloud_sprite(128)
+    base_cloud_md = cloud_sprite(96)
+    base_cloud_sm = cloud_sprite(76)
+
+    for cy_idx in range(start_cy, end_cy):
+        for cx_idx in range(start_cx, end_cx):
+            # Unique deterministic seed for this cloud slot
+            seed = (cx_idx * 73856093 ^ cy_idx * 19349663) % 1000
+
+            # Organic floating motion: drifting right and bobbing vertically
+            drift_speed = 10.0 + (seed % 6) * 1.5
+            drift_x = (time_s * drift_speed + seed * 2.0) % (grid.width * TILE_SIZE + 200) - 100
+            bob_y = math.sin(time_s * 1.1 + seed * 0.1) * 8.0 + math.cos(time_s * 0.7 + seed * 0.2) * 5.0
+
+            # Base anchor in world coordinates
+            wx = cx_idx * step_x + math.sin(cy_idx * 2.1 + seed) * 22.0 + (time_s * 8.0) % 140
+            wy = cy_idx * step_y + math.cos(cx_idx * 1.8 + seed) * 18.0 + bob_y
+
+            # Check if this cloud position is in or near unexplored territory
+            gtx, gty = tile_at(wx, wy)
+            if not (0 <= gtx < grid.width and 0 <= gty < grid.height):
+                continue
+
+            tile = grid.get(gtx, gty)
+
+            # If the center tile is claimed and revealed, check if any nearby tiles are unrevealed
+            if tile.revealed:
+                is_near_fog = False
+                for dtx, dty in [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
+                    nx, ny = gtx + dtx, gty + dty
+                    if 0 <= nx < grid.width and 0 <= ny < grid.height and not grid.get(nx, ny).revealed:
+                        is_near_fog = True
+                        break
+                if not is_near_fog:
+                    continue  # Skip clouds completely deep inside revealed colony
+                cloud_alpha = 140  # Soft fading cloud at frontier edge
+            else:
+                cloud_alpha = 220 + (seed % 35)  # Dense billowing cloud over unexplored lands
+
+            # Select cloud size based on seed
+            size_choice = seed % 3
+            if size_choice == 0:
+                cloud_img = base_cloud_lg
+            elif size_choice == 1:
+                cloud_img = base_cloud_md
+            else:
+                cloud_img = base_cloud_sm
+
+            if cloud_img is None:
+                continue
+
+            # Screen coordinates
+            sx = int(wx - cam_x)
+            sy = int(wy - cam_y)
+
+            # Render translucent floating cloud
+            c_surf = cloud_img.copy()
+            if cloud_alpha < 255:
+                c_surf.fill((255, 255, 255, cloud_alpha), special_flags=pygame.BLEND_RGBA_MULT)
+
+            surface.blit(c_surf, c_surf.get_rect(center=(sx, sy)))
 
 
 def render_fog_tile(
@@ -22,77 +118,5 @@ def render_fog_tile(
     time_s: float,
     has_revealed_neighbor: bool = False,
 ) -> None:
-    """Renders a dynamic, procedural drifting fog tile using fog.png texture from
-    assets/terrain/fog.png blended with drifting waves and border clouds."""
-    # 1. Base Dark Ground Void
-    pygame.draw.rect(surface, _COLOR_VOID, rect)
-
-    # 2. Multi-Layer Drifting White Vapor Waves
-    t = time_s
-    w1 = math.sin(col * 0.55 + t * 0.65) * math.cos(row * 0.55 - t * 0.45)
-    w2 = math.sin((col + row) * 0.38 - t * 0.90)
-
-    density = (w1 + w2 + 2.0) / 4.0  # Normalized 0.0 to 1.0
-
-    sprite = fog_sprite(TILE_SIZE)
-    if sprite is not None:
-        fog_surf = sprite.copy()
-        alpha = int(140 + 115 * density)
-        if alpha < 255:
-            fog_surf.fill((255, 255, 255, alpha), special_flags=pygame.BLEND_RGBA_MULT)
-        surface.blit(fog_surf, (rect.x + int(w1 * 3), rect.y + int(w2 * 3)))
-    else:
-        fog_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
-        alpha1 = int(110 + 75 * density)
-        pygame.draw.circle(
-            fog_surf,
-            (_COLOR_MIST_SMOKE[0], _COLOR_MIST_SMOKE[1], _COLOR_MIST_SMOKE[2], alpha1),
-            (TILE_SIZE // 2 + int(w1 * 5), TILE_SIZE // 2 + int(w2 * 5)),
-            TILE_SIZE // 2 + 6,
-        )
-
-
-    # Rolling silver-white vapor cloud
-    if density > 0.35:
-        alpha2 = int(90 + 110 * (density - 0.35) / 0.65)
-        offset_x = int(math.sin(t * 1.1 + col * 0.8) * 6.0)
-        offset_y = int(math.cos(t * 0.95 + row * 0.8) * 6.0)
-        pygame.draw.ellipse(
-            fog_surf,
-            (_COLOR_MIST_SILVER[0], _COLOR_MIST_SILVER[1], _COLOR_MIST_SILVER[2], alpha2),
-            pygame.Rect(3 + offset_x, 3 + offset_y, TILE_SIZE - 6, TILE_SIZE - 6),
-        )
-
-    # Pure white ethereal swirling mist wisps
-    if density > 0.55:
-        alpha3 = int(120 + 115 * (density - 0.55) / 0.45)
-        wisp_cx = TILE_SIZE // 2 + int(w1 * 8)
-        wisp_cy = TILE_SIZE // 2 + int(w2 * 8)
-        pygame.draw.circle(
-            fog_surf,
-            (_COLOR_MIST_WHITE[0], _COLOR_MIST_WHITE[1], _COLOR_MIST_WHITE[2], alpha3),
-            (wisp_cx, wisp_cy),
-            TILE_SIZE // 3,
-        )
-
-    # Glowing bright white cloud core
-    if density > 0.78:
-        alpha4 = int(140 + 115 * (density - 0.78) / 0.22)
-        pygame.draw.circle(
-            fog_surf,
-            (_COLOR_MIST_CORE[0], _COLOR_MIST_CORE[1], _COLOR_MIST_CORE[2], alpha4),
-            (TILE_SIZE // 2, TILE_SIZE // 2),
-            max(1, TILE_SIZE // 5),
-        )
-
-    # 3. Puffy White Scalloped Paper Cloud Border on Frontier Edges
-    if has_revealed_neighbor:
-        puff_pulse = math.sin(t * 2.2 + col + row) * 2.0
-        puff_r = int(11 + puff_pulse)
-        # Cloud base and puffy white body
-        for px, py in [(0, TILE_SIZE // 2), (TILE_SIZE, TILE_SIZE // 2), (TILE_SIZE // 2, 0), (TILE_SIZE // 2, TILE_SIZE)]:
-            pygame.draw.circle(fog_surf, (190, 205, 230, 180), (px, py), puff_r + 2)
-            pygame.draw.circle(fog_surf, (240, 246, 255, 235), (px, py), puff_r)
-            pygame.draw.circle(fog_surf, (255, 255, 255, 250), (px, py - 1), max(1, puff_r - 3))
-
-    surface.blit(fog_surf, rect.topleft)
+    """Backward compatibility helper for single-tile invocations."""
+    render_fog_base_tile(surface, rect)

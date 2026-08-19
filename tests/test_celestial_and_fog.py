@@ -61,3 +61,18 @@ def test_render_fog_tile_renders_without_error():
 
     # Frontier fog tile with revealed neighbor (border cloud scalloping)
     render_fog_tile(surface, rect, col=2, row=3, time_s=56.78, has_revealed_neighbor=True)
+
+
+def test_render_drifting_fog_layer_renders_without_error():
+    from world import World
+    from camera import Camera
+    from render_fog import render_drifting_fog_layer
+
+    world = World(npc_count=1)
+    camera = Camera()
+    surface = pygame.Surface((800, 600))
+
+    render_drifting_fog_layer(surface, world.grid, camera, time_s=10.5)
+
+
+
