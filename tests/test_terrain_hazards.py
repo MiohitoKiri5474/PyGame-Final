@@ -166,3 +166,24 @@ def test_expand_cannot_target_mountain_tile():
     # A plain tile can be queued
     world.grid.get(35, 22).terrain = TERRAIN_PLAIN
     assert _can_queue(world, (35, 22)) is True
+
+
+def test_mountain_has_no_resources_and_cannot_be_gathered():
+    from world import World
+    from gather_task import _can_queue, _can_perform
+    from grid import _roll_resource
+    import random
+
+    # 1. Mountains never roll resources
+    rng = random.Random(42)
+    for _ in range(50):
+        assert _roll_resource(rng, terrain=TERRAIN_MOUNTAIN) is None
+
+    # 2. Gather tasks cannot be queued or performed on mountain tiles
+    world = World(npc_count=1)
+    mountain_tile = (30, 22)
+    world.grid.get(*mountain_tile).terrain = TERRAIN_MOUNTAIN
+    world.grid.get(*mountain_tile).resource = 'raw_stone'
+    world.grid.get(*mountain_tile).claimed = True
+
+    assert _can_queue(world, mountain_tile) is False

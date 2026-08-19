@@ -49,34 +49,66 @@ def mud() -> pygame.Surface:
     return _load("mud.png")
 
 
-def get_swamp_piece(top: bool, bot: bool, left: bool, right: bool) -> pygame.Surface:
-    """Returns the matching 9-slice swamp piece based on neighboring mud tiles."""
+def get_9slice_piece_name(top: bool, bot: bool, left: bool, right: bool) -> str:
+    """Computes the 9-slice piece name ('top_left', 'top', etc.) from neighbor connections."""
     if not top and not left:
-        piece = "top_left" if (bot or right) else "center"
-    elif not top and not right:
-        piece = "top_right"
-    elif not bot and not left:
-        piece = "bottom_left"
-    elif not bot and not right:
-        piece = "bottom_right"
-    elif not top:
-        piece = "top"
-    elif not bot:
-        piece = "bottom"
-    elif not left:
-        piece = "left"
-    elif not right:
-        piece = "right"
-    else:
-        piece = "center"
+        return "top_left" if (bot or right) else "center"
+    if not top and not right:
+        return "top_right"
+    if not bot and not left:
+        return "bottom_left"
+    if not bot and not right:
+        return "bottom_right"
+    if not top:
+        return "top"
+    if not bot:
+        return "bottom"
+    if not left:
+        return "left"
+    if not right:
+        return "right"
+    return "center"
 
-    filename = f"swamp_{piece}.png"
+
+_TERRAIN_PREFIXES = {
+    "mud": "swamp",
+    "river": "river",
+    "mountain": "mountain",
+    "scorched": "scorched",
+}
+
+
+def get_terrain_9slice_surface(
+    terrain_type: str, top: bool, bot: bool, left: bool, right: bool
+) -> pygame.Surface:
+    """Returns the matching 9-slice edge-blended surface for any of the 4 terrain types."""
+    piece = get_9slice_piece_name(top, bot, left, right)
+    prefix = _TERRAIN_PREFIXES.get(terrain_type, terrain_type)
+
+    # 1. Primary check (e.g. swamp_top_left.png, river_top_left.png, mountain_top_left.png, scorched_top_left.png)
+    filename = f"{prefix}_{piece}.png"
     if (_ASSETS_DIR / filename).exists():
         return _load(filename)
-    return mud()
+
+    # 2. Secondary fallback checks
+    if terrain_type == "scorched" and (_ASSETS_DIR / f"scorched_earth_{piece}.png").exists():
+        return _load(f"scorched_earth_{piece}.png")
+    if terrain_type == "river" and (_ASSETS_DIR / f"river_illustration_raw_{piece}.png").exists():
+        return _load(f"river_illustration_raw_{piece}.png")
+    if terrain_type == "mountain" and (_ASSETS_DIR / f"mountain_illustration_raw_{piece}.png").exists():
+        return _load(f"mountain_illustration_raw_{piece}.png")
+
+    return get_terrain_surface(terrain_type, is_claimed=True)
+
+
+def get_swamp_piece(top: bool, bot: bool, left: bool, right: bool) -> pygame.Surface:
+    """Legacy alias for get_terrain_9slice_surface('mud', ...)."""
+    return get_terrain_9slice_surface("mud", top, bot, left, right)
 
 
 def scorched() -> pygame.Surface:
+    if (_ASSETS_DIR / "scorched_earth_center.png").exists():
+        return _load("scorched_earth_center.png")
     if (_ASSETS_DIR / "scorched_earth.png").exists():
         return _load("scorched_earth.png")
     return _load("scorched.png")
@@ -93,5 +125,6 @@ def get_terrain_surface(terrain_type: str, is_claimed: bool = True) -> pygame.Su
     if terrain_type == "scorched":
         return scorched()
     return grass() if is_claimed else parchment()
+
 
 

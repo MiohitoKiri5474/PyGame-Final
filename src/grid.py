@@ -28,8 +28,9 @@ class Tile:
 
 def _roll_resource(rng: random.Random, terrain: str = TERRAIN_PLAIN) -> str | None:
     if terrain == TERRAIN_MOUNTAIN:
-        return rng.choices([None, "raw_stone", "marble"], weights=[0.70, 0.20, 0.10], k=1)[0]
+        return None
     return rng.choices(_RESOURCE_POOL, weights=_RESOURCE_POOL_WEIGHTS, k=1)[0]
+
 
 
 def _generate_terrain_map(
