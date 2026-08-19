@@ -68,6 +68,8 @@ from sanctuary_ui import SanctuaryUI
 import top_bar
 import top_buttons
 import magic_panel
+from render_fog import render_fog_tile
+
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
     animal_sprite,
@@ -1607,6 +1609,7 @@ class Game:
                     continue
             queued_by_tile[task.target] = task
 
+        time_s = time.monotonic()
         for row in range(start_row, min(grid.height, start_row + VIEWPORT_TILES_Y + 2)):
             for col in range(start_col, min(grid.width, start_col + VIEWPORT_TILES_X + 2)):
                 tile = grid.get(col, row)
@@ -1615,13 +1618,18 @@ class Game:
                 rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
 
                 if not tile.revealed:
-                    # Fog stays a flat overlay, not a texture - it's meant to
-                    # read as "nothing to see here", not as ground you could walk on.
-                    pygame.draw.rect(self.screen, COLOR_FOG, rect)
+                    has_revealed_adj = False
+                    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                        nx, ny = col + dx, row + dy
+                        if grid.in_bounds(nx, ny) and grid.get(nx, ny).revealed:
+                            has_revealed_adj = True
+                            break
+                    render_fog_tile(self.screen, rect, col, row, time_s, has_revealed_neighbor=has_revealed_adj)
                 elif tile.claimed:
                     self.screen.blit(grass(), rect)
                 else:
                     self.screen.blit(parchment(), rect)
+
 
                 # Material indicator for resource blocks
                 if tile.revealed and tile.resource:
@@ -1753,7 +1761,9 @@ class Game:
             self.screen, self.font, self.big_font,
             self.cycle.round_number, self.cycle.phase.upper(), self.cycle.remaining(), banner_color,
             len(self.world.npcs), inventory_items, hint_lines,
+            timer=self.cycle.timer, duration=self.cycle.duration(),
         )
+
 
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:
