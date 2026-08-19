@@ -32,7 +32,7 @@ from constants import (
 from coords import tile_at, tile_center
 from extensions import register_tick
 from skills import taming_success_bonus
-from task import register_task_type, Task, TaskType
+from task import register_task_type, resolve_task_animal, Task, TaskType
 
 if TYPE_CHECKING:
     from animal import Animal
@@ -59,24 +59,14 @@ def can_queue_tame(world: "World", tile: tuple[int, int]) -> bool:
 
 def can_perform_tame(world: "World", task: "Task") -> bool:
     """Can perform Tame if target animal still exists, is alive and untamed."""
-    if not hasattr(world, "animals"):
-        return False
-    if task.target_animal_id is not None:
-        return any(a.id == task.target_animal_id and not a.is_dead and not getattr(a, "is_tamed", False) for a in world.animals)
-    return any(tile_at(a.x, a.y) == task.target and not a.is_dead and not getattr(a, "is_tamed", False) for a in world.animals)
+    animal = resolve_task_animal(world, task)
+    return animal is not None and not getattr(animal, "is_tamed", False)
 
 
 def on_complete_tame(world: "World", task: "Task", rng: random.Random | None = None) -> bool:
     """Resolve taming attempt on the target animal."""
-    if not hasattr(world, "animals"):
-        return True
-
     rng = rng or random.Random()
-    animal = None
-    if task.target_animal_id is not None:
-        animal = next((a for a in world.animals if a.id == task.target_animal_id), None)
-    if animal is None:
-        animal = next((a for a in world.animals if tile_at(a.x, a.y) == task.target and not a.is_dead), None)
+    animal = resolve_task_animal(world, task)
 
     if animal is None or animal.is_dead:
         return True

@@ -170,6 +170,50 @@ class TestTameTask:
         assert knight.task is not None  # still working
 
 
+class TestTameRepathing:
+    def test_npc_binds_animal_id_and_repaths_when_animal_moves_out_of_range(self):
+        # Tame previously never bound target_animal_id at claim time (only
+        # Hunt did), so a wandering animal would silently desync from the
+        # stale target tile with no chase logic to recover - this covers
+        # the same claim-and-chase path Hunt already had, now shared by Tame.
+        world = World(npc_count=1)
+        animal = Animal(*tile_center(12, 10), species="Horse", speed=140.0, dangerous=False, health=40)
+        world.animals.append(animal)
+
+        task = world.tasks.add("Tame", (12, 10))
+        npc = world.npcs[0]
+        npc.x, npc.y = tile_center(10, 10)
+
+        update_npc_tasks(world, 0.1)
+        assert npc.task is task
+        assert task.target_animal_id == animal.id
+
+        animal.x, animal.y = tile_center(16, 10)
+        animal.path = []
+        npc.x, npc.y = tile_center(12, 10)
+        npc.path = []
+
+        update_npc_tasks(world, 0.1)
+        assert npc.task.target == (16, 10)
+        assert len(npc.path) > 0
+
+    def test_npc_holds_position_and_works_once_in_range(self):
+        world = World(npc_count=1)
+        animal = Animal(*tile_center(11, 10), species="Horse", speed=140.0, dangerous=False, health=40)
+        world.animals.append(animal)
+
+        task = world.tasks.add("Tame", (11, 10), target_animal_id=animal.id)
+        npc = world.npcs[0]
+        npc.x, npc.y = tile_center(10, 10)
+        npc.path = []
+        npc.task = task
+        task.assigned_npc = npc
+
+        update_npc_tasks(world, 0.1)
+        assert npc.path == []
+        assert npc.task_progress > 0
+
+
 class TestAnimalPenProductionAndHorseBuff:
     def test_penned_animal_produces_meat_periodically(self):
         world = World()
