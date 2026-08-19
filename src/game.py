@@ -36,7 +36,9 @@ from constants import (
     ROLE_FARMER,
     ROLE_KNIGHT,
     ROLE_MAGE,
+    FARMLAND_GROW_SECONDS,
 )
+
 
 import time
 from action_menu import ActionMenu
@@ -65,9 +67,18 @@ import top_bar
 import top_buttons
 import magic_panel
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
-from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite, get_tool_sprite
+from sprites import (
+    animal_sprite,
+    get_arrow_sprite,
+    get_magic_orb_sprite,
+    get_tool_sprite,
+    monster_sprite,
+    nest_sprite,
+    npc_sprite,
+    resource_sprite,
+)
 from tame_task import idle_spot_near_pen
-from terrain import parchment, grass
+from terrain import grass, parchment
 
 
 _CAST_SPELL = {"Fire": cast_fire, "Lightning": cast_lightning, "Freeze": cast_freeze}
@@ -107,6 +118,7 @@ class Game:
             self._new_game()
 
         self.particles: list[dict] = []
+        self.projectiles: list[dict] = []
         play_bgm(self.cycle.phase)
 
 
@@ -123,6 +135,9 @@ class Game:
         self.game_over_state = GameOverState()
         self.skill_points_available = 0
         self._monsters_killed_this_night = 0
+        self.particles = []
+        self.projectiles = []
+
 
     def restart(self) -> None:
         """Only meaningful after game over - starts a brand new colony and
@@ -309,12 +324,19 @@ class Game:
             return
 
         # Otherwise infer from what's actually on the tile: queue directly
-        # when exactly one task applies, ask when there's a real choice.
+        # when exactly one constructive task applies, ask when there's a real choice
+        # or when the action is destructive (Destroy).
         options = applicable_tasks(self.world, (gx, gy))
         if len(options) == 1:
-            self.world.tasks.add(options[0], (gx, gy))
+            if options[0] == "Destroy":
+                # Demolishing an existing building or growing crop is destructive:
+                # Open action menu so a single stray click doesn't accidentally demolish it!
+                self.action_menu.open(options, (gx, gy), screen_pos)
+            else:
+                self.world.tasks.add(options[0], (gx, gy))
         elif len(options) > 1:
             self.action_menu.open(options, (gx, gy), screen_pos)
+
 
     def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
         for npc in self.world.npcs:
@@ -400,6 +422,107 @@ class Game:
                     p["rot"] = (p["rot"] + p.get("vrot", 0.0) * dt) % 360
             self.particles = [p for p in self.particles if p["life"] > 0]
 
+            # Update Ranged Projectiles (Mage Arcane Orb & Tower Arrow)
+            for proj in self.projectiles:
+                dx = proj["target_x"] - proj["x"]
+                dy = proj["target_y"] - proj["y"]
+                dist = math.hypot(dx, dy)
+                step = proj["speed"] * dt
+
+                # Trail sparkle particles
+                if proj["type"] == "magic_orb":
+                    if random.random() < 0.65:
+                        self.particles.append({
+                            "type": "star",
+                            "x": proj["x"] + random.uniform(-3, 3),
+                            "y": proj["y"] + random.uniform(-3, 3),
+                            "vx": random.uniform(-20, 20),
+                            "vy": random.uniform(-20, 20),
+                            "color": random.choice([(210, 100, 255), (160, 240, 255), (255, 255, 255)]),
+                            "size": random.uniform(2.5, 4.0),
+                            "life": 0.25,
+                            "max_life": 0.25,
+                            "gravity": 0.0,
+                        })
+                elif proj["type"] == "tower_arrow":
+                    if random.random() < 0.45:
+                        self.particles.append({
+                            "x": proj["x"],
+                            "y": proj["y"],
+                            "vx": -dx * 0.05,
+                            "vy": -dy * 0.05,
+                            "color": (230, 230, 240),
+                            "size": 2.0,
+                            "life": 0.15,
+                            "max_life": 0.15,
+                            "gravity": 0.0,
+                        })
+
+                if dist <= step or dist < 6.0:
+                    proj["arrived"] = True
+                    tx, ty = proj["target_x"], proj["target_y"]
+                    dmg = proj["dmg"]
+                    is_npc_target = proj.get("target_is_npc", False)
+                    target = proj.get("target")
+
+                    # Damage popup number
+                    col = (255, 80, 80) if is_npc_target else (255, 220, 60)
+                    self.particles.append({
+                        "type": "damage_num",
+                        "text": f"-{int(dmg)}",
+                        "x": tx + random.uniform(-4, 4),
+                        "y": ty - 12,
+                        "vx": random.uniform(-15, 15),
+                        "vy": -55.0,
+                        "color": col,
+                        "life": 0.65,
+                        "max_life": 0.65,
+                        "gravity": 40.0,
+                    })
+
+                    if proj["type"] == "magic_orb":
+                        # Arcane Starburst & Magic Sparkles
+                        for _ in range(6):
+                            self.particles.append({
+                                "type": "star",
+                                "x": tx + random.uniform(-6, 6),
+                                "y": ty + random.uniform(-6, 6),
+                                "vx": random.uniform(-65, 65),
+                                "vy": random.uniform(-65, 30),
+                                "color": random.choice([(215, 95, 255), (140, 220, 255), (255, 255, 255)]),
+                                "size": random.uniform(3.0, 5.5),
+                                "life": 0.35,
+                                "max_life": 0.35,
+                                "gravity": 30.0,
+                            })
+                    elif proj["type"] == "tower_arrow":
+                        # Wooden Splinter & Metal Star Sparks
+                        for _ in range(5):
+                            self.particles.append({
+                                "x": tx + random.uniform(-4, 4),
+                                "y": ty + random.uniform(-4, 4),
+                                "vx": random.uniform(-70, 70),
+                                "vy": random.uniform(-80, -20),
+                                "color": random.choice([(255, 220, 60), (180, 130, 70), (255, 255, 255)]),
+                                "size": random.uniform(2.5, 4.5),
+                                "life": 0.30,
+                                "max_life": 0.30,
+                                "rot": random.uniform(0, 360),
+                                "vrot": random.uniform(-360, 360),
+                            })
+
+                    if target and getattr(target, "is_dead", False) and not getattr(target, "_death_fx_spawned", False):
+                        target._death_fx_spawned = True
+                        if is_npc_target:
+                            self._spawn_npc_death_fx(target.x, target.y, getattr(target, "role", "villager"))
+                        else:
+                            self._spawn_monster_death_fx(target.x, target.y)
+                else:
+                    proj["x"] += (dx / dist) * step
+                    proj["y"] += (dy / dist) * step
+
+            self.projectiles = [p for p in self.projectiles if not p.get("arrived", False)]
+
             for tile in self.nest_manager.update(dt, self.cycle.round_number, self.cycle.phase):
                 monster_type = self.nest_manager.pick_monster_type()
                 self.monsters.append(
@@ -408,9 +531,6 @@ class Game:
             for monster in self.monsters:
                 monster.update(dt)
                 if monster.has_arrived:
-                    # Reached wherever it was last sent (initial spawn target,
-                    # or a previous retarget) - pick a new one so monsters
-                    # keep actively chasing instead of freezing in place.
                     retarget_monster(monster, self.world)
 
             # Trigger Death VFX for any monster that died before combat resolution (e.g. spell / burn)
@@ -423,45 +543,77 @@ class Game:
 
             def _on_damage(src, target, dmg):
                 is_npc_target = hasattr(target, "role")
-                col = (255, 80, 80) if is_npc_target else (255, 220, 60)
-                self.particles.append({
-                    "type": "damage_num",
-                    "text": f"-{int(dmg)}",
-                    "x": target.x + random.uniform(-4, 4),
-                    "y": target.y - 12,
-                    "vx": random.uniform(-15, 15),
-                    "vy": -55.0,
-                    "color": col,
-                    "life": 0.65,
-                    "max_life": 0.65,
-                    "gravity": 40.0,
-                })
-                confetti_colors = [
-                    (255, 220, 50),
-                    (255, 75, 75),
-                    (255, 255, 255),
-                    (255, 130, 40),
-                ]
-                for _ in range(4):
-                    self.particles.append({
-                        "x": target.x + random.uniform(-6, 6),
-                        "y": target.y + random.uniform(-6, 6),
-                        "vx": random.uniform(-75, 75),
-                        "vy": random.uniform(-95, -30),
-                        "color": random.choice(confetti_colors),
-                        "size": random.uniform(3.0, 5.0),
-                        "life": 0.35,
-                        "max_life": 0.35,
-                        "rot": random.uniform(0, 360),
-                        "vrot": random.uniform(-360, 360),
-                    })
+                is_mage = hasattr(src, "role") and src.role == ROLE_MAGE
+                is_tower = hasattr(src, "type") and src.type == "Tower"
 
-                if target.is_dead and not getattr(target, "_death_fx_spawned", False):
-                    target._death_fx_spawned = True
-                    if is_npc_target:
-                        self._spawn_npc_death_fx(target.x, target.y, target.role)
-                    else:
-                        self._spawn_monster_death_fx(target.x, target.y)
+                if is_mage:
+                    # Spawn Mage Arcane Magic Orb projectile
+                    self.projectiles.append({
+                        "type": "magic_orb",
+                        "x": float(src.x),
+                        "y": float(src.y - 6),
+                        "target_x": float(target.x),
+                        "target_y": float(target.y),
+                        "target": target,
+                        "speed": 460.0,
+                        "dmg": dmg,
+                        "target_is_npc": is_npc_target,
+                    })
+                elif is_tower:
+                    # Spawn Defense Tower Arrow projectile
+                    bx, by = tile_center(src.x, src.y)
+                    self.projectiles.append({
+                        "type": "tower_arrow",
+                        "x": float(bx),
+                        "y": float(by - 8),
+                        "target_x": float(target.x),
+                        "target_y": float(target.y),
+                        "target": target,
+                        "speed": 560.0,
+                        "dmg": dmg,
+                        "target_is_npc": is_npc_target,
+                    })
+                else:
+                    # Melee attack: Immediate damage popup & hit confetti
+                    col = (255, 80, 80) if is_npc_target else (255, 220, 60)
+                    self.particles.append({
+                        "type": "damage_num",
+                        "text": f"-{int(dmg)}",
+                        "x": target.x + random.uniform(-4, 4),
+                        "y": target.y - 12,
+                        "vx": random.uniform(-15, 15),
+                        "vy": -55.0,
+                        "color": col,
+                        "life": 0.65,
+                        "max_life": 0.65,
+                        "gravity": 40.0,
+                    })
+                    confetti_colors = [
+                        (255, 220, 50),
+                        (255, 75, 75),
+                        (255, 255, 255),
+                        (255, 130, 40),
+                    ]
+                    for _ in range(4):
+                        self.particles.append({
+                            "x": target.x + random.uniform(-6, 6),
+                            "y": target.y + random.uniform(-6, 6),
+                            "vx": random.uniform(-75, 75),
+                            "vy": random.uniform(-95, -30),
+                            "color": random.choice(confetti_colors),
+                            "size": random.uniform(3.0, 5.0),
+                            "life": 0.35,
+                            "max_life": 0.35,
+                            "rot": random.uniform(0, 360),
+                            "vrot": random.uniform(-360, 360),
+                        })
+
+                    if target.is_dead and not getattr(target, "_death_fx_spawned", False):
+                        target._death_fx_spawned = True
+                        if is_npc_target:
+                            self._spawn_npc_death_fx(target.x, target.y, target.role)
+                        else:
+                            self._spawn_monster_death_fx(target.x, target.y)
 
             resolve_combat(self.world.npcs, self.monsters, self.world.buildings, on_damage=_on_damage)
             self._monsters_killed_this_night += monster_count_before_combat - len(self.monsters)
@@ -471,6 +623,7 @@ class Game:
                 if npc.is_dead and not getattr(npc, "_death_fx_spawned", False):
                     npc._death_fx_spawned = True
                     self._spawn_npc_death_fx(npc.x, npc.y, npc.role)
+
 
             self.world.npcs[:] = [npc for npc in self.world.npcs if not npc.is_dead]
             if self.selected_npc is not None and self.selected_npc.is_dead:
@@ -648,6 +801,7 @@ class Game:
         self.render_animals()
         self.render_npcs()
         self.render_monsters()
+        self.render_projectiles()
         self.render_particles()
         render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
         if self.cycle.phase == NIGHT:
@@ -664,7 +818,31 @@ class Game:
         self.render_game_over()
         pygame.display.flip()
 
+    def render_projectiles(self) -> None:
+        """Draws Paper Mario flying arcane magic orbs and feathered wooden arrows."""
+        cam_x, cam_y = self.camera.x, self.camera.y
+        for proj in self.projectiles:
+            sx = int(proj["x"] - cam_x)
+            sy = int(proj["y"] - cam_y)
+            dx = proj["target_x"] - proj["x"]
+            dy = proj["target_y"] - proj["y"]
+            angle_deg = -math.degrees(math.atan2(dy, dx))
+
+            if proj["type"] == "magic_orb":
+                base_sprite = get_magic_orb_sprite()
+                pulse = 1.0 + 0.15 * math.sin(time.monotonic() * 18.0)
+                tw = max(1, int(base_sprite.get_width() * pulse))
+                th = max(1, int(base_sprite.get_height() * pulse))
+                scaled = pygame.transform.smoothscale(base_sprite, (tw, th))
+                rot_sprite = pygame.transform.rotate(scaled, angle_deg)
+                self.screen.blit(rot_sprite, rot_sprite.get_rect(center=(sx, sy)))
+            elif proj["type"] == "tower_arrow":
+                base_sprite = get_arrow_sprite()
+                rot_sprite = pygame.transform.rotate(base_sprite, angle_deg)
+                self.screen.blit(rot_sprite, rot_sprite.get_rect(center=(sx, sy)))
+
     def render_particles(self) -> None:
+
         cam_x, cam_y = self.camera.x, self.camera.y
         for p in self.particles:
             alpha = max(0.0, min(1.0, p["life"] / p["max_life"]))
@@ -974,6 +1152,17 @@ class Game:
                     self.screen.blit(trail_surf, (tool_pos[0] - TILE_SIZE, tool_pos[1] - TILE_SIZE))
 
                 self.screen.blit(rotated_tool, rotated_tool.get_rect(center=tool_pos))
+
+                # Arcane Casting Flare at Mage staff crystal tip
+                if is_attacking and npc.role == ROLE_MAGE and ap < 0.45:
+                    flare_surf = pygame.Surface((24, 24), pygame.SRCALPHA)
+                    flare_r = int(6 + 3 * math.sin(time.monotonic() * 22.0))
+                    pygame.draw.circle(flare_surf, (200, 100, 255, 190), (12, 12), flare_r)
+                    pygame.draw.circle(flare_surf, (255, 255, 255, 240), (12, 12), 3)
+                    for dx_f, dy_f in [(0, -7), (0, 7), (-7, 0), (7, 0)]:
+                        pygame.draw.line(flare_surf, (255, 230, 255, 220), (12, 12), (12 + dx_f, 12 + dy_f), 1)
+                    self.screen.blit(flare_surf, (tool_pos[0] - 12, tool_pos[1] - 12))
+
 
             # Hunger bar
             bar_x = base_sx - bar_w // 2
@@ -1301,7 +1490,13 @@ class Game:
         npc = next((n for n in self.world.npcs if tile_at(n.x, n.y) == (gx, gy)), None)
 
         if building:
-            info = f"Building: {building.type} (Block: {building.block}, Attack: {building.attack})"
+            if building.type == "Farmland":
+                if building.ready:
+                    info = "Building: Farmland (Ready to Harvest!)"
+                else:
+                    info = f"Building: Farmland (Growing: {int(building.growth_timer)}/{int(FARMLAND_GROW_SECONDS)}s)"
+            else:
+                info = f"Building: {building.type} (Block: {building.block}, Attack: {building.attack})"
         elif tile.resource:
             info = f"Material: {tile.resource.capitalize()}"
         else:
@@ -1330,8 +1525,11 @@ class Game:
         if not options:
             return ""
         if len(options) == 1:
+            if options[0] == "Destroy":
+                return "  ->  Click for menu: Destroy"
             return f"  ->  Click to {options[0]}"
         return f"  ->  Click to choose: {', '.join(options)}"
+
 
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
