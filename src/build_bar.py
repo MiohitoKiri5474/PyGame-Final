@@ -18,7 +18,7 @@ import pygame
 import ui_tooltip
 from build_task import build_cost
 from constants import WINDOW_HEIGHT, WINDOW_WIDTH
-from sprites import building_icon
+from sprites import building_icon, resource_sprite
 from tile_actions import build_task_types, building_label
 
 if TYPE_CHECKING:
@@ -29,6 +29,8 @@ _BUTTON_H = 64
 _GAP = 12
 _MARGIN_BOTTOM = 10
 _ICON = 26
+_COST_ICON = 16
+_COST_GAP = 12  # horizontal gap between materials on the cost line
 
 _OUTER_PAD = 10
 _HEADER_H = 22
@@ -101,6 +103,12 @@ class BuildBar:
         height = _OUTER_PAD * 2 + _HEADER_H + _DESC_H + _BUTTON_H
         return pygame.Rect((WINDOW_WIDTH - width) // 2, WINDOW_HEIGHT - height - _MARGIN_BOTTOM, width, height)
 
+    def panel_top(self) -> int:
+        """The outer panel's own top y - so other bottom-left widgets (the
+        minimap) can anchor directly above it without reaching into private
+        layout details."""
+        return self._outer_rect().top
+
     def _buttons(self) -> list[tuple[str, pygame.Rect]]:
         types = build_task_types()
         if not types:
@@ -168,10 +176,26 @@ class BuildBar:
 
             cost = build_cost(task_type)
             if cost:
-                affordable = all(world.inventory.get(res) >= amt for res, amt in cost.items())
-                text = ", ".join(f"{amt} {res}" for res, amt in cost.items())
-                color = _COST_OK if affordable else _COST_SHORT
-                surface.blit(font.render(text, True, color), (rect.x + 10, rect.y + 38))
+                # Each material gets its own icon and is colored by its own
+                # sufficiency - short on just one of two materials no longer
+                # paints the whole line red, since that used to hide which
+                # specific material was the actual problem.
+                cx = rect.x + 10
+                cy = rect.y + 38
+                for res, amt in cost.items():
+                    icon = resource_sprite(res)
+                    if icon is not None:
+                        small = pygame.transform.smoothscale(icon, (_COST_ICON, _COST_ICON))
+                        surface.blit(small, (cx, cy + 2))
+                        cx += _COST_ICON + 4
+                        amt_text = str(amt)
+                    else:
+                        amt_text = f"{amt} {res}"
+                    affordable = world.inventory.get(res) >= amt
+                    color = _COST_OK if affordable else _COST_SHORT
+                    amt_surf = font.render(amt_text, True, color)
+                    surface.blit(amt_surf, (cx, cy + 2))
+                    cx += amt_surf.get_width() + _COST_GAP
 
             if rect.collidepoint(mouse_pos):
                 hovered_rect = rect
