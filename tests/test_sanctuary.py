@@ -31,11 +31,12 @@ def test_resting_npc_regenerates_health_over_time():
 
 def test_resting_npc_health_capped_at_max_health():
     npc = NPC(16.0, 16.0, role=ROLE_MAGE)
-    npc.health = npc.max_health - 2.0
+    npc.health = npc.max_health - 1.0
     npc.is_resting = True
 
-    npc.update(1.0)
+    npc.update(2.0)
     assert npc.health == npc.max_health
+
 
 
 def test_resting_npc_hunger_continues_to_decay():

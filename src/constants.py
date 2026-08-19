@@ -291,5 +291,6 @@ MAGIC_DAMAGE_MULTIPLIER_PER_LEVEL = 0.15  # +15% spell damage, per level
 AOE_RADIUS_BONUS_PER_LEVEL = 1  # +1 tile to Freeze's 3x3 box radius, per level
 
 # --- NPC Drag-to-Heal Sanctuary System ---
-SANCTUARY_HEAL_RATE = 2.5  # Balanced HP restored per second while in Sanctuary (takes ~30-45s for full recovery)
+SANCTUARY_HEAL_RATE = 1.25  # High-stakes healing rate (1.25 HP/s: recovery takes ~1-2 game phases)
+
 
