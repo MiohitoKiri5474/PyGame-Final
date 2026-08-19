@@ -1,5 +1,5 @@
-WINDOW_WIDTH = 1024
-WINDOW_HEIGHT = 768
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 800  # both divide evenly by TILE_SIZE (40x25 tile viewport)
 FPS = 60
 
 TILE_SIZE = 32
@@ -25,6 +25,16 @@ COLOR_NIGHT_BANNER = (120, 140, 255)
 COLOR_NPC = (220, 220, 60)
 COLOR_NPC_SELECTED = (255, 255, 255)
 COLOR_HOVER_BORDER = (100, 220, 255)
+COLOR_BAR_BG = (40, 40, 50)
+COLOR_HUNGER_BAR = (230, 180, 50)
+COLOR_NIGHT_OVERLAY = (8, 8, 30, 130)  # flat dark tint over the map only, while phase == NIGHT
+DAY_NIGHT_FADE_SECONDS = 5.0  # crossfade the tint in/out over the first N seconds of each phase
+
+# --- Gather UX polish: queued-task marker, work progress, Expand preview ---
+COLOR_QUEUED_WAITING = (255, 200, 90)   # task queued, no NPC assigned yet
+COLOR_QUEUED_ASSIGNED = (140, 255, 140)  # an NPC has claimed it and is en route/working
+COLOR_PROGRESS_BAR = (120, 200, 255)
+COLOR_EXPAND_PREVIEW_CLAIM = (140, 255, 140, 90)  # will newly become claimed/grass - alpha-blended overlay
 
 STARTING_NPC_COUNT = 3
 NPC_RADIUS = TILE_SIZE // 3
@@ -49,8 +59,11 @@ COMBAT_MIN_DAMAGE = 1  # damage floor so attack <= defense still chips away
 
 NEST_INITIAL_COUNT = 3
 NEST_MAX_COUNT = 8
-NEST_BASE_SPAWN_INTERVAL = 15.0  # seconds between spawns at round 1
-NEST_SPAWN_RAMP_PER_ROUND = 1.0  # interval shrinks by this much per round
+# At round 1 this yields ~1 spawn/nest over a NIGHT_SECONDS=60 night (3 nests
+# -> ~3 monsters) - the old 15.0 gave up to 4/nest (~12 total) on the very
+# first night, before the colony has any defenses.
+NEST_BASE_SPAWN_INTERVAL = 40.0  # seconds between spawns at round 1
+NEST_SPAWN_RAMP_PER_ROUND = 2.5  # interval shrinks by this much per round
 NEST_MIN_SPAWN_INTERVAL = 4.0  # floor so late rounds don't spawn every tick
 NEW_NEST_INTERVAL = 240.0  # seconds between chances for a new nest to appear
 
@@ -277,3 +290,8 @@ DEFENSE_BONUS_PER_LEVEL = 2  # flat defense, on top of role-based base
 HEALTH_BONUS_PER_LEVEL = 10  # flat max_health (and current health), on top of role-based base
 MAGIC_DAMAGE_MULTIPLIER_PER_LEVEL = 0.15  # +15% spell damage, per level
 AOE_RADIUS_BONUS_PER_LEVEL = 1  # +1 tile to Freeze's 3x3 box radius, per level
+
+# --- NPC Drag-to-Heal Sanctuary System ---
+SANCTUARY_HEAL_RATE = 1.25  # High-stakes healing rate (1.25 HP/s: recovery takes ~1-2 game phases)
+
+

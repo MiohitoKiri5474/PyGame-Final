@@ -34,7 +34,8 @@ _HEADER_COLOR = (255, 214, 100)  # yellow header
 _NPC_ACTIVE = (100, 180, 255)    # selected NPC highlight
 _NPC_INACTIVE = (160, 160, 170)  # unselected NPC
 _ROW_SELECTED = (50, 60, 80)     # selected task row background
-_ROW_HOVER = (35, 40, 55)        # alternating row
+_ROW_HOVER = (35, 40, 55)        # unselected row card fill
+_BORDER = (70, 74, 86)           # unselected row card border, matches the build bar's
 _TASK_TEXT = (220, 220, 220)     # task name text
 _RANK_TEXT = (140, 140, 140)     # rank number text
 _HINT_TEXT = (110, 110, 120)     # hint text at bottom
@@ -118,11 +119,28 @@ class PriorityTableUI:
 
         alive_npcs = [n for n in npcs if not n.is_dead]
 
-        # Panel geometry
+        pad = 16
+        row_h = 24
+        row_gap = 6
+
+        # Panel height scales with the active NPC's task-type count (task
+        # types keep growing as tickets add more) instead of a fixed value -
+        # a fixed 360px only fit ~9 rows and later rows/the footer hint
+        # started rendering past the panel's own border once there were 11.
+        self.selected_npc_index = self._clamped_npc_index(alive_npcs) if alive_npcs else 0
+        row_count = len(self._ensure_priority(alive_npcs[self.selected_npc_index])) if alive_npcs else 0
+
         panel_w = 480
-        panel_h = 360
+        panel_h = (
+            pad * 2
+            + (row_h + 8)  # title
+            + (row_h + 12)  # NPC tabs
+            + 8  # separator gap
+            + max(1, row_count) * (row_h + row_gap)
+            + (row_h + 8)  # footer hint
+        )
         panel_x = (WINDOW_WIDTH - panel_w) // 2
-        panel_y = (WINDOW_HEIGHT - panel_h) // 2
+        panel_y = max(8, (WINDOW_HEIGHT - panel_h) // 2)
 
         # Draw semi-transparent panel background
         overlay = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
@@ -130,8 +148,6 @@ class PriorityTableUI:
         surface.blit(overlay, (panel_x, panel_y))
         pygame.draw.rect(surface, _HEADER_COLOR, pygame.Rect(panel_x, panel_y, panel_w, panel_h), 2)
 
-        pad = 16
-        row_h = 24
         y = panel_y + pad
 
         # Header title
@@ -143,8 +159,6 @@ class PriorityTableUI:
             empty_surf = font.render("No alive NPCs", True, COLOR_TEXT)
             surface.blit(empty_surf, (panel_x + pad, y))
             return
-
-        self.selected_npc_index = self._clamped_npc_index(alive_npcs)
 
         # NPC tabs
         tab_x = panel_x + pad
@@ -183,11 +197,12 @@ class PriorityTableUI:
             is_row_selected = rank - 1 == self.selected_task_index
             row_rect = pygame.Rect(panel_x + pad, y, panel_w - pad * 2, row_h)
 
-            if is_row_selected:
-                pygame.draw.rect(surface, _ROW_SELECTED, row_rect)
-                pygame.draw.rect(surface, _NPC_ACTIVE, row_rect, 1)
-            elif rank % 2 == 0:
-                pygame.draw.rect(surface, _ROW_HOVER, row_rect)
+            # Bordered card per row, matching the build bar's button style,
+            # instead of a flat alternating-background list.
+            pygame.draw.rect(surface, _ROW_SELECTED if is_row_selected else _ROW_HOVER, row_rect, border_radius=6)
+            pygame.draw.rect(
+                surface, _NPC_ACTIVE if is_row_selected else _BORDER, row_rect, 2 if is_row_selected else 1, border_radius=6
+            )
 
             rank_surf = font.render(f"#{rank}", True, _RANK_TEXT)
             task_surf = font.render(task_type, True, _TASK_TEXT)
@@ -202,11 +217,11 @@ class PriorityTableUI:
                     (panel_x + panel_w - pad - arrows_surf.get_width() - 8, y + 2),
                 )
 
-            y += row_h + 4
+            y += row_h + row_gap
 
         # Footer hints
         y = panel_y + panel_h - row_h - pad
-        hints = "[Tab] switch NPC   [↑↓] select task   [←→] change priority"
+        hints = "[Tab] switch NPC   [Up/Down] select task   [Left/Right] change priority"
         hint_surf = font.render(hints, True, _HINT_TEXT)
         surface.blit(hint_surf, (panel_x + pad, y))
 

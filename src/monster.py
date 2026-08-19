@@ -1,3 +1,5 @@
+import math
+
 from blocking import is_wall_blocked
 from constants import (
     FIRE_BURN_TICK_INTERVAL,
@@ -7,7 +9,7 @@ from constants import (
     MONSTER_SPEED,
     MONSTER_STATS,
 )
-from coords import tile_center
+from coords import tile_at, tile_center
 from movement import step_toward_path
 from pathfinding import find_path
 
@@ -33,6 +35,16 @@ class Monster:
         self.burn_tick_timer = 0.0
         self.frozen_remaining = 0.0
 
+        # Paper Mario Animation & Combat states
+        self.facing_left = False
+        self.display_facing_left = False
+        self.flip_progress = 1.0
+        self.anim_timer = 0.0
+        self.is_moving = False
+        self.attack_timer = 0.0
+        self.hit_timer = 0.0
+        self.combat_target: tuple[float, float] | None = None
+
     @property
     def has_arrived(self) -> bool:
         return not self.path
@@ -47,6 +59,21 @@ class Monster:
 
     def set_path(self, path: list[tuple[int, int]]) -> None:
         self.path = list(path)
+
+    def trigger_attack(self, target_x: float, target_y: float) -> None:
+        """Trigger a monster pounce/bite attack towards target."""
+        self.attack_timer = 0.35
+        self.combat_target = (target_x, target_y)
+        if target_x < self.x:
+            self.facing_left = True
+            self.display_facing_left = True
+        elif target_x > self.x:
+            self.facing_left = False
+            self.display_facing_left = False
+
+    def trigger_hit(self) -> None:
+        """Trigger a damage reaction squash & hurt flash."""
+        self.hit_timer = 0.25
 
     def apply_freeze(self, duration: float) -> None:
         self.frozen_remaining = duration  # overwrite, not add - refresh, never stack
@@ -76,9 +103,35 @@ class Monster:
     def update(self, dt: float) -> None:
         self._tick_burn(dt)
         self._tick_freeze(dt)
+        self.attack_timer = max(0.0, self.attack_timer - dt)
+        self.hit_timer = max(0.0, self.hit_timer - dt)
+
         if self.is_frozen:
+            self.is_moving = False
             return  # movement skipped entirely while frozen, not halved
+
+        old_x = self.x
         self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
+        dx = self.x - old_x
+        if abs(dx) > 0.01:
+            new_facing = (dx < 0.0)
+            if new_facing != self.facing_left:
+                self.facing_left = new_facing
+                self.flip_progress = 0.0
+
+        if self.flip_progress < 1.0:
+            self.flip_progress = min(1.0, self.flip_progress + dt * 8.0)
+            if self.flip_progress >= 0.5:
+                self.display_facing_left = self.facing_left
+        else:
+            self.display_facing_left = self.facing_left
+
+        if not self.has_arrived:
+            self.is_moving = True
+            self.anim_timer += dt
+        else:
+            self.is_moving = False
+
 
 
 def nearest_claimed_tile(grid, from_tile: tuple[int, int]) -> tuple[int, int] | None:
@@ -93,21 +146,50 @@ def nearest_claimed_tile(grid, from_tile: tuple[int, int]) -> tuple[int, int] | 
     return best
 
 
+def _path_toward(start: tuple[int, int], target: tuple[int, int], grid, buildings) -> list[tuple[int, int]] | None:
+    """Monsters walk in from outside territory, so unlike NPCs they treat
+    every in-bounds tile as walkable (fog/unclaimed included) — except Wall
+    tiles, which block like they do for NPCs (ticket 07)."""
+    return find_path(
+        lambda x, y: grid.in_bounds(x, y) and not is_wall_blocked(buildings, x, y),
+        grid.width,
+        grid.height,
+        start,
+        target,
+    )
+
+
 def spawn_monster(tile: tuple[int, int], grid, buildings=(), monster_type: str | None = None) -> Monster:
-    """Create a Monster at `tile` and path it toward the nearest claimed tile.
-    Monsters walk in from outside territory, so unlike NPCs they treat every
-    in-bounds tile as walkable (fog/unclaimed included) — except Wall tiles,
-    which block like they do for NPCs (ticket 07)."""
+    """Create a Monster at `tile` and path it toward the nearest claimed tile."""
     monster = Monster(*tile_center(*tile), type=monster_type)
     target = nearest_claimed_tile(grid, tile)
     if target is not None:
-        path = find_path(
-            lambda x, y: grid.in_bounds(x, y) and not is_wall_blocked(buildings, x, y),
-            grid.width,
-            grid.height,
-            tile,
-            target,
-        )
+        path = _path_toward(tile, target, grid, buildings)
         if path:
             monster.set_path(path)
     return monster
+
+
+def retarget_monster(monster: Monster, world) -> None:
+    """Call once a monster's path is empty (fresh from spawn_monster's
+    initial fallback-free path, or because it just walked its previous
+    target's path to completion) - picks a new target and paths to it, so
+    monsters keep actively closing in instead of freezing in place once
+    they reach wherever they were first sent. Prefers the nearest living
+    NPC (this is the actual "chase" behavior); falls back to the nearest
+    claimed tile if the colony has no NPCs left, so monsters still
+    advance on the territory itself rather than idling forever."""
+    start = tile_at(monster.x, monster.y)
+
+    target = None
+    if world.npcs:
+        nearest_npc = min(world.npcs, key=lambda npc: math.hypot(npc.x - monster.x, npc.y - monster.y))
+        target = tile_at(nearest_npc.x, nearest_npc.y)
+    if target is None:
+        target = nearest_claimed_tile(world.grid, start)
+    if target is None or target == start:
+        return
+
+    path = _path_toward(start, target, world.grid, world.buildings)
+    if path:
+        monster.set_path(path)

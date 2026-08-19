@@ -36,7 +36,11 @@ def create_initial_animals(grid: "Grid", count: int, rng: random.Random | None =
 
 def _tick_wildlife(world: "World", dt: float) -> None:
     for animal in world.animals:
-        animal.update(dt, world.grid.width, world.grid.height)
+        animal.update(dt, world.grid.width, world.grid.height, world.npcs)
+        # task.py sets is_targeted earlier this same tick for anything being
+        # actively hunted/tamed right now; clear it so next tick starts from
+        # "not targeted" and task.py has to re-affirm it if still true.
+        animal.is_targeted = False
 
     world.animal_spawn_timer += dt
     if world.animal_spawn_timer >= ANIMAL_SPAWN_INTERVAL:

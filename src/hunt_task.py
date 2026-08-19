@@ -14,7 +14,7 @@ from constants import (
 )
 from coords import tile_at
 from skills import hunting_crit_chance
-from task import register_task_type, TaskType
+from task import register_task_type, resolve_task_animal, TaskType
 
 if TYPE_CHECKING:
     from task import Task
@@ -30,26 +30,15 @@ def can_queue_hunt(world: "World", tile: tuple[int, int]) -> bool:
 
 def can_perform_hunt(world: "World", task: "Task") -> bool:
     """Hunt task can be performed if the target animal exists and is alive."""
-    if not hasattr(world, "animals"):
-        return False
-    if task.target_animal_id is not None:
-        return any(a.id == task.target_animal_id and not a.is_dead for a in world.animals)
-    return any(tile_at(a.x, a.y) == task.target and not a.is_dead for a in world.animals)
+    return resolve_task_animal(world, task) is not None
 
 
 def on_complete_hunt(world: "World", task: "Task", rng: random.Random | None = None) -> bool:
     """Resolve attack against the hunted animal.
     If animal dies, removes it and completes the task.
     Returns True when task is finished, False if target moved or still alive."""
-    if not hasattr(world, "animals"):
-        return True
-
     rng = rng or random.Random()
-    animal = None
-    if task.target_animal_id is not None:
-        animal = next((a for a in world.animals if a.id == task.target_animal_id), None)
-    if animal is None:
-        animal = next((a for a in world.animals if tile_at(a.x, a.y) == task.target and not a.is_dead), None)
+    animal = resolve_task_animal(world, task)
 
     if animal is None or animal.is_dead:
         return True
@@ -58,17 +47,20 @@ def on_complete_hunt(world: "World", task: "Task", rng: random.Random | None = N
     base_attack = getattr(npc, "attack", 12) if npc else 12
     npc_role = getattr(npc, "role", None) if npc else None
 
-    # Knight gets a critical-hit-chance bonus against fauna specifically,
-    # boosted further by the Hunting Accuracy skill (ticket 23)
     damage = float(base_attack)
     if npc_role == ROLE_KNIGHT and rng.random() < hunting_crit_chance(world):
         damage *= KNIGHT_CRIT_MULTIPLIER
 
+    if npc and hasattr(npc, "trigger_attack"):
+        npc.trigger_attack(animal.x, animal.y)
+
     animal.take_damage(damage)
+
 
     # If dangerous animal is hostile and still alive, retaliate against NPC
     if animal.dangerous and animal.is_hostile and npc and not animal.is_dead:
         animal.retaliate(npc)
+
 
     if animal.is_dead:
         world.animals[:] = [a for a in world.animals if not a.is_dead]

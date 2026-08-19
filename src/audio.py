@@ -88,3 +88,42 @@ def play_sfx(name: str, volume: float | None = None, min_interval: float | None 
         except pygame.error:
             pass
 
+
+_CURRENT_BGM_TRACK: str | None = None
+
+def play_bgm(phase: str, volume: float = 0.20) -> None:
+    """Safely play background music looping for daytime or nighttime.
+    Uses pygame.mixer.music so it streams smoothly without eating memory."""
+    global _CURRENT_BGM_TRACK
+    if not pygame.mixer.get_init():
+        return
+
+    track_name = f"{phase}_bgm"
+    if _CURRENT_BGM_TRACK == track_name:
+        return
+
+    for ext in (".wav", ".ogg", ".mp3", ".m4a"):
+        bgm_path = _SFX_DIR / f"{track_name}{ext}"
+        if bgm_path.exists():
+            try:
+                pygame.mixer.music.load(str(bgm_path))
+                pygame.mixer.music.set_volume(volume)
+                pygame.mixer.music.play(-1, fade_ms=1000)
+                _CURRENT_BGM_TRACK = track_name
+                break
+            except (pygame.error, OSError):
+                continue
+
+
+def stop_bgm(fade_ms: int = 500) -> None:
+    """Fade out and stop background music."""
+    global _CURRENT_BGM_TRACK
+    if not pygame.mixer.get_init():
+        return
+    try:
+        pygame.mixer.music.fadeout(fade_ms)
+        _CURRENT_BGM_TRACK = None
+    except pygame.error:
+        pass
+
+

@@ -50,6 +50,31 @@ def test_can_queue_rejects_unclaimed_tile_not_adjacent_to_claimed_land():
     assert not TASK_TYPES["Expand"].can_queue(world, isolated)
 
 
+def test_can_perform_true_for_still_unclaimed_target():
+    world = World(npc_count=0)
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    frontier = (cx + START_CLAIM_RADIUS + 1, cy)
+    task = world.tasks.add("Expand", frontier)
+
+    assert TASK_TYPES["Expand"].can_perform(world, task)
+
+
+def test_can_perform_false_once_a_different_expand_already_claimed_the_target():
+    # Claim radii overlap by design - a queued-but-not-yet-worked Expand's
+    # target can end up already claimed as a side effect of a different,
+    # earlier Expand finishing nearby. That task is now genuinely dead work.
+    world = World(npc_count=0)
+    cx, cy = world.grid.width // 2, world.grid.height // 2
+    near = (cx + START_CLAIM_RADIUS + 1, cy)
+    far = (cx + START_CLAIM_RADIUS + 1 + EXPAND_CLAIM_RADIUS, cy)
+    task = world.tasks.add("Expand", far)
+
+    world.grid.expand(*near, EXPAND_CLAIM_RADIUS, EXPAND_REVEAL_RADIUS)  # swallows `far` too
+    assert world.grid.get(*far).claimed
+
+    assert not TASK_TYPES["Expand"].can_perform(world, task)
+
+
 def test_full_expand_task_lifecycle_claims_and_reveals_tiles():
     world = World(npc_count=0)
     cx, cy = world.grid.width // 2, world.grid.height // 2

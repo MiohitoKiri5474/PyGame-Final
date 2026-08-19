@@ -21,8 +21,10 @@ from npc import NPC
 from tame_task import (
     can_queue_tame,
     can_perform_tame,
+    idle_spot_near_pen,
     on_complete_tame,
     process_animal_for_food,
+    _on_complete_pen,
     _tick_pen_production,
 )
 from task import Task, update_npc_tasks
@@ -120,6 +122,9 @@ class TestTameTask:
         assert animal.is_tamed
         assert pen.assigned_animal_id == animal.id
         assert animal.pen_tile == (5, 5)
+        # Walks over to idle beside the pen rather than teleporting into it
+        assert not animal.is_following
+        assert animal.idle_target == idle_spot_near_pen(world, 5, 5)
 
     def test_tamed_animal_waits_if_no_pen_available(self):
         world = World()  # No pens
@@ -137,6 +142,45 @@ class TestTameTask:
         assert animal.is_tamed
         assert animal.pen_tile is None
         assert animal in world.animals  # Does not vanish!
+        # No pen to go to - taming defaults to following whoever tamed it
+        assert animal.is_following
+        assert animal.tamer_npc_id == npc.id
+
+
+class TestPenAssignmentAndFollowInteraction:
+    def test_new_pen_binds_to_a_following_animal_without_interrupting_it(self):
+        world = World()
+        animal = Animal(*tile_center(10, 10), species="Horse", speed=140.0, dangerous=False, health=40)
+        animal.is_tamed = True
+        animal.is_following = True
+        animal.tamer_npc_id = 0
+        world.animals.append(animal)
+
+        task = Task(type="BuildAnimalPen", target=(5, 5))
+        from constants import ANIMAL_PEN_COST
+        for res, amt in ANIMAL_PEN_COST.items():
+            world.inventory.add(res, amt)
+
+        assert _on_complete_pen(world, task)
+        assert animal.pen_tile == (5, 5)
+        assert animal.is_following  # still following - not yanked back
+
+    def test_back_to_pen_helper_targets_a_free_tile_beside_the_pen(self):
+        world = World()
+        pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
+        world.buildings.append(pen)
+
+        spot = idle_spot_near_pen(world, 5, 5)
+        assert spot == tile_center(5, 4)  # first free cardinal tile checked (north)
+
+    def test_idle_spot_skips_blocked_cardinal_tiles(self):
+        world = World()
+        pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
+        blocker = Building(type="Wall", x=5, y=4, block=100, attack=0)  # occupies the north tile
+        world.buildings.extend([pen, blocker])
+
+        spot = idle_spot_near_pen(world, 5, 5)
+        assert spot == tile_center(6, 5)  # falls through to east
 
     def test_farmer_tames_faster_than_other_roles(self):
         # Ticket 26's "1.5x success rate and speed vs. other roles" speed
@@ -168,6 +212,50 @@ class TestTameTask:
 
         assert farmer.task is None  # finished already, thanks to the 0.6x multiplier
         assert knight.task is not None  # still working
+
+
+class TestTameRepathing:
+    def test_npc_binds_animal_id_and_repaths_when_animal_moves_out_of_range(self):
+        # Tame previously never bound target_animal_id at claim time (only
+        # Hunt did), so a wandering animal would silently desync from the
+        # stale target tile with no chase logic to recover - this covers
+        # the same claim-and-chase path Hunt already had, now shared by Tame.
+        world = World(npc_count=1)
+        animal = Animal(*tile_center(12, 10), species="Horse", speed=140.0, dangerous=False, health=40)
+        world.animals.append(animal)
+
+        task = world.tasks.add("Tame", (12, 10))
+        npc = world.npcs[0]
+        npc.x, npc.y = tile_center(10, 10)
+
+        update_npc_tasks(world, 0.1)
+        assert npc.task is task
+        assert task.target_animal_id == animal.id
+
+        animal.x, animal.y = tile_center(16, 10)
+        animal.path = []
+        npc.x, npc.y = tile_center(12, 10)
+        npc.path = []
+
+        update_npc_tasks(world, 0.1)
+        assert npc.task.target == (16, 10)
+        assert len(npc.path) > 0
+
+    def test_npc_holds_position_and_works_once_in_range(self):
+        world = World(npc_count=1)
+        animal = Animal(*tile_center(11, 10), species="Horse", speed=140.0, dangerous=False, health=40)
+        world.animals.append(animal)
+
+        task = world.tasks.add("Tame", (11, 10), target_animal_id=animal.id)
+        npc = world.npcs[0]
+        npc.x, npc.y = tile_center(10, 10)
+        npc.path = []
+        npc.task = task
+        task.assigned_npc = npc
+
+        update_npc_tasks(world, 0.1)
+        assert npc.path == []
+        assert npc.task_progress > 0
 
 
 class TestAnimalPenProductionAndHorseBuff:
@@ -204,3 +292,37 @@ class TestAnimalPenProductionAndHorseBuff:
 
         _tick_pen_production(world, 0.1)
         assert npc.speed == 120.0 + HORSE_SPEED_BONUS
+
+    def test_following_animal_pauses_meat_production(self):
+        world = World()
+        pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
+        world.buildings.append(pen)
+
+        boar = Animal(*tile_center(5, 5), species="WildBoar", speed=70.0, dangerous=False, health=30)
+        boar.is_tamed = True
+        boar.pen_tile = (5, 5)
+        boar.is_following = True  # off with its tamer, not in the pen right now
+        pen.assigned_animal_id = boar.id
+        world.animals.append(boar)
+
+        initial_meat = world.inventory.get("meat")
+        _tick_pen_production(world, PEN_PRODUCTION_INTERVAL)
+        assert world.inventory.get("meat") == initial_meat
+
+    def test_following_horse_pauses_speed_bonus(self):
+        world = World()
+        pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
+        world.buildings.append(pen)
+
+        horse = Animal(*tile_center(5, 5), species="Horse", speed=140.0, dangerous=False, health=40)
+        horse.is_tamed = True
+        horse.pen_tile = (5, 5)
+        horse.is_following = True
+        pen.assigned_animal_id = horse.id
+        world.animals.append(horse)
+
+        npc = NPC(0, 0, speed=120.0)
+        world.npcs = [npc]
+
+        _tick_pen_production(world, 0.1)
+        assert npc.speed == 120.0

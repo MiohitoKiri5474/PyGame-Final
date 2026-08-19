@@ -61,6 +61,27 @@ class SkillUI:
 
         return points_available
 
+    def handle_click(self, pos: tuple[int, int], world: "World", points_available: int) -> int:
+        """Process a mouse click when the UI is visible. Clicking a row selects & spends."""
+        if not self.visible:
+            return points_available
+        panel_w = 420
+        panel_h = 280
+        panel_x = (WINDOW_WIDTH - panel_w) // 2
+        panel_y = (WINDOW_HEIGHT - panel_h) // 2
+        pad = 16
+        row_h = 26
+        y = panel_y + pad + row_h + 8
+        for i, skill in enumerate(SKILL_NAMES):
+            row_rect = pygame.Rect(panel_x + pad, y, panel_w - pad * 2, row_h)
+            if row_rect.collidepoint(pos):
+                self.selected_index = i
+                points_available, _ = spend_point(world, points_available, skill)
+                return points_available
+            y += row_h + 2
+        return points_available
+
+
     def render(self, surface: pygame.Surface, font: pygame.font.Font, world: "World", points_available: int) -> None:
         if not self.visible:
             return
@@ -99,5 +120,5 @@ class SkillUI:
             y += row_h + 2
 
         y = panel_y + panel_h - row_h - pad
-        hint_surf = font.render("[↑↓] select   [Enter/→] spend point   [K/Esc] close", True, _HINT_TEXT)
+        hint_surf = font.render("[Up/Down] select   [Enter/Right] spend point   [K/Esc] close", True, _HINT_TEXT)
         surface.blit(hint_surf, (panel_x + pad, y))
