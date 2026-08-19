@@ -35,7 +35,9 @@ from constants import (
     ROLE_FARMER,
     ROLE_KNIGHT,
     ROLE_MAGE,
+    FARMLAND_GROW_SECONDS,
 )
+
 
 import time
 from action_menu import ActionMenu
@@ -299,12 +301,19 @@ class Game:
             return
 
         # Otherwise infer from what's actually on the tile: queue directly
-        # when exactly one task applies, ask when there's a real choice.
+        # when exactly one constructive task applies, ask when there's a real choice
+        # or when the action is destructive (Destroy).
         options = applicable_tasks(self.world, (gx, gy))
         if len(options) == 1:
-            self.world.tasks.add(options[0], (gx, gy))
+            if options[0] == "Destroy":
+                # Demolishing an existing building or growing crop is destructive:
+                # Open action menu so a single stray click doesn't accidentally demolish it!
+                self.action_menu.open(options, (gx, gy), screen_pos)
+            else:
+                self.world.tasks.add(options[0], (gx, gy))
         elif len(options) > 1:
             self.action_menu.open(options, (gx, gy), screen_pos)
+
 
     def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
         for npc in self.world.npcs:
@@ -1433,7 +1442,13 @@ class Game:
         npc = next((n for n in self.world.npcs if tile_at(n.x, n.y) == (gx, gy)), None)
 
         if building:
-            info = f"Building: {building.type} (Block: {building.block}, Attack: {building.attack})"
+            if building.type == "Farmland":
+                if building.ready:
+                    info = "Building: Farmland (Ready to Harvest!)"
+                else:
+                    info = f"Building: Farmland (Growing: {int(building.growth_timer)}/{int(FARMLAND_GROW_SECONDS)}s)"
+            else:
+                info = f"Building: {building.type} (Block: {building.block}, Attack: {building.attack})"
         elif tile.resource:
             info = f"Material: {tile.resource.capitalize()}"
         else:
@@ -1462,8 +1477,11 @@ class Game:
         if not options:
             return ""
         if len(options) == 1:
+            if options[0] == "Destroy":
+                return "  ->  Click for menu: Destroy"
             return f"  ->  Click to {options[0]}"
         return f"  ->  Click to choose: {', '.join(options)}"
+
 
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER
