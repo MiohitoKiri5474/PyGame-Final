@@ -30,26 +30,21 @@ def render_drifting_fog_layer(
     unexplored regions of the map (not confined to individual grid squares)."""
     cam_x, cam_y = camera.x, camera.y
 
-    # Calculate world bounds visible on screen plus margin for large clouds
-    margin = 120
+    # Calculate world bounds visible on screen plus generous margin for large clouds
+    margin = 160
     min_wx = max(0, int(cam_x - margin))
     max_wx = min(grid.width * TILE_SIZE, int(cam_x + WINDOW_WIDTH + margin))
     min_wy = max(0, int(cam_y - margin))
     max_wy = min(grid.height * TILE_SIZE, int(cam_y + WINDOW_HEIGHT + margin))
 
-    # Cloud cluster spacing across the world
-    step_x = 72
-    step_y = 64
+    # Dense cloud cluster spacing across the world for rich seamless coverage
+    step_x = 44
+    step_y = 38
 
     start_cx = min_wx // step_x
     end_cx = (max_wx // step_x) + 1
     start_cy = min_wy // step_y
     end_cy = (max_wy // step_y) + 1
-
-    # Large cloud sprites from assets/terrain/cloud.png & fog.png
-    base_cloud_lg = cloud_sprite(128)
-    base_cloud_md = cloud_sprite(96)
-    base_cloud_sm = cloud_sprite(76)
 
     for cy_idx in range(start_cy, end_cy):
         for cx_idx in range(start_cx, end_cx):
@@ -57,15 +52,15 @@ def render_drifting_fog_layer(
             seed = (cx_idx * 73856093 ^ cy_idx * 19349663) % 1000
 
             # Organic floating motion: drifting right and bobbing vertically
-            drift_speed = 10.0 + (seed % 6) * 1.5
+            drift_speed = 9.0 + (seed % 5) * 1.5
             drift_x = (time_s * drift_speed + seed * 2.0) % (grid.width * TILE_SIZE + 200) - 100
-            bob_y = math.sin(time_s * 1.1 + seed * 0.1) * 8.0 + math.cos(time_s * 0.7 + seed * 0.2) * 5.0
+            bob_y = math.sin(time_s * 1.0 + seed * 0.1) * 7.0 + math.cos(time_s * 0.6 + seed * 0.2) * 5.0
 
-            # Base anchor in world coordinates
-            wx = cx_idx * step_x + math.sin(cy_idx * 2.1 + seed) * 22.0 + (time_s * 8.0) % 140
-            wy = cy_idx * step_y + math.cos(cx_idx * 1.8 + seed) * 18.0 + bob_y
+            # Base anchor in world coordinates with drifting sway
+            wx = cx_idx * step_x + math.sin(cy_idx * 1.9 + seed) * 18.0 + (time_s * 7.0) % 120
+            wy = cy_idx * step_y + math.cos(cx_idx * 1.6 + seed) * 14.0 + bob_y
 
-            # Check if this cloud position is in or near unexplored territory
+            # Check if this cloud position is within world bounds
             gtx, gty = tile_at(wx, wy)
             if not (0 <= gtx < grid.width and 0 <= gty < grid.height):
                 continue
@@ -81,30 +76,30 @@ def render_drifting_fog_layer(
                         is_near_fog = True
                         break
                 if not is_near_fog:
-                    continue  # Skip clouds completely deep inside revealed colony
-                cloud_alpha = 140  # Soft fading cloud at frontier edge
+                    continue  # Skip clouds completely inside deep revealed colony
+                cloud_alpha = 175  # Soft feathering at frontier edge
             else:
-                cloud_alpha = 220 + (seed % 35)  # Dense billowing cloud over unexplored lands
+                cloud_alpha = 245 + (seed % 10)  # Dense, thick, solid cloud coverage over unexplored lands
 
-            # Select cloud variant (0..14) and scale dynamically based on seed
+            # Select cloud variant (0..14) and scale to large thick cloud sizes
             cloud_variant = seed % 15
-            cloud_width = 84 + (seed % 6) * 14  # 84px to 154px
+            cloud_width = 110 + (seed % 8) * 18  # 110px to 236px for plush dense overlap
             cloud_img = cloud_sprite(index=cloud_variant, width=cloud_width)
 
             if cloud_img is None:
                 continue
 
-
             # Screen coordinates
             sx = int(wx - cam_x)
             sy = int(wy - cam_y)
 
-            # Render translucent floating cloud
+            # Render thick floating cloud
             c_surf = cloud_img.copy()
             if cloud_alpha < 255:
                 c_surf.fill((255, 255, 255, cloud_alpha), special_flags=pygame.BLEND_RGBA_MULT)
 
             surface.blit(c_surf, c_surf.get_rect(center=(sx, sy)))
+
 
 
 def render_fog_tile(
