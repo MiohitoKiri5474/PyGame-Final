@@ -124,35 +124,60 @@ def render_celestial_dial(
     cx, cy = get_celestial_position(rect, p)
 
     if is_day:
-        custom_sun = sun_sprite(44)
+        # 1. Radiant Solar Aura & Rotating Corona Rays (Behind the Sun)
+        corona_surf = pygame.Surface((70, 70), pygame.SRCALPHA)
+        corona_center = (35, 35)
+
+        pulse = 1.0 + 0.07 * math.sin(time_s * 2.8)
+        aura_r1 = int(24 * pulse)
+        aura_r2 = int(18 * pulse)
+        pygame.draw.circle(corona_surf, (255, 230, 90, 70), corona_center, aura_r1)
+        pygame.draw.circle(corona_surf, (255, 245, 140, 110), corona_center, aura_r2)
+
+        # 8 Rotating Radiant Solar Ray Spikes
+        ray_rot = time_s * 1.5
+        for i in range(8):
+            ang = ray_rot + i * (math.pi / 4.0)
+            r_in = 14.0 * pulse
+            r_out = (21.0 + math.sin(time_s * 3.2 + i) * 3.0) * pulse
+            p1 = (corona_center[0] + math.cos(ang) * r_out, corona_center[1] + math.sin(ang) * r_out)
+            p2 = (corona_center[0] + math.cos(ang - 0.20) * r_in, corona_center[1] + math.sin(ang - 0.20) * r_in)
+            p3 = (corona_center[0] + math.cos(ang + 0.20) * r_in, corona_center[1] + math.sin(ang + 0.20) * r_in)
+            pygame.draw.polygon(corona_surf, (255, 220, 65, 200), [p1, p2, p3])
+
+        surface.blit(corona_surf, (int(cx - 35), int(cy - 35)))
+
+        # 2. Main Sun Body (with smooth breathing scale & gentle sway tilt)
+        cur_sun_sz = max(32, int(46 * pulse))
+        custom_sun = sun_sprite(cur_sun_sz)
+        sway_angle = math.sin(time_s * 1.6) * 5.0  # gentle breathing tilt
+
         if custom_sun is not None:
-            surface.blit(custom_sun, custom_sun.get_rect(center=(int(cx), int(cy))))
+            rot_sun = pygame.transform.rotate(custom_sun, sway_angle)
+            surface.blit(rot_sun, rot_sun.get_rect(center=(int(cx), int(cy))))
         else:
-            # Golden Paper Sun with rotating rays
+            # Fallback procedural sun core
             sun_surf = pygame.Surface((44, 44), pygame.SRCALPHA)
-            sun_center = (22, 22)
-            # Soft outer aura
-            pygame.draw.circle(sun_surf, (255, 230, 100, 75), sun_center, 20)
-            pygame.draw.circle(sun_surf, (255, 240, 140, 120), sun_center, 15)
+            pygame.draw.circle(sun_surf, (255, 235, 70), (22, 22), 11)
+            pygame.draw.circle(sun_surf, (255, 165, 30), (22, 22), 11, 2)
+            pygame.draw.circle(sun_surf, (255, 255, 255), (19, 19), 3)
+            rot_sun = pygame.transform.rotate(sun_surf, sway_angle)
+            surface.blit(rot_sun, rot_sun.get_rect(center=(int(cx), int(cy))))
 
-            # 8 Rotating Solar Rays
-            ray_rot = time_s * 1.8
-            for i in range(8):
-                ang = ray_rot + i * (math.pi / 4.0)
-                r_in = 10.0
-                r_out = 15.0 + math.sin(time_s * 3.0 + i) * 2.0
-                p1 = (sun_center[0] + math.cos(ang) * r_out, sun_center[1] + math.sin(ang) * r_out)
-                p2 = (sun_center[0] + math.cos(ang - 0.22) * r_in, sun_center[1] + math.sin(ang - 0.22) * r_in)
-                p3 = (sun_center[0] + math.cos(ang + 0.22) * r_in, sun_center[1] + math.sin(ang + 0.22) * r_in)
-                pygame.draw.polygon(sun_surf, (255, 215, 60, 230), [p1, p2, p3])
+        # 3. Twinkling Golden Sun Glints / Sparkles
+        for i in range(3):
+            sp_ang = time_s * 1.8 + i * (2.0 * math.pi / 3.0)
+            sp_dist = 24.0 + math.sin(time_s * 2.5 + i) * 3.0
+            sp_x = cx + math.cos(sp_ang) * sp_dist
+            sp_y = cy + math.sin(sp_ang) * sp_dist
+            sp_alpha = int(140 + 115 * math.sin(time_s * 4.0 + i * 2.0))
+            if sp_alpha > 50:
+                sp_surf = pygame.Surface((8, 8), pygame.SRCALPHA)
+                pygame.draw.line(sp_surf, (255, 255, 240, sp_alpha), (4, 1), (4, 7), 1)
+                pygame.draw.line(sp_surf, (255, 255, 240, sp_alpha), (1, 4), (7, 4), 1)
+                surface.blit(sp_surf, (int(sp_x - 4), int(sp_y - 4)))
 
-            # Sun Core
-            pygame.draw.circle(sun_surf, (255, 235, 70), sun_center, 9)
-            pygame.draw.circle(sun_surf, (255, 165, 30), sun_center, 9, 2)
-            pygame.draw.circle(sun_surf, (255, 255, 255), (sun_center[0] - 3, sun_center[1] - 3), 2)
-            surface.blit(sun_surf, (int(cx - 22), int(cy - 22)))
-
-        # 5. Daytime Foreground Drifting Clouds (In Front of Sky and Sun)
+        # 4. Daytime Foreground Drifting Clouds (In Front of Sky and Sun)
         # Cloud 1 (Upper sky drifting)
         c1_x = rect.x + ((time_s * 11.0 + 15) % (rect.width + 60)) - 30
         c1_y = rect.y + 28 + math.sin(time_s * 1.4) * 2.0
@@ -162,6 +187,7 @@ def render_celestial_dial(
         c2_x = rect.x + ((time_s * 7.5 + rect.width * 0.45) % (rect.width + 70)) - 35
         c2_y = rect.y + 52 + math.cos(time_s * 1.0) * 2.5
         _draw_paper_cloud(surface, c2_x, c2_y, scale=1.05, alpha=235, cloud_index=5)
+
 
     else:
         custom_moon = moon_sprite(38)
