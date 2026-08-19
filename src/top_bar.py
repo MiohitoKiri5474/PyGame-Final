@@ -21,7 +21,7 @@ from sprites import resource_sprite
 
 _MARGIN = 10
 _PAD = 10
-_LEFT_W = 170
+LEFT_W = 170  # public: magic_panel matches its outer box to this exactly
 _LEFT_MIN_H = 150  # tall enough for the left box's round/phase/ring stack
 _MIDDLE_GAP = 8
 _RIGHT_COL_W = 150  # matches top_buttons._BUTTON_W, kept clear of overlap
@@ -90,7 +90,7 @@ def render(
     box + Inventory) - the magic panel starts there, not at the (possibly
     taller) middle/right columns' bottom, since it shares the left
     column's x-range but not theirs."""
-    left_rect = pygame.Rect(_MARGIN, _MARGIN, _LEFT_W, _LEFT_MIN_H)
+    left_rect = pygame.Rect(_MARGIN, _MARGIN, LEFT_W, _LEFT_MIN_H)
     _box(surface, left_rect)
 
     round_surf = font.render(f"Round {round_number}", True, _ROUND_COLOR)
@@ -114,7 +114,7 @@ def render(
     # the map. Icon + count only (no resource name): this column is too
     # narrow to fit "raw_stone  x12" without overflow.
     inv_h = _inventory_height(len(inventory_items))
-    inv_rect = pygame.Rect(_MARGIN, left_rect.bottom + _MARGIN, _LEFT_W, inv_h)
+    inv_rect = pygame.Rect(_MARGIN, left_rect.bottom + _MARGIN, LEFT_W, inv_h)
     _box(surface, inv_rect)
     iy = inv_rect.y + _PAD
     if not inventory_items:
