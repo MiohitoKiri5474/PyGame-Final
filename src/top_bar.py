@@ -11,6 +11,8 @@ precedent.
 
 from __future__ import annotations
 
+import math
+
 import pygame
 
 from constants import WINDOW_WIDTH
@@ -19,7 +21,7 @@ from sprites import resource_sprite
 _MARGIN = 10
 _PAD = 10
 _LEFT_W = 170
-_LEFT_MIN_H = 112  # tall enough for the left box's round/phase/number stack
+_LEFT_MIN_H = 150  # tall enough for the left box's round/phase/ring stack
 _MIDDLE_GAP = 8
 _RIGHT_COL_W = 150  # matches top_buttons._BUTTON_W, kept clear of overlap
 
@@ -33,6 +35,23 @@ _ROUND_COLOR = (220, 220, 225)
 _LABEL = (225, 225, 230)
 _HINT_TEXT = (200, 200, 205)
 _EMPTY_COLOR = (120, 120, 130)
+
+_RING_RADIUS = 34
+_RING_WIDTH = 7
+_RING_BG = (55, 58, 70)
+
+
+def _draw_progress_ring(
+    surface: pygame.Surface, center: tuple[int, int], fraction: float, color: tuple[int, int, int]
+) -> None:
+    """Clockwise-depleting ring starting at 12 o'clock, `fraction` = time left / phase length."""
+    rect = pygame.Rect(0, 0, _RING_RADIUS * 2, _RING_RADIUS * 2)
+    rect.center = center
+    pygame.draw.circle(surface, _RING_BG, center, _RING_RADIUS, _RING_WIDTH)
+    if fraction > 0:
+        start_angle = -math.pi / 2
+        end_angle = start_angle + 2 * math.pi * min(1.0, fraction)
+        pygame.draw.arc(surface, color, rect, start_angle, end_angle, _RING_WIDTH)
 
 
 def left_box_bottom() -> int:
@@ -50,10 +69,10 @@ def _box(surface: pygame.Surface, rect: pygame.Rect) -> None:
 def render(
     surface: pygame.Surface,
     font: pygame.font.Font,
-    big_font: pygame.font.Font,
     round_number: int,
     phase_label: str,
     remaining_seconds: float,
+    duration_seconds: float,
     phase_color: tuple[int, int, int],
     npc_count: int,
     inventory_items: list[tuple[str, int]],
@@ -67,14 +86,19 @@ def render(
 
     round_surf = font.render(f"Round {round_number}", True, _ROUND_COLOR)
     phase_surf = font.render(phase_label, True, phase_color)
-    number_surf = big_font.render(f"{remaining_seconds:.0f}s", True, phase_color)
-    stack_h = round_surf.get_height() + phase_surf.get_height() + number_surf.get_height() + 8
+    ring_diameter = _RING_RADIUS * 2
+    stack_h = round_surf.get_height() + phase_surf.get_height() + ring_diameter + 8
     y = left_rect.centery - stack_h // 2
     surface.blit(round_surf, round_surf.get_rect(centerx=left_rect.centerx, top=y))
     y += round_surf.get_height() + 2
     surface.blit(phase_surf, phase_surf.get_rect(centerx=left_rect.centerx, top=y))
     y += phase_surf.get_height() + 6
-    surface.blit(number_surf, number_surf.get_rect(centerx=left_rect.centerx, top=y))
+
+    fraction = 0.0 if duration_seconds <= 0 else max(0.0, min(1.0, remaining_seconds / duration_seconds))
+    ring_center = (left_rect.centerx, y + _RING_RADIUS)
+    _draw_progress_ring(surface, ring_center, fraction, phase_color)
+    number_surf = font.render(f"{remaining_seconds:.0f}s", True, phase_color)
+    surface.blit(number_surf, number_surf.get_rect(center=ring_center))
 
     # Middle column: NPC (fixed), Inventory (grows with item count), Hint
     # (grows with active hints) - three independently-sized boxes, stacked.
