@@ -1,6 +1,7 @@
 import math
 import random
 
+from constants import PET_FOLLOW_MIN_DISTANCE
 from coords import tile_at, tile_center
 from movement import step_toward_path, step_toward_point
 
@@ -126,8 +127,14 @@ class Animal:
                 # Trail the tamer's previous-tick position, snake-body style,
                 # rather than its live position - it naturally retraces
                 # ground the tamer already validly walked, so no obstacle
-                # avoidance is needed for the chase itself.
-                self.x, self.y = step_toward_point(self.x, self.y, tamer.prev_x, tamer.prev_y, self.speed, dt)
+                # avoidance is needed for the chase itself. Once within
+                # PET_FOLLOW_MIN_DISTANCE, stop closing the rest of the way -
+                # without this, an idle tamer's prev_x/y converges on its own
+                # live position tick after tick, and the pet would end up
+                # sitting exactly on top of it instead of holding a step back.
+                target_x, target_y = tamer.prev_x, tamer.prev_y
+                if math.hypot(self.x - target_x, self.y - target_y) > PET_FOLLOW_MIN_DISTANCE:
+                    self.x, self.y = step_toward_point(self.x, self.y, target_x, target_y, self.speed, dt)
             else:
                 # Tamer died - stop following; settle by its pen if it has one
                 self.is_following = False
