@@ -1863,12 +1863,13 @@ class Game:
 
 
 
-                # Material indicator for resource blocks
-                if tile.revealed and tile.resource:
+                # Material indicator for resource blocks (never on mountains)
+                if tile.revealed and tile.resource and getattr(tile, "terrain", "plain") != "mountain":
                     sprite = map_resource_sprite(tile.resource)
                     if sprite is not None:
                         center = (screen_x + TILE_SIZE // 2, screen_y + TILE_SIZE // 2)
                         self.screen.blit(sprite, sprite.get_rect(center=center))
+
                     else:
                         marker_rect = pygame.Rect(screen_x + 8, screen_y + 8, TILE_SIZE - 16, TILE_SIZE - 16)
                         pygame.draw.rect(self.screen, (240, 210, 80), marker_rect, border_radius=6)

@@ -315,7 +315,7 @@ def _load_grid(data: dict) -> Grid:
     grid.tiles = [
         [
             Tile(
-                resource=t["resource"],
+                resource=None if t.get("terrain", "plain") == "mountain" else t["resource"],
                 revealed=t["revealed"],
                 claimed=t["claimed"],
                 terrain=t.get("terrain", "plain"),
@@ -325,4 +325,5 @@ def _load_grid(data: dict) -> Grid:
         for row in data["tiles"]
     ]
     return grid
+
 

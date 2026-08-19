@@ -48,19 +48,38 @@ def _generate_terrain_map(
                     grid_terrain[y][cur_x] = TERRAIN_RIVER
         rx = max(2, min(width - 3, rx + rng.choice([-1, 0, 0, 1])))
 
-    # 2. Mountain Clusters (2-4 ridges)
-    num_ridges = rng.randint(3, 5)
-    for _ in range(num_ridges):
-        mx = rng.randint(2, width - 3)
-        my = rng.randint(2, height - 3)
-        length = rng.randint(4, 7)
-        dx, dy = rng.choice([(1, 0), (0, 1), (1, 1), (1, -1)])
-        for step in range(length):
-            cx = mx + dx * step
-            cy = my + dy * step
-            if 0 <= cx < width and 0 <= cy < height:
-                if abs(cx - start_x) > safe_radius or abs(cy - start_y) > safe_radius:
-                    grid_terrain[cy][cx] = TERRAIN_MOUNTAIN
+    # 2. Mountain Ranges & Massifs (3-4 organic connected ranges)
+    num_ranges = rng.randint(3, 4)
+    for _ in range(num_ranges):
+        # Pick anchor away from colony start
+        for _attempt in range(20):
+            mx = rng.randint(4, width - 5)
+            my = rng.randint(4, height - 5)
+            if abs(mx - start_x) > safe_radius + 3 or abs(my - start_y) > safe_radius + 3:
+                break
+
+        length = rng.randint(6, 10)
+        cur_x, cur_y = mx, my
+        primary_axis = rng.choice(["H", "V"])
+
+        for _step in range(length):
+            # Place a solid connected cluster (2-3 tiles wide) around current spine point
+            w_span = rng.randint(1, 2)
+            h_span = rng.randint(1, 2)
+            for ox in range(-w_span + 1, w_span + 1):
+                for oy in range(-h_span + 1, h_span + 1):
+                    cx, cy = cur_x + ox, cur_y + oy
+                    if 1 <= cx < width - 1 and 1 <= cy < height - 1:
+                        if abs(cx - start_x) > safe_radius or abs(cy - start_y) > safe_radius:
+                            grid_terrain[cy][cx] = TERRAIN_MOUNTAIN
+
+            # Step cardinally along spine with natural wander
+            if primary_axis == "H":
+                cur_x += rng.choice([1, 1, 2])
+                cur_y += rng.choice([-1, 0, 0, 1])
+            else:
+                cur_y += rng.choice([1, 1, 2])
+                cur_x += rng.choice([-1, 0, 0, 1])
 
     # 3. Mud / Swamp Patches (2-4 patches)
     num_swamps = rng.randint(2, 4)
@@ -116,7 +135,14 @@ class Grid:
             ]
             for y in range(GRID_HEIGHT)
         ]
+        # Strictly guarantee mountains never have any resources
+        for row in self.tiles:
+            for tile in row:
+                if tile.terrain == TERRAIN_MOUNTAIN:
+                    tile.resource = None
+
         self.expand(start_x, start_y, START_CLAIM_RADIUS, START_REVEAL_RADIUS)
+
 
     def in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.width and 0 <= y < self.height
