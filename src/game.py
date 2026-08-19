@@ -50,6 +50,7 @@ from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
 from coords import tile_at, tile_center
 from game_over import GameOverState
+from highscore import load_best_score, save_best_score
 from magic import cast_fire, cast_freeze, cast_lightning
 from nest import NestManager, create_initial_nests
 from npc import NPC
@@ -111,6 +112,7 @@ class Game:
         self.dragging_npc: NPC | None = None
         self.drag_start_pos: tuple[int, int] | None = None
         self.is_dragging: bool = False
+        self.best_score = load_best_score()  # survives restart() wiping the checkpoint - separate file on purpose
 
         checkpoint = load_checkpoint()
         if checkpoint is not None:
@@ -231,7 +233,10 @@ class Game:
                 ):
                     self._select_build_by_number(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.skill_ui.visible:
+                if self.game_over_state.is_over:
+                    if self._game_over_restart_button_rect().collidepoint(event.pos):
+                        self.restart()
+                elif self.skill_ui.visible:
                     pts_before = self.skill_points_available
                     self.skill_points_available = self.skill_ui.handle_click(
                         event.pos, self.world, self.skill_points_available
@@ -451,6 +456,15 @@ class Game:
         every mouse action while open, so cursor just stays default there."""
         if self.priority_ui.visible or self.skill_ui.visible or self.npc_status_ui.visible:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            return
+
+        if self.game_over_state.is_over:
+            hovering = self._game_over_restart_button_rect().collidepoint(pygame.mouse.get_pos())
+            cursor = pygame.SYSTEM_CURSOR_HAND if hovering else pygame.SYSTEM_CURSOR_ARROW
+            try:
+                pygame.mouse.set_cursor(cursor)
+            except pygame.error:
+                pass
             return
 
         pos = pygame.mouse.get_pos()
@@ -754,9 +768,12 @@ class Game:
             if self.selected_npc is not None and self.selected_npc.is_dead:
                 self.selected_npc = None
 
-            self.game_over_state.check(self.world.npcs, self.cycle.round_number)
-            if self.game_over_state.is_over:
+            just_ended = self.game_over_state.check(self.world.npcs, self.cycle.round_number)
+            if just_ended:
                 stop_bgm()
+                if self.game_over_state.score > self.best_score:
+                    self.best_score = self.game_over_state.score
+                    save_best_score(self.best_score)
 
             if transitioned and self.cycle.phase == DAY:
                 play_sfx("dawn")
@@ -1748,17 +1765,37 @@ class Game:
             len(self.world.npcs), inventory_items, hint_lines,
         )
 
+    def _game_over_panel_rect(self) -> pygame.Rect:
+        panel_w, panel_h = 460, 280
+        return pygame.Rect((WINDOW_WIDTH - panel_w) // 2, (WINDOW_HEIGHT - panel_h) // 2, panel_w, panel_h)
+
+    def _game_over_restart_button_rect(self) -> pygame.Rect:
+        panel = self._game_over_panel_rect()
+        btn_w, btn_h = 200, 48
+        return pygame.Rect(panel.centerx - btn_w // 2, panel.bottom - btn_h - 24, btn_w, btn_h)
+
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:
             return
-        lines = [
-            ("GAME OVER", COLOR_GAME_OVER),
-            (f"Score: Round {self.game_over_state.score}", COLOR_GAME_OVER),
-            ("[R] Restart", COLOR_TEXT),
-        ]
-        y = WINDOW_HEIGHT // 2 - 40
-        for text, color in lines:
-            surf = self.font.render(text, True, color)
-            rect = surf.get_rect(center=(WINDOW_WIDTH // 2, y))
-            self.screen.blit(surf, rect)
-            y += surf.get_height() + 8
+
+        panel = self._game_over_panel_rect()
+        overlay = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
+        overlay.fill((20, 22, 28, 235))
+        self.screen.blit(overlay, panel.topleft)
+        pygame.draw.rect(self.screen, COLOR_GAME_OVER, panel, 3, border_radius=8)
+
+        title_surf = self.big_font.render("GAME OVER", True, COLOR_GAME_OVER)
+        self.screen.blit(title_surf, title_surf.get_rect(center=(panel.centerx, panel.top + 54)))
+
+        score_surf = self.font.render(f"Score: Round {self.game_over_state.score}", True, COLOR_TEXT)
+        self.screen.blit(score_surf, score_surf.get_rect(center=(panel.centerx, panel.top + 108)))
+
+        best_surf = self.font.render(f"Best Score: Round {self.best_score}", True, COLOR_DAY_BANNER)
+        self.screen.blit(best_surf, best_surf.get_rect(center=(panel.centerx, panel.top + 138)))
+
+        button = self._game_over_restart_button_rect()
+        hovered = button.collidepoint(pygame.mouse.get_pos())
+        pygame.draw.rect(self.screen, (48, 56, 72) if hovered else (30, 33, 40), button, border_radius=6)
+        pygame.draw.rect(self.screen, COLOR_GAME_OVER, button, 2, border_radius=6)
+        btn_label = self.font.render("Restart  [R]", True, COLOR_TEXT)
+        self.screen.blit(btn_label, btn_label.get_rect(center=button.center))

@@ -1,3 +1,5 @@
+import math
+
 from animal import Animal
 from constants import TILE_SIZE
 from npc import NPC
@@ -75,6 +77,25 @@ def test_following_animal_closes_in_on_its_tamer():
         animal.update(1 / 60, grid_width=50, grid_height=50, npcs=[npc])
     end_dist = abs(animal.x - npc.x)
     assert end_dist < start_dist
+
+
+def test_following_animal_does_not_fully_overlap_a_stationary_tamer():
+    # If the tamer stops moving, prev_x/prev_y converges on its own live
+    # position tick after tick - without a minimum follow distance the pet
+    # would keep closing the gap all the way to a dead stop on top of it.
+    npc = NPC(500.0, 16.0)
+    animal = Animal(16.0, 16.0, species="Horse", speed=140.0, dangerous=False, health=40)
+    animal.is_tamed = True
+    animal.is_following = True
+    animal.tamer_npc_id = npc.id
+
+    for _ in range(300):  # npc never gets a path - stays put the whole time
+        npc.update(1 / 60)
+        animal.update(1 / 60, grid_width=50, grid_height=50, npcs=[npc])
+
+    from constants import PET_FOLLOW_MIN_DISTANCE
+    dist = math.hypot(animal.x - npc.x, animal.y - npc.y)
+    assert dist > PET_FOLLOW_MIN_DISTANCE * 0.5  # nowhere near fully overlapping
 
 
 def test_following_animal_trails_tamers_previous_position_not_live_one():

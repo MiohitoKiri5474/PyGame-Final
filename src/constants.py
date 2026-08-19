@@ -258,6 +258,7 @@ COLOR_ANIMAL_PEN = (160, 130, 90)
 
 PEN_PRODUCTION_INTERVAL = 30.0  # seconds between food production ticks
 HORSE_SPEED_BONUS = 30.0  # travel speed buff for colony NPCs when horse is penned
+PET_FOLLOW_MIN_DISTANCE = TILE_SIZE * 0.9  # a following animal won't close in past this - keeps it from sitting on top of an idle tamer
 
 # --- Food Spoilage (ticket 27) ---
 DAY_NIGHT_CYCLE_SECONDS = DAY_SECONDS + NIGHT_SECONDS  # 180s per game day
