@@ -70,28 +70,17 @@ def render_celestial_dial(
     time_s = time.monotonic()
     is_day = (phase.lower() == "day")
 
-    # 1. Skybox Background
+    # 1. Skybox Background with elegant semi-transparency (no color shift over time)
     sky_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
     if is_day:
-        # Day sky: Dawn peach -> Noon sky blue -> Dusk golden amber
-        if p < 0.25:
-            ratio = p / 0.25
-            r = int(220 + (65 - 220) * ratio)
-            g = int(140 + (165 - 140) * ratio)
-            b = int(120 + (240 - 120) * ratio)
-        elif p > 0.75:
-            ratio = (p - 0.75) / 0.25
-            r = int(65 + (230 - 65) * ratio)
-            g = int(165 + (130 - 165) * ratio)
-            b = int(240 + (80 - 240) * ratio)
-        else:
-            r, g, b = 60, 160, 240
-        sky_bg = (r, g, b)
+        # Clean, steady, semi-transparent sky blue
+        sky_bg = (40, 105, 180, 160)
     else:
         # Deep midnight indigo
-        sky_bg = (14, 18, 36)
+        sky_bg = (14, 18, 36, 185)
 
     pygame.draw.rect(sky_surf, sky_bg, pygame.Rect(0, 0, rect.width, rect.height), border_radius=8)
+
 
     # 2. Celestial Atmosphere Details (Night Stars or Background Cloud Wisps)
     if not is_day:
@@ -206,8 +195,9 @@ def render_celestial_dial(
             pygame.draw.circle(moon_surf, (170, 210, 245), moon_center, 9, 1)
             # Cutout to form crescent
             cutout_pos = (moon_center[0] + 4, moon_center[1] - 3)
-            pygame.draw.circle(moon_surf, sky_bg, cutout_pos, 7)
+            pygame.draw.circle(moon_surf, (14, 18, 36), cutout_pos, 7)
             surface.blit(moon_surf, (int(cx - 19), int(cy - 19)))
+
 
 
     # 6. Box Outline (Paper Mario Dark Frame)
