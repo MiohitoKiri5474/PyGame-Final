@@ -23,6 +23,8 @@ _RESOURCE_PATHS = {
     "marble": "building/marble.png",
     "berries": "magic_material/berry.png",
     "raw_stone": "magic_material/raw_stone.png",
+    "meat": "building/meat.png",
+    "mushrooms": "building/mushroom.png",
 }
 
 _BUILDING_PATHS = {
