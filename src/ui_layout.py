@@ -22,7 +22,7 @@ from constants import COLOR_TEXT, WINDOW_HEIGHT, WINDOW_WIDTH
 
 BUTTON_WIDTH = 320  # wide enough to read as deliberate, not a leftover default-sized control
 BUTTON_HEIGHT = 56
-BUTTON_GAP = 16
+BUTTON_GAP = 8
 ROW_HEIGHT = BUTTON_HEIGHT + BUTTON_GAP
 
 BUTTON_BG = (60, 64, 80)
@@ -33,12 +33,12 @@ _FRAME_MARGIN = 24
 _TITLE_CLEARANCE = 40  # gap between the screen title text and the first button row
 
 # Tallest screen at each level, in rows - keep these equal to the actual
-# max (TitleScreen/PauseMenu both use 3; SettingsScreen uses 3, only
+# max (TitleScreen uses 3, PauseMenu uses 4; SettingsScreen uses 3, only
 # ConfirmOverwriteDialog uses the second level otherwise, as one
 # horizontal row). Bump the relevant constant if a screen grows past this,
 # the assert below catches an overflow immediately instead of silently
 # rendering an unclickable off-screen button.
-FIRST_LEVEL_ROWS = 3
+FIRST_LEVEL_ROWS = 4
 SECOND_LEVEL_ROWS = 3
 
 FIRST_LEVEL_TOP = _SCREEN_TITLE_Y + _TITLE_CLEARANCE

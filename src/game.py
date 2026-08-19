@@ -408,6 +408,13 @@ class Game:
             action = self.pause_menu.handle_click(event.pos)
             if action == "resume":
                 self.state = PLAYING
+            elif action == "save":
+                save_checkpoint(
+                    self.world, self.cycle, self.nest_manager, self.monsters, self.game_over_state,
+                    self.skill_points_available, self._monsters_killed_this_night,
+                )
+                self.save_exists = True
+                self.pause_menu.mark_saved()
             elif action == "settings":
                 self._settings_return_state = PAUSE_MENU
                 self.state = SETTINGS
