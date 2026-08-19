@@ -32,11 +32,29 @@ from constants import (
 from coords import tile_at, tile_center
 from extensions import register_tick
 from skills import taming_success_bonus
-from task import register_task_type, Task, TaskType
+from task import register_task_type, resolve_task_animal, Task, TaskType
 
 if TYPE_CHECKING:
     from animal import Animal
     from world import World
+
+
+def _find_available_pen(world: "World") -> "Building | None":
+    return next(
+        (b for b in getattr(world, "buildings", []) if b.type == "AnimalPen" and getattr(b, "assigned_animal_id", None) is None),
+        None,
+    )
+
+
+def idle_spot_near_pen(world: "World", pen_x: int, pen_y: int) -> tuple[float, float]:
+    """A tamed animal doesn't sit *in* its pen's tile - it idles on one of
+    the 4 cardinal tiles around it, whichever is actually free. Falls back
+    to the pen's own tile if all four are blocked."""
+    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+        nx, ny = pen_x + dx, pen_y + dy
+        if world.grid.in_bounds(nx, ny) and not any(b.x == nx and b.y == ny for b in world.buildings):
+            return tile_center(nx, ny)
+    return tile_center(pen_x, pen_y)
 
 
 def process_animal_for_food(world: "World", animal: "Animal") -> int:
@@ -59,24 +77,14 @@ def can_queue_tame(world: "World", tile: tuple[int, int]) -> bool:
 
 def can_perform_tame(world: "World", task: "Task") -> bool:
     """Can perform Tame if target animal still exists, is alive and untamed."""
-    if not hasattr(world, "animals"):
-        return False
-    if task.target_animal_id is not None:
-        return any(a.id == task.target_animal_id and not a.is_dead and not getattr(a, "is_tamed", False) for a in world.animals)
-    return any(tile_at(a.x, a.y) == task.target and not a.is_dead and not getattr(a, "is_tamed", False) for a in world.animals)
+    animal = resolve_task_animal(world, task)
+    return animal is not None and not getattr(animal, "is_tamed", False)
 
 
 def on_complete_tame(world: "World", task: "Task", rng: random.Random | None = None) -> bool:
     """Resolve taming attempt on the target animal."""
-    if not hasattr(world, "animals"):
-        return True
-
     rng = rng or random.Random()
-    animal = None
-    if task.target_animal_id is not None:
-        animal = next((a for a in world.animals if a.id == task.target_animal_id), None)
-    if animal is None:
-        animal = next((a for a in world.animals if tile_at(a.x, a.y) == task.target and not a.is_dead), None)
+    animal = resolve_task_animal(world, task)
 
     if animal is None or animal.is_dead:
         return True
@@ -92,14 +100,18 @@ def on_complete_tame(world: "World", task: "Task", rng: random.Random | None = N
 
     if rng.random() < success_rate:
         animal.is_tamed = True
-        # Try to assign to an available Animal Pen
-        for building in getattr(world, "buildings", []):
-            if building.type == "AnimalPen" and getattr(building, "assigned_animal_id", None) is None:
-                building.assigned_animal_id = animal.id
-                animal.pen_tile = (building.x, building.y)
-                animal.x, animal.y = tile_center(building.x, building.y)
-                animal.set_path([])
-                break
+        animal.tamer_npc_id = getattr(npc, "id", None)
+
+        pen = _find_available_pen(world)
+        if pen is not None:
+            # A pen exists - walk over and idle beside it instead of vanishing in
+            pen.assigned_animal_id = animal.id
+            animal.pen_tile = (pen.x, pen.y)
+            animal.idle_target = idle_spot_near_pen(world, pen.x, pen.y)
+        else:
+            # No pen (yet) - taming without one wouldn't otherwise do much,
+            # so it defaults to following whoever tamed it
+            animal.is_following = True
 
     return True
 
@@ -136,14 +148,17 @@ def _on_complete_pen(world: "World", task: Task) -> bool:
     pen.assigned_animal_id = None
     world.buildings.append(pen)
 
-    # If any tamed animal is currently waiting for a pen, place it here
+    # If any tamed animal has no pen yet, give this new one to it - whether
+    # it's idling in place (walk it over now) or already following its
+    # tamer (just bind the tile so "Back to Pen" has somewhere to send it,
+    # without interrupting the follow it's currently doing)
     if hasattr(world, "animals"):
         for animal in world.animals:
             if getattr(animal, "is_tamed", False) and getattr(animal, "pen_tile", None) is None:
                 pen.assigned_animal_id = animal.id
                 animal.pen_tile = (x, y)
-                animal.x, animal.y = tile_center(x, y)
-                animal.set_path([])
+                if not animal.is_following:
+                    animal.idle_target = idle_spot_near_pen(world, x, y)
                 break
 
     return True
@@ -174,16 +189,18 @@ def _tick_pen_production(world: "World", dt: float) -> None:
         for building in getattr(world, "buildings", []):
             if building.type == "AnimalPen" and getattr(building, "assigned_animal_id", None) is not None:
                 animal = next((a for a in getattr(world, "animals", []) if a.id == building.assigned_animal_id), None)
-                if animal is not None and animal.species != "Horse":
+                # Following pauses its pen output - it's off with its tamer,
+                # not doing anything for the pen right now
+                if animal is not None and not animal.is_following and animal.species != "Horse":
                     world.inventory.add("meat", 1)
 
-    # Horse travel speed utility: apply speed buff to NPCs if Horse is tamed/penned
+    # Horse travel speed utility: apply speed buff to NPCs if Horse is tamed/penned (not off following)
     has_penned_horse = False
     if hasattr(world, "buildings") and hasattr(world, "animals"):
         for building in world.buildings:
             if building.type == "AnimalPen" and getattr(building, "assigned_animal_id", None) is not None:
                 animal = next((a for a in world.animals if a.id == building.assigned_animal_id), None)
-                if animal is not None and animal.species == "Horse":
+                if animal is not None and not animal.is_following and animal.species == "Horse":
                     has_penned_horse = True
                     break
 
