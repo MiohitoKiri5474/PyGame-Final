@@ -8,9 +8,17 @@ from constants import (
     COMBAT_RANGE,
     ROLE_STATS,
     SANCTUARY_HEAL_RATE,
+    MUD_IMMOBILIZE_DURATION,
+    RIVER_SPEED_MULTIPLIER,
+    SCORCHED_BURN_DPS,
+    TERRAIN_MUD,
+    TERRAIN_RIVER,
+    TERRAIN_SCORCHED,
 )
 
+from coords import tile_at
 from movement import step_toward_path
+
 
 DEFAULT_SPEED = 120.0  # pixels/sec
 
@@ -67,6 +75,12 @@ class NPC:
         self.task_progress = 0.0
 
 
+        # Environmental Hazard states
+        self.immobilized_timer: float = 0.0
+        self.last_mud_tile: tuple[int, int] | None = None
+        self.is_burning: bool = False
+        self.is_in_river: bool = False
+
         # Paper Mario Animation states
         self.facing_left = False
         self.is_moving = False
@@ -114,7 +128,7 @@ class NPC:
         """Trigger a damage reaction squash & hurt flash."""
         self.hit_timer = 0.25
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, grid=None) -> None:
         """Advance one simulation tick. Hunger decays continuously;
         starvation kills when hunger reaches 0."""
         self.prev_x, self.prev_y = self.x, self.y
@@ -138,9 +152,47 @@ class NPC:
         self.attack_timer = max(0.0, self.attack_timer - dt)
         self.hit_timer = max(0.0, self.hit_timer - dt)
 
+        # Environmental Terrain Hazards & Status Effects
+        cur_terrain = "plain"
+        tx, ty = tile_at(self.x, self.y)
+        if grid is not None and grid.in_bounds(tx, ty):
+            tile = grid.get(tx, ty)
+            cur_terrain = getattr(tile, "terrain", "plain")
+
+        # 1. Mud Terrain: Immobilize for 5 seconds upon entering a new mud tile
+        if cur_terrain == TERRAIN_MUD:
+            if self.last_mud_tile != (tx, ty):
+                self.immobilized_timer = MUD_IMMOBILIZE_DURATION
+                self.last_mud_tile = (tx, ty)
+        else:
+            self.last_mud_tile = None
+
+        if self.immobilized_timer > 0.0:
+            self.immobilized_timer = max(0.0, self.immobilized_timer - dt)
+
+        # 2. Scorched Earth Terrain: Burn damage over time + Burning VFX
+        if cur_terrain == TERRAIN_SCORCHED:
+            self.is_burning = True
+            self.health = max(0.0, self.health - SCORCHED_BURN_DPS * dt)
+            if self.health <= 0.0:
+                self.kill()
+                return
+        else:
+            self.is_burning = False
+
+        # 3. River Terrain: Slowdown
+        self.is_in_river = (cur_terrain == TERRAIN_RIVER)
+
+        # Movement Speed determination
+        if self.immobilized_timer > 0.0:
+            effective_speed = 0.0
+        elif self.is_in_river:
+            effective_speed = self.speed * RIVER_SPEED_MULTIPLIER
+        else:
+            effective_speed = self.speed
 
         old_x = self.x
-        self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
+        self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, effective_speed, dt)
         dx = self.x - old_x
         if abs(dx) > 0.01:
             new_facing = (dx < 0.0)
@@ -164,5 +216,6 @@ class NPC:
                 self.work_anim_timer += dt
             else:
                 self.work_anim_timer = 0.0
+
 
 

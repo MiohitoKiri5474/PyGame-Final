@@ -31,3 +31,33 @@ def parchment() -> pygame.Surface:
 
 def grass() -> pygame.Surface:
     return _load("grass.png")
+
+
+def river() -> pygame.Surface:
+    return _load("river.png")
+
+
+def mountain() -> pygame.Surface:
+    return _load("mountain.png")
+
+
+def mud() -> pygame.Surface:
+    return _load("mud.png")
+
+
+def scorched() -> pygame.Surface:
+    return _load("scorched.png")
+
+
+def get_terrain_surface(terrain_type: str, is_claimed: bool = True) -> pygame.Surface:
+    """Returns the matching terrain surface based on terrain type and claimed status."""
+    if terrain_type == "river":
+        return river()
+    if terrain_type == "mountain":
+        return mountain()
+    if terrain_type == "mud":
+        return mud()
+    if terrain_type == "scorched":
+        return scorched()
+    return grass() if is_claimed else parchment()
+

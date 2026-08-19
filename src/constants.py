@@ -295,4 +295,24 @@ AOE_RADIUS_BONUS_PER_LEVEL = 1  # +1 tile to Freeze's 3x3 box radius, per level
 # --- NPC Drag-to-Heal Sanctuary System ---
 SANCTUARY_HEAL_RATE = 1.25  # High-stakes healing rate (1.25 HP/s: recovery takes ~1-2 game phases)
 
+# --- Terrain Taxonomy & Environmental Hazards ---
+TERRAIN_PLAIN = "plain"
+TERRAIN_RIVER = "river"
+TERRAIN_MOUNTAIN = "mountain"
+TERRAIN_MUD = "mud"
+TERRAIN_SCORCHED = "scorched"
+
+ALL_TERRAINS = (
+    TERRAIN_PLAIN,
+    TERRAIN_RIVER,
+    TERRAIN_MOUNTAIN,
+    TERRAIN_MUD,
+    TERRAIN_SCORCHED,
+)
+
+RIVER_SPEED_MULTIPLIER = 0.50       # 50% movement speed in rivers (slowdown)
+MUD_IMMOBILIZE_DURATION = 5.0      # 5.0s stuck in mud upon entering
+SCORCHED_BURN_DPS = 4.0            # 4.0 HP/s burn damage on scorched earth
+
+
 

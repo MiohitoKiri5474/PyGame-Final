@@ -80,7 +80,8 @@ from sprites import (
     resource_sprite,
 )
 from tame_task import idle_spot_near_pen
-from terrain import grass, parchment
+from terrain import get_terrain_surface, grass, parchment
+
 from title_screen import ConfirmOverwriteDialog, TitleScreen
 from pause_menu import PauseMenu
 from settings_screen import SettingsScreen
@@ -1261,6 +1262,20 @@ class Game:
             pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, shadow_w, shadow_h))
             self.screen.blit(shadow_surf, shadow_rect)
 
+            # River / Mud Ground Footing Effects
+            t_now = time.monotonic()
+            if getattr(npc, "is_in_river", False):
+                r_w = int(24 + math.sin(t_now * 7.0 + npc.id) * 4.0)
+                water_surf = pygame.Surface((r_w, 8), pygame.SRCALPHA)
+                pygame.draw.ellipse(water_surf, (160, 220, 255, 180), pygame.Rect(0, 0, r_w, 8), 2)
+                self.screen.blit(water_surf, (base_sx - r_w // 2, base_sy + 10))
+            elif getattr(npc, "immobilized_timer", 0.0) > 0.0:
+                mud_surf = pygame.Surface((28, 12), pygame.SRCALPHA)
+                pygame.draw.ellipse(mud_surf, (65, 45, 25, 220), pygame.Rect(0, 0, 28, 12))
+                pygame.draw.ellipse(mud_surf, (110, 80, 50, 230), pygame.Rect(4, 2, 20, 8), 2)
+                self.screen.blit(mud_surf, (base_sx - 14, base_sy + 9))
+
+
             # Paper Mario: Card Flip Horizontal Scale
             flip_p = getattr(npc, "flip_progress", 1.0)
             paper_flip_scale = max(0.08, abs(math.cos(flip_p * math.pi)))
@@ -1484,6 +1499,46 @@ class Game:
                     self.screen.blit(flare_surf, (tool_pos[0] - 12, tool_pos[1] - 12))
 
 
+            # Environmental Status Effects: Burning Flames on NPC
+            if getattr(npc, "is_burning", False):
+                flame_surf = pygame.Surface((38, 48), pygame.SRCALPHA)
+                # Soft heat haze aura
+                pygame.draw.ellipse(flame_surf, (255, 90, 20, 100), pygame.Rect(4, 14, 30, 28))
+                pygame.draw.ellipse(flame_surf, (255, 180, 40, 150), pygame.Rect(8, 18, 22, 22))
+
+                # 4 Rising flame tongues
+                flame_tongues = [
+                    (-9, 6, 20.0, (255, 60, 20)),
+                    (-3, 0, 24.0, (255, 140, 30)),
+                    (3, 2, 22.0, (255, 210, 40)),
+                    (9, 7, 18.0, (255, 80, 20)),
+                ]
+                for off_x, base_y, speed_f, col in flame_tongues:
+                    f_h = 12 + math.sin(t_now * speed_f + off_x) * 5.0
+                    f_x = 19 + off_x + math.sin(t_now * 12.0 + off_x) * 2.0
+                    f_y = 34 - f_h
+                    p1 = (f_x, f_y)
+                    p2 = (f_x - 4, 34)
+                    p3 = (f_x + 4, 34)
+                    pygame.draw.polygon(flame_surf, col, [p1, p2, p3])
+
+                # Floating glowing heat sparks
+                for k in range(3):
+                    emb_x = 19 + math.sin(t_now * 15.0 + k * 2.1) * 11.0
+                    emb_y = 22 - ((t_now * 30.0 + k * 11.0) % 26.0)
+                    pygame.draw.circle(flame_surf, (255, 245, 120, 230), (int(emb_x), int(emb_y)), 2)
+
+                self.screen.blit(flame_surf, (base_sx - 19, base_sy - 24))
+
+            # Mud Immobilized Countdown Badge
+            if getattr(npc, "immobilized_timer", 0.0) > 0.0:
+                bubble_surf = pygame.Surface((32, 16), pygame.SRCALPHA)
+                pygame.draw.rect(bubble_surf, (50, 35, 20, 220), pygame.Rect(0, 0, 32, 16), border_radius=4)
+                pygame.draw.rect(bubble_surf, (150, 110, 60, 240), pygame.Rect(0, 0, 32, 16), 1, border_radius=4)
+                sec_txt = self.font.render(f"{npc.immobilized_timer:.1f}s", True, (255, 225, 130))
+                bubble_surf.blit(sec_txt, (bubble_surf.get_width() // 2 - sec_txt.get_width() // 2, 1))
+                self.screen.blit(bubble_surf, (base_sx - 16, base_sy - 38))
+
             # Hunger bar
             bar_x = base_sx - bar_w // 2
             bar_y = base_sy - TILE_SIZE // 2 - bar_h - 4
@@ -1505,6 +1560,7 @@ class Game:
                     pfill_w = max(0, int(bar_w * progress_ratio))
                     if pfill_w > 0:
                         pygame.draw.rect(self.screen, COLOR_PROGRESS_BAR, pygame.Rect(bar_x, pbar_y, pfill_w, bar_h))
+
 
     def render_animals(self) -> None:
         for animal in self.world.animals:
@@ -1755,10 +1811,17 @@ class Game:
                     # Fog stays a flat overlay, not a texture - it's meant to
                     # read as "nothing to see here", not as ground you could walk on.
                     pygame.draw.rect(self.screen, COLOR_FOG, rect)
-                elif tile.claimed:
-                    self.screen.blit(grass(), rect)
                 else:
-                    self.screen.blit(parchment(), rect)
+                    terrain_type = getattr(tile, "terrain", "plain")
+                    surf = get_terrain_surface(terrain_type, tile.claimed)
+                    self.screen.blit(surf, rect)
+                    if not tile.claimed and terrain_type == "plain":
+                        self.screen.blit(parchment(), rect)
+                    elif not tile.claimed:
+                        unclaimed_tint = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+                        unclaimed_tint.fill((0, 0, 0, 50))
+                        self.screen.blit(unclaimed_tint, rect)
+
 
                 # Material indicator for resource blocks
                 if tile.revealed and tile.resource:
