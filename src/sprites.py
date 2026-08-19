@@ -158,3 +158,48 @@ def get_tool_sprite(tool_type: str) -> pygame.Surface:
     _TOOL_CACHE[tool_type] = surf
     return _TOOL_CACHE[tool_type]
 
+
+_PROJECTILE_CACHE: dict[str, pygame.Surface] = {}
+
+
+def get_arrow_sprite() -> pygame.Surface:
+    """Returns a crisp Paper Mario style pixel-art flying wooden arrow."""
+    if "arrow" in _PROJECTILE_CACHE:
+        return _PROJECTILE_CACHE["arrow"]
+
+    surf = pygame.Surface((26, 12), pygame.SRCALPHA)
+    # Wooden shaft
+    pygame.draw.line(surf, (140, 95, 45), (4, 6), (19, 6), 2)
+    # Steel arrowhead
+    pygame.draw.polygon(surf, (220, 230, 245), [(18, 2), (25, 6), (18, 10)])
+    pygame.draw.polygon(surf, (150, 165, 185), [(18, 6), (25, 6), (18, 10)])
+    # Feather fletching (Paper Mario red/white feathers)
+    pygame.draw.polygon(surf, (255, 65, 65), [(2, 2), (8, 6), (4, 6)])
+    pygame.draw.polygon(surf, (245, 245, 245), [(2, 10), (8, 6), (4, 6)])
+
+    _PROJECTILE_CACHE["arrow"] = surf
+    return surf
+
+
+def get_magic_orb_sprite() -> pygame.Surface:
+    """Returns a glowing, multi-layer arcane magic orb with star core."""
+    if "magic_orb" in _PROJECTILE_CACHE:
+        return _PROJECTILE_CACHE["magic_orb"]
+
+    surf = pygame.Surface((24, 24), pygame.SRCALPHA)
+    # Outer mystic aura
+    pygame.draw.circle(surf, (150, 60, 230, 160), (12, 12), 10)
+    # Vibrant magenta-violet ring
+    pygame.draw.circle(surf, (215, 95, 255, 220), (12, 12), 7)
+    # Glowing stellar cyan/white core
+    pygame.draw.circle(surf, (180, 240, 255), (12, 12), 4)
+    pygame.draw.circle(surf, (255, 255, 255), (12, 12), 2)
+
+    # 4-point radiant star sparkle
+    for dx, dy in [(0, -9), (0, 9), (-9, 0), (9, 0)]:
+        pygame.draw.line(surf, (255, 240, 255, 220), (12, 12), (12 + dx, 12 + dy), 1)
+
+    _PROJECTILE_CACHE["magic_orb"] = surf
+    return surf
+
+
