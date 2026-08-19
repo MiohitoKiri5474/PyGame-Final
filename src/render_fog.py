@@ -86,17 +86,14 @@ def render_drifting_fog_layer(
             else:
                 cloud_alpha = 220 + (seed % 35)  # Dense billowing cloud over unexplored lands
 
-            # Select cloud size based on seed
-            size_choice = seed % 3
-            if size_choice == 0:
-                cloud_img = base_cloud_lg
-            elif size_choice == 1:
-                cloud_img = base_cloud_md
-            else:
-                cloud_img = base_cloud_sm
+            # Select cloud variant (0..14) and scale dynamically based on seed
+            cloud_variant = seed % 15
+            cloud_width = 84 + (seed % 6) * 14  # 84px to 154px
+            cloud_img = cloud_sprite(index=cloud_variant, width=cloud_width)
 
             if cloud_img is None:
                 continue
+
 
             # Screen coordinates
             sx = int(wx - cam_x)

@@ -214,21 +214,68 @@ def get_magic_orb_sprite() -> pygame.Surface:
     return surf
 
 
-def cloud_sprite(width: int = 48) -> pygame.Surface:
-    """Returns the cloud PNG sprite from assets/terrain/cloud.png, scaled to requested width."""
+_CLOUD_RAW_SLICES: list[pygame.Surface] = []
+
+
+def _load_cloud_sheet() -> list[pygame.Surface]:
+    global _CLOUD_RAW_SLICES
+    if _CLOUD_RAW_SLICES:
+        return _CLOUD_RAW_SLICES
+
     path = _ASSETS_DIR / "terrain" / "cloud.png"
-    key = ("terrain/cloud.png", width)
+    if not path.exists():
+        c_surf = pygame.Surface((64, 32), pygame.SRCALPHA)
+        pygame.draw.ellipse(c_surf, (245, 250, 255, 240), pygame.Rect(0, 0, 64, 32))
+        _CLOUD_RAW_SLICES = [c_surf]
+        return _CLOUD_RAW_SLICES
+
+    img = _load_image(path)
+    w, h = img.get_size()
+
+    # If it's a 5x3 sprite sheet (15 clouds)
+    if w >= 256 and h >= 256 and w % 5 == 0 and h % 3 == 0:
+        cols, rows = 5, 3
+        cw, ch = w // cols, h // rows
+        for idx in range(15):
+            r = idx // cols
+            c = idx % cols
+            cell = img.subsurface(pygame.Rect(c * cw, r * ch, cw, ch))
+            # Tight bounding box crop
+            min_x, max_x = cw, 0
+            min_y, max_y = ch, 0
+            has_pixels = False
+            for y in range(0, ch, 2):
+                for x in range(0, cw, 2):
+                    rgba = cell.get_at((x, y))
+                    if rgba[3] > 8:
+                        has_pixels = True
+                        if x < min_x: min_x = x
+                        if x > max_x: max_x = x
+                        if y < min_y: min_y = y
+                        if y > max_y: max_y = y
+            if has_pixels and max_x >= min_x and max_y >= min_y:
+                sub = cell.subsurface(pygame.Rect(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1))
+                _CLOUD_RAW_SLICES.append(sub)
+            else:
+                _CLOUD_RAW_SLICES.append(cell)
+    else:
+        _CLOUD_RAW_SLICES = [img]
+
+    return _CLOUD_RAW_SLICES
+
+
+def cloud_sprite(index: int = 0, width: int = 48) -> pygame.Surface:
+    """Returns cloud sprite #index (0..14) from the 15-cloud sheet, scaled to requested width."""
+    slices = _load_cloud_sheet()
+    idx = index % len(slices)
+    key = ("cloud_sprite", idx, width)
     if key not in _cache:
-        if path.exists():
-            img = _load_image(path)
-            w, h = img.get_size()
-            height = max(1, round(h * width / w))
-            _cache[key] = pygame.transform.smoothscale(img, (width, height))
-        else:
-            c_surf = pygame.Surface((width, max(1, width // 2)), pygame.SRCALPHA)
-            pygame.draw.ellipse(c_surf, (245, 250, 255, 240), pygame.Rect(0, 0, width, max(1, width // 2)))
-            _cache[key] = c_surf
+        raw = slices[idx]
+        rw, rh = raw.get_size()
+        height = max(1, round(rh * width / rw))
+        _cache[key] = pygame.transform.smoothscale(raw, (width, height))
     return _cache[key]
+
 
 
 def fog_sprite(size: int = TILE_SIZE) -> pygame.Surface:

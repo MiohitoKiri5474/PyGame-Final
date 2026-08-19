@@ -29,15 +29,17 @@ def _draw_paper_cloud(
     cy: float,
     scale: float = 1.0,
     alpha: int = 210,
+    cloud_index: int = 0,
 ) -> None:
-    """Draws the cloud using cloud PNG sprite from assets/terrain/cloud.png with scaling and alpha."""
-    cw = max(16, int(44 * scale))
-    sprite = cloud_sprite(cw)
+    """Draws the cloud using cloud PNG sprite #cloud_index from the 15-cloud sheet with scaling and alpha."""
+    cw = max(16, int(48 * scale))
+    sprite = cloud_sprite(index=cloud_index, width=cw)
     if sprite is not None:
         c_surf = sprite.copy()
         if alpha < 255:
             c_surf.fill((255, 255, 255, alpha), special_flags=pygame.BLEND_RGBA_MULT)
         surface.blit(c_surf, c_surf.get_rect(center=(int(cx), int(cy))))
+
 
 
 
@@ -106,7 +108,7 @@ def render_celestial_dial(
         # Distant background cloud drifting gently
         c3_x = rect.x + ((time_s * 5.0 + rect.width * 0.7) % (rect.width + 50)) - 25
         c3_y = rect.y + 36 + math.sin(time_s * 1.2 + 1.0) * 1.5
-        _draw_paper_cloud(surface, c3_x, c3_y, scale=0.70, alpha=150)
+        _draw_paper_cloud(surface, c3_x, c3_y, scale=0.70, alpha=150, cloud_index=2)
 
     # 4. Sun / Moon Trajectory & Celestial Body
     cx, cy = get_celestial_position(rect, p)
@@ -140,12 +142,13 @@ def render_celestial_dial(
         # Cloud 1 (Upper sky drifting)
         c1_x = rect.x + ((time_s * 11.0 + 15) % (rect.width + 60)) - 30
         c1_y = rect.y + 28 + math.sin(time_s * 1.4) * 2.0
-        _draw_paper_cloud(surface, c1_x, c1_y, scale=0.88, alpha=220)
+        _draw_paper_cloud(surface, c1_x, c1_y, scale=0.88, alpha=220, cloud_index=0)
 
         # Cloud 2 (Middle/lower sky drifting at a relaxed pace)
         c2_x = rect.x + ((time_s * 7.5 + rect.width * 0.45) % (rect.width + 70)) - 35
         c2_y = rect.y + 52 + math.cos(time_s * 1.0) * 2.5
-        _draw_paper_cloud(surface, c2_x, c2_y, scale=1.05, alpha=235)
+        _draw_paper_cloud(surface, c2_x, c2_y, scale=1.05, alpha=235, cloud_index=5)
+
     else:
         # Silver-Cyan Crescent Moon
         moon_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
