@@ -50,7 +50,15 @@ from skill_ui import SkillUI
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import animal_sprite, monster_sprite, nest_sprite, npc_sprite, resource_sprite
 from terrain import parchment, grass
-from title_screen import ConfirmOverwriteDialog, TitleScreen, TITLE, PLAYING, CONFIRM_OVERWRITE
+from title_screen import ConfirmOverwriteDialog, TitleScreen
+
+# Game.state values. Bare-string constants mirror day_night.py's DAY/NIGHT
+# pattern - they live here, not in title_screen.py, because self.state is
+# Game's own field and PLAYING covers all non-title-screen gameplay, not
+# just a title-screen concept.
+TITLE = "title"
+PLAYING = "playing"
+CONFIRM_OVERWRITE = "confirm_overwrite"
 
 
 class Game:

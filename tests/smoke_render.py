@@ -69,8 +69,7 @@ def main() -> None:
     save present) builds a fresh game and enters the simulation."""
     import pygame
 
-    from game import Game
-    from title_screen import TITLE, PLAYING
+    from game import Game, TITLE, PLAYING
 
     with _preserved_save() as save_path:
         save_path.unlink(missing_ok=True)  # exercise the no-save Start path deterministically
@@ -114,8 +113,7 @@ def check_continue() -> None:
     clicking it resumes the exact checkpointed state."""
     import pygame
 
-    from game import Game
-    from title_screen import PLAYING
+    from game import Game, PLAYING
 
     with _preserved_save() as save_path:
         save_path.unlink(missing_ok=True)
@@ -143,8 +141,7 @@ def check_overwrite_confirm() -> None:
     into a genuinely fresh game."""
     import pygame
 
-    from game import Game
-    from title_screen import TITLE, PLAYING, CONFIRM_OVERWRITE
+    from game import Game, TITLE, PLAYING, CONFIRM_OVERWRITE
 
     with _preserved_save() as save_path:
         save_path.unlink(missing_ok=True)
@@ -201,8 +198,7 @@ def check_continue_corrupt_save() -> None:
     save_exists so the dead button disappears instead of no-op'ing forever."""
     import pygame
 
-    from game import Game
-    from title_screen import TITLE
+    from game import Game, TITLE
 
     with _preserved_save() as save_path:
         save_path.write_text("not valid json")

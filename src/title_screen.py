@@ -5,10 +5,6 @@ import pygame
 
 from constants import WINDOW_WIDTH, WINDOW_HEIGHT, COLOR_TEXT
 
-TITLE = "title"
-PLAYING = "playing"
-CONFIRM_OVERWRITE = "confirm_overwrite"
-
 _TITLE_TEXT = "Colony Defense (WIP)"
 _WARNING_TEXT = "Starting a new game will overwrite your existing save."
 _BUTTON_BG = (60, 64, 80)
@@ -16,6 +12,10 @@ _BUTTON_BORDER = (140, 150, 180)
 _BUTTON_WIDTH = 200
 _BUTTON_HEIGHT = 56
 _BUTTON_GAP = 16
+
+
+def _button_rect(x: int, y: int) -> pygame.Rect:
+    return pygame.Rect(x, y, _BUTTON_WIDTH, _BUTTON_HEIGHT)
 
 
 def _render_button(
@@ -27,27 +27,23 @@ def _render_button(
     surface.blit(label_surface, label_surface.get_rect(center=rect.center))
 
 
+def _hit_test(pos: tuple[int, int], rect_labels: list[tuple[pygame.Rect, str]]) -> str | None:
+    for rect, label in rect_labels:
+        if rect.collidepoint(pos):
+            return label
+    return None
+
+
 class TitleScreen:
     def __init__(self) -> None:
-        self.start_rect = pygame.Rect(
-            (WINDOW_WIDTH - _BUTTON_WIDTH) // 2,
-            WINDOW_HEIGHT // 2,
-            _BUTTON_WIDTH,
-            _BUTTON_HEIGHT,
-        )
-        self.continue_rect = pygame.Rect(
-            self.start_rect.x,
-            self.start_rect.bottom + _BUTTON_GAP,
-            _BUTTON_WIDTH,
-            _BUTTON_HEIGHT,
-        )
+        self.start_rect = _button_rect((WINDOW_WIDTH - _BUTTON_WIDTH) // 2, WINDOW_HEIGHT // 2)
+        self.continue_rect = _button_rect(self.start_rect.x, self.start_rect.bottom + _BUTTON_GAP)
 
     def handle_click(self, pos: tuple[int, int], save_exists: bool) -> str | None:
-        if self.start_rect.collidepoint(pos):
-            return "start"
-        if save_exists and self.continue_rect.collidepoint(pos):
-            return "continue"
-        return None
+        rect_labels = [(self.start_rect, "start")]
+        if save_exists:
+            rect_labels.append((self.continue_rect, "continue"))
+        return _hit_test(pos, rect_labels)
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font, save_exists: bool) -> None:
         title_surface = font.render(_TITLE_TEXT, True, COLOR_TEXT)
@@ -67,25 +63,11 @@ class ConfirmOverwriteDialog:
         # double-click at the same screen position must not land on Start
         # in one state and Yes/No in the other by coordinate coincidence.
         dialog_y = WINDOW_HEIGHT // 2 + 160
-        self.yes_rect = pygame.Rect(
-            WINDOW_WIDTH // 2 - _BUTTON_WIDTH - _BUTTON_GAP // 2,
-            dialog_y,
-            _BUTTON_WIDTH,
-            _BUTTON_HEIGHT,
-        )
-        self.no_rect = pygame.Rect(
-            WINDOW_WIDTH // 2 + _BUTTON_GAP // 2,
-            dialog_y,
-            _BUTTON_WIDTH,
-            _BUTTON_HEIGHT,
-        )
+        self.yes_rect = _button_rect(WINDOW_WIDTH // 2 - _BUTTON_WIDTH - _BUTTON_GAP // 2, dialog_y)
+        self.no_rect = _button_rect(WINDOW_WIDTH // 2 + _BUTTON_GAP // 2, dialog_y)
 
     def handle_click(self, pos: tuple[int, int]) -> str | None:
-        if self.yes_rect.collidepoint(pos):
-            return "yes"
-        if self.no_rect.collidepoint(pos):
-            return "no"
-        return None
+        return _hit_test(pos, [(self.yes_rect, "yes"), (self.no_rect, "no")])
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         warning_surface = font.render(_WARNING_TEXT, True, COLOR_TEXT)
