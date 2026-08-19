@@ -49,11 +49,11 @@ _DESC_COLOR = (150, 150, 158)
 _HEADER_TEXT = "Building"
 _DESC_TEXT = "Needs enough materials in inventory before it can be built"
 _DESCRIPTIONS = {
-    "Wall": "Blocks monster movement - doesn't attack",
+    "Wall": "Blocks monster movement",
     "Tower": "Auto-attacks monsters within range",
     "House": "+1 max colonist population",
     "Farmland": "Grows crop over time - harvest it once ready",
-    "AnimalPen": "Homes a tamed animal, producing meat over time (Horse gives a speed buff instead)",
+    "AnimalPen": "Homes a tamed animal, producing meat over time",
 }
 
 
