@@ -28,11 +28,27 @@ ROW_HEIGHT = BUTTON_HEIGHT + BUTTON_GAP
 BUTTON_BG = (60, 64, 80)
 BUTTON_BORDER = (140, 150, 180)
 
-FIRST_LEVEL_TOP = WINDOW_HEIGHT // 2
-SECOND_LEVEL_TOP = FIRST_LEVEL_TOP + 3 * ROW_HEIGHT
-
 _SCREEN_TITLE_Y = WINDOW_HEIGHT // 3
 _FRAME_MARGIN = 24
+_TITLE_CLEARANCE = 40  # gap between the screen title text and the first button row
+
+# Tallest screen at each level, in rows - keep these equal to the actual
+# max (TitleScreen/PauseMenu both use 3; SettingsScreen uses 3, only
+# ConfirmOverwriteDialog uses the second level otherwise, as one
+# horizontal row). Bump the relevant constant if a screen grows past this,
+# the assert below catches an overflow immediately instead of silently
+# rendering an unclickable off-screen button.
+FIRST_LEVEL_ROWS = 3
+SECOND_LEVEL_ROWS = 3
+
+FIRST_LEVEL_TOP = _SCREEN_TITLE_Y + _TITLE_CLEARANCE
+SECOND_LEVEL_TOP = FIRST_LEVEL_TOP + FIRST_LEVEL_ROWS * ROW_HEIGHT
+
+_content_bottom = SECOND_LEVEL_TOP + (SECOND_LEVEL_ROWS - 1) * ROW_HEIGHT + BUTTON_HEIGHT
+assert _content_bottom <= WINDOW_HEIGHT - _FRAME_MARGIN - BUTTON_GAP, (
+    "menu content overflows the window - grow WINDOW_HEIGHT or shrink "
+    "ROW_HEIGHT/FIRST_LEVEL_ROWS/SECOND_LEVEL_ROWS"
+)
 
 
 def stack_rect(top: int, index: int) -> pygame.Rect:

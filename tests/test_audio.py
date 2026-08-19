@@ -55,3 +55,21 @@ class TestAudioSFX:
         # First tick starts rhythmic work SFX
         update_npc_tasks(world, 0.1)
         assert getattr(npc, "work_sfx_timer", 0.0) > 0.0
+
+
+class TestSfxMute:
+    def teardown_method(self):
+        audio.set_sfx_muted(False)  # don't leak mute state into other test files
+
+    def test_defaults_unmuted(self):
+        assert audio.is_sfx_muted() is False
+
+    def test_set_sfx_muted_toggles_state(self):
+        audio.set_sfx_muted(True)
+        assert audio.is_sfx_muted() is True
+        audio.set_sfx_muted(False)
+        assert audio.is_sfx_muted() is False
+
+    def test_play_sfx_safe_when_muted(self):
+        audio.set_sfx_muted(True)
+        audio.play_sfx("chop")  # must not raise regardless of mixer state

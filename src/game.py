@@ -27,7 +27,7 @@ from constants import (
     COLOR_ANIMAL,
     COLOR_ANIMAL_DANGEROUS,
 )
-from audio import play_sfx
+from audio import play_sfx, set_sfx_muted
 from camera import Camera
 from combat import resolve_combat
 from day_night import DayNightCycle, DAY, NIGHT
@@ -89,6 +89,7 @@ class Game:
         self.pause_menu = PauseMenu()
         self.settings_screen = SettingsScreen()
         self.fullscreen = False  # session-only, always starts windowed
+        self.sfx_muted = False  # session-only, mirrors audio.py's module-level mute flag
         self._settings_return_state = TITLE  # which screen Settings' Back returns to
 
     def _start_new_game(self) -> None:
@@ -244,6 +245,9 @@ class Game:
             action = self.settings_screen.handle_click(event.pos)
             if action == "toggle_fullscreen":
                 self._set_fullscreen(not self.fullscreen)
+            elif action == "toggle_sfx_muted":
+                self.sfx_muted = not self.sfx_muted
+                set_sfx_muted(self.sfx_muted)
             elif action == "back":
                 self.state = self._settings_return_state
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -372,7 +376,7 @@ class Game:
             pygame.display.flip()
             return
         if self.state == SETTINGS:
-            self.settings_screen.render(self.screen, self.font, self.fullscreen)
+            self.settings_screen.render(self.screen, self.font, self.fullscreen, self.sfx_muted)
             pygame.display.flip()
             return
         self.render_grid()

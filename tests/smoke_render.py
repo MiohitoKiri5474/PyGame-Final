@@ -238,12 +238,12 @@ def check_no_adjacent_screen_overlaps() -> None:
 
         # TITLE <-> SETTINGS (the Settings button leads there)
         for title_rect in (title.start_rect, title.continue_rect, title.settings_rect):
-            for settings_rect in (settings.fullscreen_rect, settings.back_rect):
+            for settings_rect in (settings.fullscreen_rect, settings.mute_sfx_rect, settings.back_rect):
                 assert not title_rect.colliderect(settings_rect)
 
         # PAUSE_MENU <-> SETTINGS (the Settings button leads there)
         for pause_rect in (pause.resume_rect, pause.settings_rect, pause.quit_rect):
-            for settings_rect in (settings.fullscreen_rect, settings.back_rect):
+            for settings_rect in (settings.fullscreen_rect, settings.mute_sfx_rect, settings.back_rect):
                 assert not pause_rect.colliderect(settings_rect)
 
         pygame.quit()
@@ -254,8 +254,8 @@ def check_no_adjacent_screen_overlaps() -> None:
 def check_pause_menu_and_settings() -> None:
     """New feature: Esc during PLAYING opens a pause menu (Resume/Settings/
     Quit) instead of quitting instantly; Settings (reachable from both the
-    title screen and the pause menu) holds a session-only Fullscreen toggle
-    and returns to whichever screen opened it."""
+    title screen and the pause menu) holds session-only Fullscreen and Mute
+    SFX toggles, and returns to whichever screen opened it."""
     import pygame
 
     from game import Game, TITLE, PLAYING, PAUSE_MENU, SETTINGS
@@ -264,14 +264,24 @@ def check_pause_menu_and_settings() -> None:
         save_path.unlink(missing_ok=True)
 
         # Settings from the title screen returns to the title screen.
+        import audio
+
         game = Game()
         assert not game.fullscreen
+        assert not game.sfx_muted
+        assert not audio.is_sfx_muted()
         _click(game, game.title_screen.settings_rect.center)
         assert game.state == SETTINGS
         _click(game, game.settings_screen.fullscreen_rect.center)
         assert game.fullscreen
         _click(game, game.settings_screen.fullscreen_rect.center)
         assert not game.fullscreen  # toggles back off, and set_mode doesn't crash either direction
+        _click(game, game.settings_screen.mute_sfx_rect.center)
+        assert game.sfx_muted
+        assert audio.is_sfx_muted()  # Game.sfx_muted mirrors audio.py's module-level flag
+        _click(game, game.settings_screen.mute_sfx_rect.center)
+        assert not game.sfx_muted
+        assert not audio.is_sfx_muted()
         _click(game, game.settings_screen.back_rect.center)
         assert game.state == TITLE
         pygame.quit()
@@ -329,7 +339,7 @@ def check_pause_menu_and_settings() -> None:
         assert not game.running
         pygame.quit()
 
-    print("pause-menu/settings OK: Esc opens a real menu, Settings round-trips fullscreen and returns correctly")
+    print("pause-menu/settings OK: Esc opens a real menu, Settings round-trips fullscreen/SFX-mute and returns correctly")
 
 
 if __name__ == "__main__":
