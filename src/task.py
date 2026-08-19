@@ -7,8 +7,9 @@ from typing import Callable, TYPE_CHECKING
 from audio import play_sfx
 from blocking import is_wall_blocked
 from constants import HUNGER_EAT_THRESHOLD
-from coords import tile_at
+from coords import tile_at, tile_center
 from pathfinding import find_path
+
 from skills import gather_speed_multiplier
 
 
@@ -124,17 +125,36 @@ def update_npc_tasks(world: "World", dt: float) -> None:
     it and work on available tasks. Hungry NPCs consume food from the colony inventory."""
     _purge_dead_tasks(world)
     for npc in world.npcs:
+        if getattr(npc, "is_resting", False):
+            # Resting in sanctuary: check food consumption if hungry, and update recovery/hunger
+            if npc.hunger <= HUNGER_EAT_THRESHOLD and not npc.is_dead:
+                if world.inventory.consume_soonest_food(1) is not None:
+                    npc.eat()
+            npc.update(dt)
+            # Full health: forcibly auto-deploy back to map at original position!
+            if npc.health >= npc.max_health:
+                npc.is_resting = False
+                if getattr(npc, "sanctuary_orig_pos", None) is not None:
+                    npc.x, npc.y = npc.sanctuary_orig_pos
+                else:
+                    cx, cy = world.grid.width // 2, world.grid.height // 2
+                    npc.x, npc.y = tile_center(cx, cy)
+                npc.path = []
+                npc._auto_deployed = True
+            continue
+
+
         # Colony food consumption: hungry NPCs eat from inventory (soonest-to-expire first)
         if npc.hunger <= HUNGER_EAT_THRESHOLD and not npc.is_dead:
             if world.inventory.consume_soonest_food(1) is not None:
                 npc.eat()
-
 
         if npc.task is None:
             _try_claim_and_path(world, npc)
             if npc.task is None:
                 npc.update(dt)
                 continue
+
 
         task_type = TASK_TYPES.get(npc.task.type)
         if task_type is not None and task_type.can_perform is not None:
