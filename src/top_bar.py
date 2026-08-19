@@ -1,9 +1,9 @@
-"""Full-width top info bar: a small left box for round/phase/countdown and
-a larger right box listing everything else as a bulleted list - framed to
-match the build bar's button styling, per the requester's redesign ask.
-
-Per-NPC detail lives in npc_status_ui.py instead, opened on demand - this
-bar only ever carries compact, always-relevant status.
+"""Top info bar: a small left box for round/phase/countdown, then three
+stacked middle boxes (NPC count, Inventory, Hint) - each framed to match
+the build bar's button styling. The top-right Pause/Priority/Skill buttons
+and the left-edge magic panel are separate modules (top_buttons.py,
+magic_panel.py); this one only lays out the round box and the three
+middle boxes so each stays independently sized.
 
 Thin rendering layer, not itself unit tested, matching priority_ui.py's
 precedent.
@@ -14,17 +14,37 @@ from __future__ import annotations
 import pygame
 
 from constants import WINDOW_WIDTH
+from sprites import resource_sprite
 
 _MARGIN = 10
-_PAD = 12
+_PAD = 10
 _LEFT_W = 170
+_LEFT_MIN_H = 112  # tall enough for the left box's round/phase/number stack
+_MIDDLE_GAP = 8
+_RIGHT_COL_W = 150  # matches top_buttons._BUTTON_W, kept clear of overlap
+
 _ROW_H = 22
-_MIN_BOX_H = 112  # tall enough for the left box's round/phase/number stack
+_ITEM_ROW_H = 28  # inventory rows are taller: they carry an icon
+_ICON = 22
+
 _BOX_BG = (24, 26, 32)
 _BOX_BORDER = (70, 74, 86)
 _ROUND_COLOR = (220, 220, 225)
+_LABEL = (225, 225, 230)
+_HINT_TEXT = (200, 200, 205)
 _EMPTY_COLOR = (120, 120, 130)
-_BULLET = "• "
+
+
+def left_box_bottom() -> int:
+    """The round/phase/countdown box's bottom y - fixed, so magic_panel can
+    anchor to it for both click hit-testing (before render() runs each
+    frame) and drawing, without needing render()'s return value first."""
+    return _MARGIN + _LEFT_MIN_H
+
+
+def _box(surface: pygame.Surface, rect: pygame.Rect) -> None:
+    pygame.draw.rect(surface, _BOX_BG, rect, border_radius=8)
+    pygame.draw.rect(surface, _BOX_BORDER, rect, 2, border_radius=8)
 
 
 def render(
@@ -35,23 +55,16 @@ def render(
     phase_label: str,
     remaining_seconds: float,
     phase_color: tuple[int, int, int],
-    items: list[tuple[str, tuple[int, int, int]]],
+    npc_count: int,
+    inventory_items: list[tuple[str, int]],
+    hint_lines: list[tuple[str, tuple[int, int, int]]],
 ) -> int:
-    """Draws the bar and returns its total pixel height so callers can
-    stack other content below it if they want."""
-    items = [(text, color) for text, color in items if text]
+    """Draws the bar. Returns the left box's own bottom y - the magic panel
+    starts there, not at the (possibly taller) middle/right columns'
+    bottom, since it shares the left box's x-range but not theirs."""
+    left_rect = pygame.Rect(_MARGIN, _MARGIN, _LEFT_W, _LEFT_MIN_H)
+    _box(surface, left_rect)
 
-    right_x = _MARGIN + _LEFT_W + _MARGIN
-    right_w = WINDOW_WIDTH - right_x - _MARGIN
-    box_h = max(_MIN_BOX_H, _PAD * 2 + max(1, len(items)) * _ROW_H)
-
-    left_rect = pygame.Rect(_MARGIN, _MARGIN, _LEFT_W, box_h)
-    right_rect = pygame.Rect(right_x, _MARGIN, right_w, box_h)
-    for rect in (left_rect, right_rect):
-        pygame.draw.rect(surface, _BOX_BG, rect, border_radius=8)
-        pygame.draw.rect(surface, _BOX_BORDER, rect, 2, border_radius=8)
-
-    # Left: round / phase / a big countdown number, vertically centered.
     round_surf = font.render(f"Round {round_number}", True, _ROUND_COLOR)
     phase_surf = font.render(phase_label, True, phase_color)
     number_surf = big_font.render(f"{remaining_seconds:.0f}s", True, phase_color)
@@ -63,12 +76,48 @@ def render(
     y += phase_surf.get_height() + 6
     surface.blit(number_surf, number_surf.get_rect(centerx=left_rect.centerx, top=y))
 
-    # Right: one bullet per line.
-    y = right_rect.top + _PAD
-    rows = items or [("(nothing to report)", _EMPTY_COLOR)]
-    for text, color in rows:
-        surf = font.render(f"{_BULLET}{text}", True, color)
-        surface.blit(surf, (right_rect.left + _PAD, y))
-        y += _ROW_H
+    # Middle column: NPC (fixed), Inventory (grows with item count), Hint
+    # (grows with active hints) - three independently-sized boxes, stacked.
+    middle_x = left_rect.right + _MARGIN
+    middle_w = WINDOW_WIDTH - middle_x - _MARGIN - _RIGHT_COL_W - _MARGIN
+    my = _MARGIN
 
-    return left_rect.bottom + _MARGIN
+    npc_h = _PAD * 2 + _ROW_H
+    npc_rect = pygame.Rect(middle_x, my, middle_w, npc_h)
+    _box(surface, npc_rect)
+    surface.blit(
+        font.render(f"NPC: {npc_count}  [N] to see detail", True, _LABEL),
+        (npc_rect.x + _PAD, npc_rect.y + _PAD),
+    )
+    my = npc_rect.bottom + _MIDDLE_GAP
+
+    inv_h = _PAD * 2 + max(1, len(inventory_items)) * _ITEM_ROW_H
+    inv_rect = pygame.Rect(middle_x, my, middle_w, inv_h)
+    _box(surface, inv_rect)
+    iy = inv_rect.y + _PAD
+    if not inventory_items:
+        surface.blit(font.render("Inventory: (empty)", True, _EMPTY_COLOR), (inv_rect.x + _PAD, iy))
+    else:
+        for resource, count in inventory_items:
+            icon = resource_sprite(resource)
+            if icon is not None:
+                small = pygame.transform.smoothscale(icon, (_ICON, _ICON))
+                surface.blit(small, (inv_rect.x + _PAD, iy))
+            label_x = inv_rect.x + _PAD + _ICON + 8
+            surface.blit(font.render(f"{resource}  x{count}", True, _LABEL), (label_x, iy + 3))
+            iy += _ITEM_ROW_H
+    my = inv_rect.bottom + _MIDDLE_GAP
+
+    # Hint box absorbs whatever's left: no fixed height, it just grows with
+    # however many hint lines are active this frame.
+    hint_lines = [(text, color) for text, color in hint_lines if text]
+    hint_h = _PAD * 2 + max(1, len(hint_lines)) * _ROW_H
+    hint_rect = pygame.Rect(middle_x, my, middle_w, hint_h)
+    _box(surface, hint_rect)
+    hy = hint_rect.y + _PAD
+    rows = hint_lines or [("(nothing to report)", _EMPTY_COLOR)]
+    for text, color in rows:
+        surface.blit(font.render(text, True, color), (hint_rect.x + _PAD, hy))
+        hy += _ROW_H
+
+    return left_rect.bottom
