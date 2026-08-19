@@ -221,6 +221,7 @@ class TestTameRepathing:
         # stale target tile with no chase logic to recover - this covers
         # the same claim-and-chase path Hunt already had, now shared by Tame.
         world = World(npc_count=1)
+        world.animals = []  # World() seeds random wildlife too - keep only this test's own animal
         animal = Animal(*tile_center(12, 10), species="Horse", speed=140.0, dangerous=False, health=40)
         world.animals.append(animal)
 

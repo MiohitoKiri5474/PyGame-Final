@@ -67,6 +67,7 @@ from sanctuary_ui import SanctuaryUI
 import top_bar
 import top_buttons
 import magic_panel
+import minimap
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
     animal_sprite,
@@ -1085,6 +1086,7 @@ class Game:
         magic_panel.render(self.screen, self.font, self.world, top_bar.left_box_bottom())
         top_buttons.render(self.screen, self.font, self.paused, self.skill_points_available)
         self.build_bar.render(self.screen, self.font, self.world)
+        minimap.render(self.screen, self.world.grid, self.camera, self.build_bar.panel_top())
         self.action_menu.render(self.screen, self.font)
         self.animal_menu.render(self.screen, self.font)
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
