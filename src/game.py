@@ -30,9 +30,7 @@ from constants import (
     COLOR_QUEUED_ASSIGNED,
     COLOR_PROGRESS_BAR,
     COLOR_EXPAND_PREVIEW_CLAIM,
-    COLOR_EXPAND_PREVIEW_REVEAL,
     EXPAND_CLAIM_RADIUS,
-    EXPAND_REVEAL_RADIUS,
 )
 from action_menu import ActionMenu
 from audio import play_bgm, play_sfx, stop_bgm
@@ -530,9 +528,10 @@ class Game:
             pygame.draw.rect(self.screen, COLOR_HOVER_BORDER, hover_rect, 2)
 
     def _render_expand_preview(self, gx: int, gy: int) -> None:
-        """While hovering a valid Expand target, lightly tint the area that
-        would actually become claimed/revealed if clicked - so the player
-        sees Expand's effect before committing, instead of only after."""
+        """While hovering a valid Expand target, lightly tint only the tiles
+        that would newly become claimed (i.e. turn to grass) if clicked -
+        already-claimed ground and the reveal-only fog ring stay untouched
+        so the highlight reads as "this much new territory", not noise."""
         if "Expand" not in applicable_tasks(self.world, (gx, gy)):
             return
 
@@ -540,16 +539,12 @@ class Game:
         grid = self.world.grid
         claim_tile = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
         claim_tile.fill(COLOR_EXPAND_PREVIEW_CLAIM)
-        reveal_tile = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
-        reveal_tile.fill(COLOR_EXPAND_PREVIEW_REVEAL)
 
-        for y in range(gy - EXPAND_REVEAL_RADIUS, gy + EXPAND_REVEAL_RADIUS + 1):
-            for x in range(gx - EXPAND_REVEAL_RADIUS, gx + EXPAND_REVEAL_RADIUS + 1):
-                if not grid.in_bounds(x, y):
+        for y in range(gy - EXPAND_CLAIM_RADIUS, gy + EXPAND_CLAIM_RADIUS + 1):
+            for x in range(gx - EXPAND_CLAIM_RADIUS, gx + EXPAND_CLAIM_RADIUS + 1):
+                if not grid.in_bounds(x, y) or grid.get(x, y).claimed:
                     continue
-                within_claim = abs(x - gx) <= EXPAND_CLAIM_RADIUS and abs(y - gy) <= EXPAND_CLAIM_RADIUS
-                overlay = claim_tile if within_claim else reveal_tile
-                self.screen.blit(overlay, (x * TILE_SIZE - cam_x, y * TILE_SIZE - cam_y))
+                self.screen.blit(claim_tile, (x * TILE_SIZE - cam_x, y * TILE_SIZE - cam_y))
 
     def _hover_tile_info(self) -> str:
         mouse_x, mouse_y = pygame.mouse.get_pos()
