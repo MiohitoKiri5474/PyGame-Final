@@ -3,7 +3,14 @@ Quit. Primitive shapes/text only (no new art assets)."""
 
 import pygame
 
-from ui_layout import FIRST_LEVEL_TOP, hit_test, render_button, render_screen_title, stack_rect
+from ui_layout import (
+    FIRST_LEVEL_TOP,
+    hit_test,
+    render_button,
+    render_screen_frame,
+    render_screen_title,
+    stack_rect,
+)
 
 _TITLE_TEXT = "Paused"
 
@@ -21,6 +28,7 @@ class PauseMenu:
         )
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        render_screen_frame(surface)
         render_screen_title(surface, font, _TITLE_TEXT)
         render_button(surface, font, self.resume_rect, "Resume")
         render_button(surface, font, self.settings_rect, "Settings")

@@ -12,6 +12,7 @@ from ui_layout import (
     SECOND_LEVEL_TOP,
     hit_test,
     render_button,
+    render_screen_frame,
     render_screen_title,
     stack_rect,
 )
@@ -33,6 +34,7 @@ class TitleScreen:
         return hit_test(pos, rect_labels)
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font, save_exists: bool) -> None:
+        render_screen_frame(surface)
         render_screen_title(surface, font, _TITLE_TEXT)
         render_button(surface, font, self.start_rect, "Start")
         if save_exists:
@@ -55,6 +57,7 @@ class ConfirmOverwriteDialog:
         return hit_test(pos, [(self.yes_rect, "yes"), (self.no_rect, "no")])
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        render_screen_frame(surface)
         render_screen_title(surface, font, _WARNING_TEXT)
         render_button(surface, font, self.yes_rect, "Yes, start new")
         render_button(surface, font, self.no_rect, "No, go back")

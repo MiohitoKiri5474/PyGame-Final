@@ -5,7 +5,14 @@ every other in-memory Game setting."""
 
 import pygame
 
-from ui_layout import SECOND_LEVEL_TOP, hit_test, render_button, render_screen_title, stack_rect
+from ui_layout import (
+    SECOND_LEVEL_TOP,
+    hit_test,
+    render_button,
+    render_screen_frame,
+    render_screen_title,
+    stack_rect,
+)
 
 _TITLE_TEXT = "Settings"
 
@@ -19,6 +26,7 @@ class SettingsScreen:
         return hit_test(pos, [(self.fullscreen_rect, "toggle_fullscreen"), (self.back_rect, "back")])
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font, fullscreen: bool) -> None:
+        render_screen_frame(surface)
         render_screen_title(surface, font, _TITLE_TEXT)
         render_button(surface, font, self.fullscreen_rect, f"Fullscreen: {'On' if fullscreen else 'Off'}")
         render_button(surface, font, self.back_rect, "Back")

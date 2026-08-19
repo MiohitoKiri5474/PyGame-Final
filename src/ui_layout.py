@@ -20,7 +20,7 @@ import pygame
 
 from constants import COLOR_TEXT, WINDOW_HEIGHT, WINDOW_WIDTH
 
-BUTTON_WIDTH = 200
+BUTTON_WIDTH = 320  # wide enough to read as deliberate, not a leftover default-sized control
 BUTTON_HEIGHT = 56
 BUTTON_GAP = 16
 ROW_HEIGHT = BUTTON_HEIGHT + BUTTON_GAP
@@ -32,6 +32,7 @@ FIRST_LEVEL_TOP = WINDOW_HEIGHT // 2
 SECOND_LEVEL_TOP = FIRST_LEVEL_TOP + 3 * ROW_HEIGHT
 
 _SCREEN_TITLE_Y = WINDOW_HEIGHT // 3
+_FRAME_MARGIN = 24
 
 
 def stack_rect(top: int, index: int) -> pygame.Rect:
@@ -61,3 +62,13 @@ def render_screen_title(surface: pygame.Surface, font: pygame.font.Font, text: s
     """The heading text every menu-style screen shows above its buttons."""
     title_surface = font.render(text, True, COLOR_TEXT)
     surface.blit(title_surface, title_surface.get_rect(center=(WINDOW_WIDTH // 2, _SCREEN_TITLE_Y)))
+
+
+def render_screen_frame(surface: pygame.Surface) -> None:
+    """A simple border a fixed margin in from the screen edges, so a menu
+    screen reads as one deliberately-framed composition instead of a few
+    small buttons floating in an otherwise-empty window."""
+    frame = pygame.Rect(
+        _FRAME_MARGIN, _FRAME_MARGIN, WINDOW_WIDTH - 2 * _FRAME_MARGIN, WINDOW_HEIGHT - 2 * _FRAME_MARGIN
+    )
+    pygame.draw.rect(surface, BUTTON_BORDER, frame, 2)
