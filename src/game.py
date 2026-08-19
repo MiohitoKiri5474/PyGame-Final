@@ -1051,6 +1051,30 @@ class Game:
                     transformed = pygame.transform.rotate(transformed, tilt_angle)
                 self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
 
+                # Persistent Burn Status VFX (flame tongues & embers)
+                if getattr(monster, "burn_ticks_remaining", 0) > 0:
+                    t_burn = time.monotonic() * 12.0
+                    burn_surf = pygame.Surface((36, 36), pygame.SRCALPHA)
+                    flame_pts = [
+                        (6, 26),
+                        (12, 10 + int(math.sin(t_burn) * 5)),
+                        (18, 16),
+                        (24, 8 + int(math.cos(t_burn) * 5)),
+                        (30, 26),
+                    ]
+                    pygame.draw.polygon(burn_surf, (255, 70, 20, 210), flame_pts)
+                    pygame.draw.polygon(burn_surf, (255, 200, 40, 240), [(p[0], p[1] + 4) for p in flame_pts])
+                    self.screen.blit(burn_surf, (screen_x - 18, screen_y - 20))
+
+                # Persistent Freeze Status VFX (translucent origami ice block & frost crystals)
+                if getattr(monster, "is_frozen", False):
+                    ice_box = pygame.Surface((36, 40), pygame.SRCALPHA)
+                    pygame.draw.rect(ice_box, (100, 215, 255, 115), pygame.Rect(2, 2, 32, 36), border_radius=4)
+                    pygame.draw.rect(ice_box, (220, 250, 255, 230), pygame.Rect(2, 2, 32, 36), 2, border_radius=4)
+                    # Diagonal specular gleam line
+                    pygame.draw.line(ice_box, (255, 255, 255, 220), (6, 6), (30, 30), 2)
+                    self.screen.blit(ice_box, (screen_x - 18, screen_y - 20))
+
                 # Red/Purple Claw Slash Smear Arc during monster attack
                 if is_attacking and 0.35 <= ap < 0.85:
                     claw_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
@@ -1064,6 +1088,7 @@ class Game:
                     self.screen.blit(claw_surf, (screen_x - 19, screen_y - 19))
             else:
                 pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
+
 
 
 

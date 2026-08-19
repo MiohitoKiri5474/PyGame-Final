@@ -118,7 +118,8 @@ def _cast_single_target_spell(
     if on_hit is not None:
         on_hit(target)
     world.spellbook.start_cooldown(spell, cooldown)
-    world.spellbook.trigger_flash((target.x, target.y), MAGIC_FLASH_DURATION, color, spell=spell)
+    flash_dur = 0.55 if spell == "Fire" else (0.45 if spell == "Lightning" else MAGIC_FLASH_DURATION)
+    world.spellbook.trigger_flash((target.x, target.y), flash_dur, color, spell=spell)
     if spell == "Lightning":
         play_sfx("lightning")
     elif spell == "Fire":
@@ -174,12 +175,13 @@ def cast_freeze(world: "World", monsters: list["Monster"]) -> bool:
         mx, my = tile_at(monster.x, monster.y)
         if abs(mx - cx) <= radius and abs(my - cy) <= radius:
             monster.apply_freeze(FREEZE_DURATION)
-            world.spellbook.trigger_flash((monster.x, monster.y), MAGIC_FLASH_DURATION, COLOR_FREEZE_FLASH, spell="Freeze")
+            world.spellbook.trigger_flash((monster.x, monster.y), 0.65, COLOR_FREEZE_FLASH, spell="Freeze")
 
 
     world.spellbook.start_cooldown("Freeze", FREEZE_COOLDOWN)
     play_sfx("freeze")
     return True
+
 
 
 def _tick_magic(world: "World", dt: float) -> None:

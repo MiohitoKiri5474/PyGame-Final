@@ -5,7 +5,7 @@ from extensions import register_fx_overlay
 
 
 def draw_magic_fx(surface: pygame.Surface, world, camera) -> None:
-    """Draws rich Paper Mario styled origami magic spell visual effects."""
+    """Draws ultra magnificent Paper Mario styled origami magic spell visual effects."""
     if not hasattr(world, "spellbook") or not hasattr(world.spellbook, "flashes"):
         return
 
@@ -53,61 +53,140 @@ def draw_magic_fx(surface: pygame.Surface, world, camera) -> None:
             surface.blit(bolt_surf, (0, 0))
 
         elif spell == "Fire" or color == (255, 100, 50):
-            # ── 2. Paper Mario Origami Flame Vortex ──────────────────────
-            fire_surf = pygame.Surface((80, 80), pygame.SRCALPHA)
-            center = (40, 40)
+            # ── 2. Paper Mario Ultra Magnificent Origami Phoenix Fire Vortex ───
+            fire_surf = pygame.Surface((120, 120), pygame.SRCALPHA)
+            cx, cy = 60, 60
 
-            time_offset = (1.0 - prog) * 12.0
-            flame_colors = [
-                (255, 60, 30, int(230 * prog)),    # Red flame
-                (255, 140, 40, int(240 * prog)),   # Orange flame
-                (255, 230, 70, int(255 * prog)),   # Yellow flame core
+            # (1) Ground Rotating Flame Mandala / Blazing Seal (12 flame teeth)
+            seal_rot = (1.0 - prog) * 160.0
+            seal_r = int(32 * (1.0 - prog * 0.3)) + 4
+            mandala_pts = []
+            for i in range(12):
+                ang = math.radians(seal_rot + i * 30)
+                r = seal_r if i % 2 == 0 else int(seal_r * 0.6)
+                mandala_pts.append((cx + int(math.cos(ang) * r), cy + 10 + int(math.sin(ang) * (r * 0.55))))
+            if len(mandala_pts) >= 3:
+                pygame.draw.polygon(fire_surf, (255, 50, 20, int(150 * prog)), mandala_pts)
+                pygame.draw.lines(fire_surf, (255, 220, 50, int(220 * prog)), True, mandala_pts, 2)
+
+            # (2) Multi-layered Spiraling Origami Flame Dragons (4 Spiral Arms)
+            spiral_time = (1.0 - prog) * 16.0
+            flame_layers = [
+                ((230, 25, 20, int(220 * prog)), 24, 45, 12),   # Deep Crimson
+                ((255, 110, 25, int(235 * prog)), 18, 48, 10),  # Volcanic Orange
+                ((255, 215, 40, int(250 * prog)), 12, 52, 8),   # Solar Yellow
+                ((255, 255, 230, int(255 * prog)), 6, 56, 5),   # Searing White Core
             ]
 
-            for i, f_col in enumerate(flame_colors):
-                petal_angle = time_offset + i * (math.pi * 2 / 3)
-                px = center[0] + int(math.cos(petal_angle) * (14 - i * 3))
-                py = center[1] + int(math.sin(petal_angle) * (14 - i * 3)) - int((1.0 - prog) * 16)
-                rad = max(4, int((12 - i * 2) * prog))
-                pygame.draw.circle(fire_surf, f_col, (px, py), rad)
-                top_point = (px, py - int(rad * 1.8))
-                left_point = (px - rad, py)
-                right_point = (px + rad, py)
-                pygame.draw.polygon(fire_surf, f_col, [left_point, top_point, right_point])
+            for layer_col, arm_dist, reach_h, flame_w in flame_layers:
+                for arm in range(3):
+                    arm_angle = spiral_time + arm * (math.pi * 2 / 3)
+                    bx = cx + int(math.cos(arm_angle) * (arm_dist * prog))
+                    by = cy + int(math.sin(arm_angle) * (arm_dist * 0.6 * prog))
+                    tx = cx + int(math.cos(arm_angle + 0.8) * (arm_dist * 0.4 * prog))
+                    ty = by - int(reach_h * prog)
 
-            burst_r = max(4, int((1.0 - prog) * 36))
-            pygame.draw.circle(fire_surf, (255, 180, 50, int(180 * prog)), center, burst_r, 2)
-            surface.blit(fire_surf, (screen_x - 40, screen_y - 40))
+                    p_left = (bx - flame_w, by)
+                    p_right = (bx + flame_w, by)
+                    p_tip = (tx, ty)
+                    pygame.draw.polygon(fire_surf, layer_col, [p_left, p_tip, p_right])
+                    pygame.draw.circle(fire_surf, layer_col, (bx, by), flame_w)
+
+            # (3) Central Blazing Starburst Flare
+            star_flare_sz = max(4, int(22 * prog))
+            for ang_deg in [0, 45, 90, 135, 180, 225, 270, 315]:
+                rad = math.radians(ang_deg)
+                fx = cx + int(math.cos(rad) * star_flare_sz * (1.3 if ang_deg % 90 == 0 else 0.8))
+                fy = cy - 10 + int(math.sin(rad) * star_flare_sz * (1.3 if ang_deg % 90 == 0 else 0.8))
+                pygame.draw.line(fire_surf, (255, 255, 240, int(250 * prog)), (cx, cy - 10), (fx, fy), 2)
+
+            # (4) 8 Orbiting Ember Paper Confetti Sparks
+            for i in range(8):
+                e_ang = spiral_time * 1.5 + i * (math.pi / 4)
+                e_r = (14 + i * 2) * prog
+                ex = cx + int(math.cos(e_ang) * e_r)
+                ey = cy - int((1.0 - prog) * 45) - i * 3 + int(math.sin(e_ang) * (e_r * 0.4))
+                e_sz = max(2, int(4 * prog))
+                pygame.draw.rect(fire_surf, (255, 230, 80, int(240 * prog)), pygame.Rect(ex - e_sz // 2, ey - e_sz // 2, e_sz, e_sz + 2))
+
+            surface.blit(fire_surf, (screen_x - 60, screen_y - 60))
 
         elif spell == "Freeze" or color == (100, 200, 255):
-            # ── 3. Paper Mario Origami Crystal Snowflake Seal ────────────
-            ice_surf = pygame.Surface((80, 80), pygame.SRCALPHA)
-            center = (40, 40)
+            # ── 3. Paper Mario Ultra Magnificent Diamond Frost Hexagram & 3D Spires ───
+            ice_surf = pygame.Surface((130, 130), pygame.SRCALPHA)
+            cx, cy = 65, 65
 
-            rot = (1.0 - prog) * 90.0
-            ice_col_outer = (120, 220, 255, int(240 * prog))
-            ice_col_inner = (240, 255, 255, int(255 * prog))
+            # (1) Grand Hexagram Snowflake Mandala Ground Seal
+            seal_rot = (1.0 - prog) * 120.0
+            outer_r = int(42 * (1.0 - prog * 0.25)) + 4
 
-            arm_len = int(22 * prog) + 6
-            if arm_len > 2:
-                for i in range(6):
-                    angle = math.radians(rot + i * 60)
-                    ax = center[0] + int(math.cos(angle) * arm_len)
-                    ay = center[1] + int(math.sin(angle) * arm_len)
-                    pygame.draw.line(ice_surf, ice_col_outer, center, (ax, ay), 3)
-                    pygame.draw.line(ice_surf, ice_col_inner, center, (ax, ay), 1)
+            tri1 = []
+            tri2 = []
+            for i in range(3):
+                a1 = math.radians(seal_rot + i * 120)
+                a2 = math.radians(seal_rot + 60 + i * 120)
+                tri1.append((cx + int(math.cos(a1) * outer_r), cy + int(math.sin(a1) * (outer_r * 0.6))))
+                tri2.append((cx + int(math.cos(a2) * outer_r), cy + int(math.sin(a2) * (outer_r * 0.6))))
 
-                    bx = center[0] + int(math.cos(angle) * arm_len * 0.6)
-                    by = center[1] + int(math.sin(angle) * arm_len * 0.6)
-                    pygame.draw.circle(ice_surf, (220, 250, 255, int(230 * prog)), (bx, by), 3)
+            pygame.draw.lines(ice_surf, (90, 210, 255, int(220 * prog)), True, tri1, 2)
+            pygame.draw.lines(ice_surf, (160, 240, 255, int(240 * prog)), True, tri2, 2)
+            pygame.draw.circle(ice_surf, (120, 225, 255, int(160 * prog)), (cx, cy), outer_r, 2)
 
-            cube_w = int(26 * prog) + 6
-            cube_h = int(32 * prog) + 6
-            cube_rect = pygame.Rect(center[0] - cube_w // 2, center[1] - cube_h // 2, cube_w, cube_h)
-            pygame.draw.rect(ice_surf, (160, 230, 255, int(90 * prog)), cube_rect, border_radius=4)
-            pygame.draw.rect(ice_surf, (220, 250, 255, int(220 * prog)), cube_rect, 2, border_radius=4)
+            # (2) 6 Fractal Ice Branches spreading with diamond nodes
+            for i in range(6):
+                ang = math.radians(seal_rot + i * 60)
+                bx = cx + int(math.cos(ang) * outer_r)
+                by = cy + int(math.sin(ang) * (outer_r * 0.6))
+                pygame.draw.line(ice_surf, (220, 250, 255, int(230 * prog)), (cx, cy), (bx, by), 2)
+                node_sz = max(2, int(4 * prog))
+                node_pts = [
+                    (bx, by - node_sz),
+                    (bx + node_sz, by),
+                    (bx, by + node_sz),
+                    (bx - node_sz, by),
+                ]
+                pygame.draw.polygon(ice_surf, (255, 255, 255, int(250 * prog)), node_pts)
 
-            surface.blit(ice_surf, (screen_x - 40, screen_y - 40))
+            # (3) Five Rising 3D Faceted Origami Ice Crystal Spires
+            spire_configs = [
+                (0, 4, 46, 12),     # Giant Center Spire
+                (-16, -2, 34, 9),   # Left Spire
+                (16, -2, 34, 9),    # Right Spire
+                (-10, 10, 28, 8),   # Front-Left Spire
+                (10, 10, 28, 8),    # Front-Right Spire
+            ]
+
+            for ox, oy, max_h, max_w in spire_configs:
+                sh = int(max_h * (0.4 + 0.6 * prog))
+                sw = int(max_w * (0.5 + 0.5 * prog))
+                sx_base = cx + ox
+                sy_base = cy + oy
+                sy_tip = sy_base - sh
+
+                left_pts = [(sx_base, sy_base), (sx_base - sw, sy_base - sh // 3), (sx_base, sy_tip)]
+                right_pts = [(sx_base, sy_base), (sx_base + sw, sy_base - sh // 3), (sx_base, sy_tip)]
+
+                pygame.draw.polygon(ice_surf, (40, 130, 215, int(210 * prog)), left_pts)
+                pygame.draw.polygon(ice_surf, (110, 225, 255, int(240 * prog)), right_pts)
+                pygame.draw.line(ice_surf, (255, 255, 255, int(255 * prog)), (sx_base, sy_base), (sx_base, sy_tip), 2)
+                pygame.draw.lines(ice_surf, (220, 250, 255, int(230 * prog)), True, left_pts + [(sx_base + sw, sy_base - sh // 3)], 1)
+
+            # (4) 12 Orbiting Diamond Frost Sparkle Stars
+            for i in range(12):
+                star_ang = (1.0 - prog) * 8.0 + i * (math.pi / 6)
+                star_r = (20 + (i % 3) * 6) * prog
+                st_x = cx + int(math.cos(star_ang) * star_r)
+                st_y = cy - 12 + int(math.sin(star_ang) * (star_r * 0.7)) - int((1.0 - prog) * 20)
+                st_sz = max(2, int(4 * (0.6 + 0.4 * math.sin(prog * 10.0 + i))))
+                st_pts = [
+                    (st_x, st_y - st_sz),
+                    (st_x + st_sz // 2, st_y),
+                    (st_x, st_y + st_sz),
+                    (st_x - st_sz // 2, st_y),
+                ]
+                pygame.draw.polygon(ice_surf, (240, 255, 255, int(245 * prog)), st_pts)
+
+            surface.blit(ice_surf, (screen_x - 65, screen_y - 65))
         else:
             fx = pygame.Surface((48, 48), pygame.SRCALPHA)
             pygame.draw.circle(fx, (*color, alpha), (24, 24), 20, 3)
@@ -115,4 +194,5 @@ def draw_magic_fx(surface: pygame.Surface, world, camera) -> None:
 
 
 register_fx_overlay(draw_magic_fx)
+
 
