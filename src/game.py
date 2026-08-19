@@ -25,6 +25,12 @@ from constants import (
     COLOR_BAR_BG,
     COLOR_GAME_OVER,
     COLOR_ANIMAL,
+    COLOR_ANIMAL_DANGEROUS,
+    COLOR_QUEUED_WAITING,
+    COLOR_QUEUED_ASSIGNED,
+    COLOR_PROGRESS_BAR,
+    COLOR_EXPAND_PREVIEW_CLAIM,
+    EXPAND_CLAIM_RADIUS,
 )
 from action_menu import ActionMenu
 from audio import play_bgm, play_sfx, stop_bgm
@@ -270,7 +276,41 @@ class Game:
                 return npc
         return None
 
+    def _update_cursor(self) -> None:
+        """Hand cursor over anything a click would actually do something
+        to - the keyboard-only overlays (priority/skill/NPC-status) block
+        every mouse action while open, so cursor just stays default there."""
+        if self.priority_ui.visible or self.skill_ui.visible or self.npc_status_ui.visible:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            return
+
+        pos = pygame.mouse.get_pos()
+        hovering = (
+            top_buttons.is_hovering(pos)
+            or magic_panel.is_hovering(pos, top_bar.left_box_bottom())
+            or self.build_bar.is_hovering(pos)
+            or (self.action_menu.visible and self.action_menu.is_hovering(pos))
+            or self._npc_at_world_pos(pos[0] + self.camera.x, pos[1] + self.camera.y) is not None
+        )
+
+        if not hovering and not self.action_menu.visible:
+            gx, gy = tile_at(pos[0] + self.camera.x, pos[1] + self.camera.y)
+            if self.world.grid.in_bounds(gx, gy):
+                if self.build_bar.selected is not None:
+                    task_type = TASK_TYPES.get(self.build_bar.selected)
+                    hovering = task_type is not None and task_type.can_queue(self.world, (gx, gy))
+                else:
+                    hovering = bool(applicable_tasks(self.world, (gx, gy)))
+
+        cursor = pygame.SYSTEM_CURSOR_HAND if hovering else pygame.SYSTEM_CURSOR_ARROW
+        try:
+            pygame.mouse.set_cursor(cursor)
+        except pygame.error:
+            pass  # headless/dummy video drivers (smoke tests, CI) can't create system cursors
+
     def update(self, dt: float) -> None:
+        self._update_cursor()
+
         if not self.priority_ui.visible and not self.skill_ui.visible:
             keys = pygame.key.get_pressed()
             dx = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
@@ -384,6 +424,19 @@ class Game:
                 pygame.draw.rect(self.screen, COLOR_HUNGER_BAR,
                                  pygame.Rect(bar_x, bar_y, fill_w, bar_h))
 
+            # Work-in-progress bar (below the NPC) - task_progress only ticks
+            # once the NPC has actually arrived at its target (task.py), so
+            # this only ever shows while real work is happening, not travel.
+            if npc.task is not None and npc.has_arrived:
+                task_type = TASK_TYPES.get(npc.task.type)
+                if task_type is not None and task_type.work_seconds > 0:
+                    progress_ratio = max(0.0, min(1.0, npc.task_progress / task_type.work_seconds))
+                    pbar_y = sprite_rect.bottom + 4
+                    pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, pbar_y, bar_w, bar_h))
+                    pfill_w = max(0, int(bar_w * progress_ratio))
+                    if pfill_w > 0:
+                        pygame.draw.rect(self.screen, COLOR_PROGRESS_BAR, pygame.Rect(bar_x, pbar_y, pfill_w, bar_h))
+
     def render_animals(self) -> None:
         for animal in self.world.animals:
             tx, ty = tile_at(animal.x, animal.y)
@@ -427,6 +480,11 @@ class Game:
         mouse_x, mouse_y = pygame.mouse.get_pos()
         hover_gx, hover_gy = tile_at(mouse_x + cam_x, mouse_y + cam_y)
 
+        # One task per target tile in practice (can_queue rejects duplicates
+        # on an already-queued tile) - built once per frame instead of
+        # rescanning world.tasks.tasks for every visible tile.
+        queued_by_tile = {task.target: task for task in self.world.tasks.tasks}
+
         for row in range(start_row, min(grid.height, start_row + VIEWPORT_TILES_Y + 2)):
             for col in range(start_col, min(grid.width, start_col + VIEWPORT_TILES_X + 2)):
                 tile = grid.get(col, row)
@@ -454,12 +512,39 @@ class Game:
                         pygame.draw.rect(self.screen, (240, 210, 80), marker_rect, border_radius=6)
                         pygame.draw.rect(self.screen, (100, 80, 20), marker_rect, 1, border_radius=6)
 
-        # Hover outline
+                # Queued-task marker: waiting for an NPC vs. already claimed
+                # by one, so a click's effect stays visible instead of just
+                # vanishing into the task queue with no on-screen trace.
+                task = queued_by_tile.get((col, row))
+                if task is not None:
+                    color = COLOR_QUEUED_ASSIGNED if task.assigned_npc is not None else COLOR_QUEUED_WAITING
+                    pygame.draw.rect(self.screen, color, rect, 3)
+
         if grid.in_bounds(hover_gx, hover_gy):
+            self._render_expand_preview(hover_gx, hover_gy)
             hover_screen_x = hover_gx * TILE_SIZE - cam_x
             hover_screen_y = hover_gy * TILE_SIZE - cam_y
             hover_rect = pygame.Rect(hover_screen_x, hover_screen_y, TILE_SIZE, TILE_SIZE)
             pygame.draw.rect(self.screen, COLOR_HOVER_BORDER, hover_rect, 2)
+
+    def _render_expand_preview(self, gx: int, gy: int) -> None:
+        """While hovering a valid Expand target, lightly tint only the tiles
+        that would newly become claimed (i.e. turn to grass) if clicked -
+        already-claimed ground and the reveal-only fog ring stay untouched
+        so the highlight reads as "this much new territory", not noise."""
+        if "Expand" not in applicable_tasks(self.world, (gx, gy)):
+            return
+
+        cam_x, cam_y = self.camera.x, self.camera.y
+        grid = self.world.grid
+        claim_tile = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        claim_tile.fill(COLOR_EXPAND_PREVIEW_CLAIM)
+
+        for y in range(gy - EXPAND_CLAIM_RADIUS, gy + EXPAND_CLAIM_RADIUS + 1):
+            for x in range(gx - EXPAND_CLAIM_RADIUS, gx + EXPAND_CLAIM_RADIUS + 1):
+                if not grid.in_bounds(x, y) or grid.get(x, y).claimed:
+                    continue
+                self.screen.blit(claim_tile, (x * TILE_SIZE - cam_x, y * TILE_SIZE - cam_y))
 
     def _hover_tile_info(self) -> str:
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -471,12 +556,14 @@ class Game:
         if not tile.revealed:
             return f"Tile ({gx}, {gy}): Fog of War (Unexplored)"
 
+        task = next((t for t in self.world.tasks.tasks if t.target == (gx, gy)), None)
+        click_hint = self._click_hint((gx, gy), already_queued=task is not None)
+
         if not tile.claimed:
             res_str = f" [Material: {tile.resource.capitalize()}]" if tile.resource else ""
-            return f"Tile ({gx}, {gy}): Unclaimed Land{res_str}"
+            return f"Tile ({gx}, {gy}): Unclaimed Land{res_str}{click_hint}"
 
         building = next((b for b in self.world.buildings if b.x == gx and b.y == gy), None)
-        task = next((t for t in self.world.tasks.tasks if t.target == (gx, gy)), None)
         npc = next((n for n in self.world.npcs if tile_at(n.x, n.y) == (gx, gy)), None)
 
         if building:
@@ -495,7 +582,22 @@ class Game:
                 f"Hunger: {int(npc.hunger)}/{int(NPC_MAX_HUNGER)})"
             )
 
-        return f"Tile ({gx}, {gy}): {info}"
+        return f"Tile ({gx}, {gy}): {info}{click_hint}"
+
+    def _click_hint(self, tile: tuple[int, int], already_queued: bool) -> str:
+        """' - Click to Gather'-style suffix so hovering a workable tile
+        reads as an invitation to click, not just a status readout. Silent
+        when there's nothing new a click would do: already queued, a
+        building's armed (that hint lives in the build panel instead), or
+        the tile genuinely has no applicable task."""
+        if already_queued or self.build_bar.selected is not None:
+            return ""
+        options = applicable_tasks(self.world, tile)
+        if not options:
+            return ""
+        if len(options) == 1:
+            return f"  ->  Click to {options[0]}"
+        return f"  ->  Click to choose: {', '.join(options)}"
 
     def render_hud(self) -> None:
         banner_color = COLOR_DAY_BANNER if self.cycle.phase == DAY else COLOR_NIGHT_BANNER

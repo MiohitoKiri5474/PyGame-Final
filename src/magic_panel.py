@@ -50,6 +50,10 @@ def _rects(y: int) -> dict[str, pygame.Rect]:
     return rects
 
 
+def is_hovering(pos: tuple[int, int], y: int) -> bool:
+    return any(rect.collidepoint(pos) for rect in _rects(y).values())
+
+
 def handle_click(pos: tuple[int, int], y: int) -> str | None:
     """Returns the spell name clicked, or None - caller checks readiness
     and casts (same as pressing its hotkey)."""
