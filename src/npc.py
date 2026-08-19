@@ -31,6 +31,11 @@ class NPC:
 
         self.x = x
         self.y = y
+        # One tick behind self.x/y - a tamed animal following this NPC trails
+        # this instead of the live position (snake-follow style), so it
+        # naturally retraces where the NPC actually walked.
+        self.prev_x = x
+        self.prev_y = y
         self.speed = speed
         self.path: list[tuple[int, int]] = []
         self.role = role
@@ -106,6 +111,7 @@ class NPC:
     def update(self, dt: float) -> None:
         """Advance one simulation tick. Hunger decays continuously;
         starvation kills when hunger reaches 0."""
+        self.prev_x, self.prev_y = self.x, self.y
         if not self.alive or self.health <= 0 or self.hunger <= 0:
             self.alive = False
             return

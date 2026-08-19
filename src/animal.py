@@ -1,7 +1,8 @@
+import math
 import random
 
-from coords import tile_at
-from movement import step_toward_path
+from coords import tile_at, tile_center
+from movement import step_toward_path, step_toward_point
 
 
 class Animal:
@@ -40,6 +41,15 @@ class Animal:
         self.pen_tile: tuple[int, int] | None = None
         self.path: list[tuple[int, int]] = []
         self._rng = rng or random.Random()
+
+        # Post-tame homing/following (ticket 26 follow-up): tamer_npc_id is
+        # set once at taming and never changes - is_following just toggles
+        # whether it's actively trailing that NPC right now. idle_target is
+        # a plain pixel point used for the transient "walking to a spot near
+        # its pen" leg, both right after taming and after "Back to Pen".
+        self.tamer_npc_id: int | None = None
+        self.is_following: bool = False
+        self.idle_target: tuple[float, float] | None = None
 
         # Paper Mario Animation & Combat states
         self.facing_left = False
@@ -96,19 +106,43 @@ class Animal:
     def set_path(self, path: list[tuple[int, int]]) -> None:
         self.path = list(path)
 
-    def update(self, dt: float, grid_width: int, grid_height: int) -> None:
+    def update(self, dt: float, grid_width: int, grid_height: int, npcs: list | None = None) -> None:
         self.attack_timer = max(0.0, self.attack_timer - dt)
         self.hit_timer = max(0.0, self.hit_timer - dt)
 
-        if not self.path:
-            cx, cy = tile_at(self.x, self.y)
-            dx, dy = self._rng.choice([(-1, 0), (1, 0), (0, -1), (0, 1)])
-            nx, ny = cx + dx, cy + dy
-            if 0 <= nx < grid_width and 0 <= ny < grid_height:
-                self.set_path([(nx, ny)])
+        old_x, old_y = self.x, self.y
 
-        old_x = self.x
-        self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
+        if self.is_following and self.tamer_npc_id is not None:
+            tamer = next(
+                (n for n in (npcs or []) if n.id == self.tamer_npc_id and not getattr(n, "is_dead", False)), None
+            )
+            if tamer is not None:
+                # Trail the tamer's previous-tick position, snake-body style,
+                # rather than its live position - it naturally retraces
+                # ground the tamer already validly walked, so no obstacle
+                # avoidance is needed for the chase itself.
+                self.x, self.y = step_toward_point(self.x, self.y, tamer.prev_x, tamer.prev_y, self.speed, dt)
+            else:
+                # Tamer died - stop following; settle by its pen if it has one
+                self.is_following = False
+                if self.pen_tile is not None:
+                    self.idle_target = tile_center(*self.pen_tile)
+        elif self.idle_target is not None:
+            tx, ty = self.idle_target
+            self.x, self.y = step_toward_point(self.x, self.y, tx, ty, self.speed, dt)
+            if math.hypot(self.x - tx, self.y - ty) < 1.0:
+                self.idle_target = None
+        elif self.is_tamed:
+            pass  # holding position - idling beside its pen, or wherever it stopped
+        else:
+            if not self.path:
+                cx, cy = tile_at(self.x, self.y)
+                dx, dy = self._rng.choice([(-1, 0), (1, 0), (0, -1), (0, 1)])
+                nx, ny = cx + dx, cy + dy
+                if 0 <= nx < grid_width and 0 <= ny < grid_height:
+                    self.set_path([(nx, ny)])
+            self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
+
         dx = self.x - old_x
         if abs(dx) > 0.01:
             new_facing = (dx < 0.0)
@@ -123,7 +157,10 @@ class Animal:
         else:
             self.display_facing_left = self.facing_left
 
-        if not self.has_arrived:
+        # Moving is now judged by actual displacement rather than has_arrived
+        # (path-emptiness), since following/idle-walking move via a plain
+        # point target and never populate self.path at all.
+        if math.hypot(self.x - old_x, self.y - old_y) > 0.01:
             self.is_moving = True
             self.anim_timer += dt
         else:

@@ -36,7 +36,7 @@ def create_initial_animals(grid: "Grid", count: int, rng: random.Random | None =
 
 def _tick_wildlife(world: "World", dt: float) -> None:
     for animal in world.animals:
-        animal.update(dt, world.grid.width, world.grid.height)
+        animal.update(dt, world.grid.width, world.grid.height, world.npcs)
 
     world.animal_spawn_timer += dt
     if world.animal_spawn_timer >= ANIMAL_SPAWN_INTERVAL:
