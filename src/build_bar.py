@@ -86,6 +86,9 @@ class BuildBar:
             buttons.append((task_type, rect))
         return buttons
 
+    def is_hovering(self, pos: tuple[int, int]) -> bool:
+        return any(rect.collidepoint(pos) for _, rect in self._buttons())
+
     def handle_click(self, pos: tuple[int, int]) -> bool:
         """Returns True if the click landed on the bar (so the caller must
         not also treat it as a map click)."""

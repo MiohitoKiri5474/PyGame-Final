@@ -44,6 +44,9 @@ class ActionMenu:
             for i, option in enumerate(self.options)
         ]
 
+    def is_hovering(self, pos: tuple[int, int]) -> bool:
+        return any(rect.collidepoint(pos) for _, rect in self._rows())
+
     def handle_click(self, pos: tuple[int, int]) -> str | None:
         """Returns the chosen task type and closes the menu, or closes it
         with no choice if the click missed every row (click-away-to-cancel)."""

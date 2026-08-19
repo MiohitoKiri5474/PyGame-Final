@@ -29,6 +29,12 @@ COLOR_BAR_BG = (40, 40, 50)
 COLOR_HUNGER_BAR = (230, 180, 50)
 
 
+# --- Gather UX polish: queued-task marker, work progress, Expand preview ---
+COLOR_QUEUED_WAITING = (255, 200, 90)   # task queued, no NPC assigned yet
+COLOR_QUEUED_ASSIGNED = (140, 255, 140)  # an NPC has claimed it and is en route/working
+COLOR_PROGRESS_BAR = (120, 200, 255)
+COLOR_EXPAND_PREVIEW_CLAIM = (140, 255, 140, 90)  # will newly become claimed/grass - alpha-blended overlay
+
 STARTING_NPC_COUNT = 3
 NPC_RADIUS = TILE_SIZE // 3
 
