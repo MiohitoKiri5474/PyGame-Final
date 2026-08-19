@@ -49,25 +49,35 @@ def mud() -> pygame.Surface:
     return _load("mud.png")
 
 
+_BITMASK_16_MAP = {
+    0: "isolated",
+    1: "end_bottom",  # connected upward to top neighbor
+    2: "end_left",    # connected rightward to right neighbor
+    3: "bottom_left", # connected to top + right neighbors
+    4: "end_top",     # connected downward to bot neighbor
+    5: "vertical",    # connected to top + bot neighbors
+    6: "top_left",    # connected to bot + right neighbors
+    7: "left",        # connected to top + bot + right neighbors
+    8: "end_right",   # connected leftward to left neighbor
+    9: "bottom_right",# connected to top + left neighbors
+    10: "horizontal", # connected to left + right neighbors
+    11: "bottom",     # connected to top + left + right neighbors
+    12: "top_right",  # connected to bot + left neighbors
+    13: "right",      # connected to top + bot + left neighbors
+    14: "top",        # connected to bot + left + right neighbors
+    15: "center",     # connected to all 4 neighbors
+}
+
+
+def get_16tile_piece_name(top: bool, bot: bool, left: bool, right: bool) -> str:
+    """Computes the 16-tile autotile piece name from 4-cardinal neighbor connections (bitmask 0-15)."""
+    mask = (1 if top else 0) | (2 if right else 0) | (4 if bot else 0) | (8 if left else 0)
+    return _BITMASK_16_MAP.get(mask, "center")
+
+
 def get_9slice_piece_name(top: bool, bot: bool, left: bool, right: bool) -> str:
-    """Computes the 9-slice piece name ('top_left', 'top', etc.) from neighbor connections."""
-    if not top and not left:
-        return "top_left" if (bot or right) else "center"
-    if not top and not right:
-        return "top_right"
-    if not bot and not left:
-        return "bottom_left"
-    if not bot and not right:
-        return "bottom_right"
-    if not top:
-        return "top"
-    if not bot:
-        return "bottom"
-    if not left:
-        return "left"
-    if not right:
-        return "right"
-    return "center"
+    """Alias/backward compatible wrapper for 16-tile autotiling."""
+    return get_16tile_piece_name(top, bot, left, right)
 
 
 _TERRAIN_PREFIXES = {
@@ -81,16 +91,16 @@ _TERRAIN_PREFIXES = {
 def get_terrain_9slice_surface(
     terrain_type: str, top: bool, bot: bool, left: bool, right: bool
 ) -> pygame.Surface:
-    """Returns the matching 9-slice edge-blended surface for any of the 4 terrain types."""
-    piece = get_9slice_piece_name(top, bot, left, right)
+    """Returns the matching 16-tile edge-blended surface for any of the 4 terrain types."""
+    piece = get_16tile_piece_name(top, bot, left, right)
     prefix = _TERRAIN_PREFIXES.get(terrain_type, terrain_type)
 
-    # 1. Primary check (e.g. swamp_top_left.png, river_top_left.png, mountain_top_left.png, scorched_top_left.png)
+    # 1. Primary check (e.g. swamp_isolated.png, river_vertical.png, mountain_end_top.png, scorched_center.png)
     filename = f"{prefix}_{piece}.png"
     if (_ASSETS_DIR / filename).exists():
         return _load(filename)
 
-    # 2. Secondary fallback checks
+    # 2. Secondary fallback checks (for raw or alternative naming)
     if terrain_type == "scorched" and (_ASSETS_DIR / f"scorched_earth_{piece}.png").exists():
         return _load(f"scorched_earth_{piece}.png")
     if terrain_type == "river" and (_ASSETS_DIR / f"river_illustration_raw_{piece}.png").exists():
@@ -99,6 +109,7 @@ def get_terrain_9slice_surface(
         return _load(f"mountain_illustration_raw_{piece}.png")
 
     return get_terrain_surface(terrain_type, is_claimed=True)
+
 
 
 def get_swamp_piece(top: bool, bot: bool, left: bool, right: bool) -> pygame.Surface:
