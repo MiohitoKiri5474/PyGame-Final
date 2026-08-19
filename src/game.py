@@ -463,6 +463,8 @@ class Game:
             scale_x = 1.0
             scale_y = 1.0
             display_facing = getattr(npc, "display_facing_left", False)
+            is_attacking = (getattr(npc, "attack_timer", 0.0) > 0)
+            ap = (1.0 - (npc.attack_timer / 0.35)) if is_attacking else 0.0
 
             if getattr(npc, "hit_timer", 0.0) > 0:
                 # 1. Hit Hurt Reaction (Squash & Wobble)
@@ -471,9 +473,8 @@ class Game:
                 scale_y = 1.0 - 0.30 * hp
                 draw_y -= 4.0 * hp
                 tilt_angle = math.sin(hp * 30.0) * 16.0
-            elif getattr(npc, "attack_timer", 0.0) > 0:
+            elif is_attacking:
                 # 2. Combat Attack Strike (Lunge & Weapon Swing)
-                ap = 1.0 - (npc.attack_timer / 0.35)
                 if ap < 0.40:
                     prog = ap / 0.40
                     scale_y = 1.0 + 0.25 * prog
@@ -580,7 +581,6 @@ class Game:
             self.screen.blit(rendered_sprite, sprite_rect)
 
             # Tool & Combat Weapon Overlay
-            is_attacking = (getattr(npc, "attack_timer", 0.0) > 0)
             if is_attacking or npc.task is not None:
                 if is_attacking:
                     tool_type = "sword" if npc.role == ROLE_KNIGHT else ("staff" if npc.role == ROLE_MAGE else "axe")
@@ -610,7 +610,6 @@ class Game:
 
                 tool_surf = get_tool_sprite(tool_type)
                 if is_attacking:
-                    ap = 1.0 - (npc.attack_timer / 0.35)
                     if ap < 0.40:
                         tool_angle = -60.0 * (ap / 0.40)
                         hand_dx = 8.0 * paper_flip_scale
@@ -694,6 +693,8 @@ class Game:
             scale_x = 1.0
             scale_y = 1.0
             facing_left = getattr(animal, "facing_left", False)
+            is_attacking = (getattr(animal, "attack_timer", 0.0) > 0)
+            ap = (1.0 - (animal.attack_timer / 0.35)) if is_attacking else 0.0
 
             if getattr(animal, "hit_timer", 0.0) > 0:
                 # 1. Hurt Squash & Shake
@@ -702,9 +703,8 @@ class Game:
                 scale_y = 1.0 - 0.25 * hp
                 draw_y -= 4.0 * hp
                 tilt_angle = math.sin(hp * 30.0) * 15.0
-            elif getattr(animal, "attack_timer", 0.0) > 0:
+            elif is_attacking:
                 # 2. Retaliation Beast Strike / Claw Attack
-                ap = 1.0 - (animal.attack_timer / 0.35)
                 if ap < 0.40:
                     prog = ap / 0.40
                     scale_y = 1.0 + 0.35 * prog
@@ -748,7 +748,7 @@ class Game:
                 self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
 
                 # Beast claw swipe arc on attack
-                if getattr(animal, "attack_timer", 0.0) > 0 and 0.40 <= ap < 0.85:
+                if is_attacking and 0.40 <= ap < 0.85:
                     claw_surf = pygame.Surface((36, 36), pygame.SRCALPHA)
                     arc_rect = pygame.Rect(4, 4, 28, 28)
                     if not facing_left:
@@ -776,6 +776,8 @@ class Game:
             scale_x = 1.0
             scale_y = 1.0
             facing_left = getattr(monster, "display_facing_left", False)
+            is_attacking = (getattr(monster, "attack_timer", 0.0) > 0)
+            ap = (1.0 - (monster.attack_timer / 0.35)) if is_attacking else 0.0
 
             if getattr(monster, "hit_timer", 0.0) > 0:
                 # 1. Monster Hurt Squash & Recoil
@@ -784,9 +786,8 @@ class Game:
                 scale_y = 1.0 - 0.30 * hp
                 draw_y -= 5.0 * hp
                 tilt_angle = math.sin(hp * 30.0) * 16.0
-            elif getattr(monster, "attack_timer", 0.0) > 0:
+            elif is_attacking:
                 # 2. Monster Bite / Claw Attack Strike
-                ap = 1.0 - (monster.attack_timer / 0.35)
                 if ap < 0.35:
                     prog = ap / 0.35
                     scale_y = 1.0 + 0.30 * prog
@@ -831,7 +832,7 @@ class Game:
                 self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
 
                 # Red/Purple Claw Slash Smear Arc during monster attack
-                if getattr(monster, "attack_timer", 0.0) > 0 and 0.35 <= ap < 0.85:
+                if is_attacking and 0.35 <= ap < 0.85:
                     claw_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
                     arc_rect = pygame.Rect(4, 4, 30, 30)
                     if not facing_left:
@@ -843,6 +844,7 @@ class Game:
                     self.screen.blit(claw_surf, (screen_x - 19, screen_y - 19))
             else:
                 pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
+
 
 
     def render_nests(self) -> None:
