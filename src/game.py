@@ -882,16 +882,38 @@ class Game:
         is_over_sanctuary = self.is_dragging and self.sanctuary_ui.is_hovering(pygame.mouse.get_pos())
         self.sanctuary_ui.render(self.screen, self.font, self.world, is_dragging_over=is_over_sanctuary)
 
-        # Floating Dragged Paper NPC under cursor
+        # Floating Dragged Paper NPC under cursor with Paper Mario Wiggling & Dangling Animation
         if self.is_dragging and self.dragging_npc is not None:
             mpos = pygame.mouse.get_pos()
             sprite = npc_sprite(self.dragging_npc.role)
             if sprite is not None:
-                shadow = pygame.Surface((28, 10), pygame.SRCALPHA)
-                pygame.draw.ellipse(shadow, (0, 0, 0, 95), pygame.Rect(0, 0, 28, 10))
-                self.screen.blit(shadow, (mpos[0] - 14, mpos[1] + 16))
-                tilted = pygame.transform.rotate(sprite, 12.0)
-                self.screen.blit(tilted, tilted.get_rect(center=(mpos[0], mpos[1] - 8)))
+                t = time.monotonic()
+                wiggle_rot = math.sin(t * 18.0) * 16.0 + math.cos(t * 9.0) * 5.0
+                stretch_y = 1.14 + math.sin(t * 22.0) * 0.08
+                squash_x = 0.88 - math.sin(t * 22.0) * 0.06
+                dangle_y = 12.0 + math.sin(t * 14.0) * 3.0
+
+                # Soft ground shadow following below
+                shadow_w = int(26 + math.sin(t * 14.0) * 5.0)
+                shadow_surf = pygame.Surface((shadow_w, 9), pygame.SRCALPHA)
+                pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, shadow_w, 9))
+                self.screen.blit(shadow_surf, (mpos[0] - shadow_w // 2, mpos[1] + 32))
+
+                # Scaled and rotated dangling body
+                tw = max(1, int(sprite.get_width() * squash_x))
+                th = max(1, int(sprite.get_height() * stretch_y))
+                scaled = pygame.transform.smoothscale(sprite, (tw, th))
+                rotated = pygame.transform.rotate(scaled, wiggle_rot)
+                self.screen.blit(rotated, rotated.get_rect(center=(mpos[0], int(mpos[1] + dangle_y))))
+
+                # Panic Sweat Drop (💧) popping beside the struggling head
+                sweat_x = mpos[0] + (18 if math.sin(t * 7.0) > 0 else -18)
+                sweat_y = mpos[1] - 10 + math.sin(t * 12.0) * 4.0
+                sweat_surf = pygame.Surface((10, 13), pygame.SRCALPHA)
+                pygame.draw.polygon(sweat_surf, (110, 225, 255, 230), [(5, 1), (1, 9), (5, 12), (9, 9)])
+                pygame.draw.circle(sweat_surf, (255, 255, 255, 240), (4, 5), 1)
+                self.screen.blit(sweat_surf, (int(sweat_x) - 5, int(sweat_y)))
+
 
         self.render_game_over()
         pygame.display.flip()

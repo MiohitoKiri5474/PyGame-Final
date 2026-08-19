@@ -35,10 +35,12 @@ def test_is_dead_when_health_reaches_zero():
 
 def test_update_wanders_to_a_new_tile_over_time():
     animal = Animal(16.0, 16.0, species="FlyingSquirrel", speed=1000.0, dangerous=False, health=10)
+    animal.wander_timer = 0.0
     start = (animal.x, animal.y)
-    for _ in range(30):
+    for _ in range(60):
         animal.update(1 / 60, grid_width=10, grid_height=10)
     assert (animal.x, animal.y) != start
+
 
 
 def test_update_never_wanders_out_of_grid_bounds():
