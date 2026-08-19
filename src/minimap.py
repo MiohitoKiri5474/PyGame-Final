@@ -60,15 +60,16 @@ def render(surface: pygame.Surface, grid: "Grid", camera: "Camera", build_bar_to
             tile = grid.get(x, y)
             if not tile.revealed:
                 color = _FOG_COLOR
+            elif not tile.claimed:
+                color = _UNCLAIMED_COLOR
             else:
                 terrain_type = getattr(tile, "terrain", "plain")
                 if terrain_type in _TERRAIN_COLORS:
                     color = _TERRAIN_COLORS[terrain_type]
-                elif tile.claimed:
-                    color = _CLAIMED_COLOR
                 else:
-                    color = _UNCLAIMED_COLOR
+                    color = _CLAIMED_COLOR
             small.set_at((x, y), color)
+
 
 
     map_pos = (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD)

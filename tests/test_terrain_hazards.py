@@ -150,3 +150,19 @@ def test_terrain_save_load_round_trip():
             assert loaded_tile.resource == orig_tile.resource
             assert loaded_tile.revealed == orig_tile.revealed
             assert loaded_tile.claimed == orig_tile.claimed
+
+
+def test_expand_cannot_target_mountain_tile():
+    from world import World
+    from expand_task import _can_queue
+    world = World(npc_count=1)
+    # Set tile (35, 22) (which is adjacent to claimed area) to mountain
+    world.grid.get(35, 22).claimed = False
+    world.grid.get(35, 22).revealed = True
+    world.grid.get(35, 22).terrain = TERRAIN_MOUNTAIN
+
+    assert _can_queue(world, (35, 22)) is False
+
+    # A plain tile can be queued
+    world.grid.get(35, 22).terrain = TERRAIN_PLAIN
+    assert _can_queue(world, (35, 22)) is True

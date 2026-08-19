@@ -1828,35 +1828,27 @@ class Game:
 
                 if not tile.revealed:
                     render_fog_base_tile(self.screen, rect)
+                elif not tile.claimed:
+                    # Unclaimed frontier: hidden under parchment until explored & claimed
+                    self.screen.blit(parchment(), rect)
                 else:
+                    # Explored territory: real terrain is revealed and rendered
                     terrain_type = getattr(tile, "terrain", "plain")
 
                     if terrain_type == "mud":
-                        # 9-slice blended swamp overlaid on top of grass/parchment
-                        base_surf = grass() if tile.claimed else parchment()
-                        self.screen.blit(base_surf, rect)
+                        # 9-slice blended swamp overlaid on top of grass
+                        self.screen.blit(grass(), rect)
 
-                        top_mud = (row > 0 and getattr(grid.get(col, row - 1), "terrain", "plain") == "mud")
-                        bot_mud = (row < grid.height - 1 and getattr(grid.get(col, row + 1), "terrain", "plain") == "mud")
-                        left_mud = (col > 0 and getattr(grid.get(col - 1, row), "terrain", "plain") == "mud")
-                        right_mud = (col < grid.width - 1 and getattr(grid.get(col + 1, row), "terrain", "plain") == "mud")
+                        top_mud = (row > 0 and getattr(grid.get(col, row - 1), "terrain", "plain") == "mud" and grid.get(col, row - 1).claimed)
+                        bot_mud = (row < grid.height - 1 and getattr(grid.get(col, row + 1), "terrain", "plain") == "mud" and grid.get(col, row + 1).claimed)
+                        left_mud = (col > 0 and getattr(grid.get(col - 1, row), "terrain", "plain") == "mud" and grid.get(col - 1, row).claimed)
+                        right_mud = (col < grid.width - 1 and getattr(grid.get(col + 1, row), "terrain", "plain") == "mud" and grid.get(col + 1, row).claimed)
 
                         swamp_surf = get_swamp_piece(top_mud, bot_mud, left_mud, right_mud)
                         self.screen.blit(swamp_surf, rect)
-
-                        if not tile.claimed:
-                            unclaimed_tint = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
-                            unclaimed_tint.fill((0, 0, 0, 50))
-                            self.screen.blit(unclaimed_tint, rect)
                     else:
-                        surf = get_terrain_surface(terrain_type, tile.claimed)
+                        surf = get_terrain_surface(terrain_type, is_claimed=True)
                         self.screen.blit(surf, rect)
-                        if not tile.claimed and terrain_type == "plain":
-                            self.screen.blit(parchment(), rect)
-                        elif not tile.claimed:
-                            unclaimed_tint = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
-                            unclaimed_tint.fill((0, 0, 0, 50))
-                            self.screen.blit(unclaimed_tint, rect)
 
                         # River shoreline autotiling: natural sandy banks & foam along non-river edges
                         if terrain_type == "river":
@@ -1867,18 +1859,19 @@ class Game:
                             left_nbr = grid.get(col - 1, row) if col > 0 else None
                             right_nbr = grid.get(col + 1, row) if col < grid.width - 1 else None
 
-                            if top_nbr is None or getattr(top_nbr, "terrain", "plain") != "river":
+                            if top_nbr is None or getattr(top_nbr, "terrain", "plain") != "river" or not top_nbr.claimed:
                                 pygame.draw.line(self.screen, bank_col, (rect.left, rect.top), (rect.right, rect.top), 3)
                                 pygame.draw.line(self.screen, foam_col, (rect.left, rect.top + 2), (rect.right, rect.top + 2), 1)
-                            if bot_nbr is None or getattr(bot_nbr, "terrain", "plain") != "river":
+                            if bot_nbr is None or getattr(bot_nbr, "terrain", "plain") != "river" or not bot_nbr.claimed:
                                 pygame.draw.line(self.screen, bank_col, (rect.left, rect.bottom - 1), (rect.right, rect.bottom - 1), 3)
                                 pygame.draw.line(self.screen, foam_col, (rect.left, rect.bottom - 3), (rect.right, rect.bottom - 3), 1)
-                            if left_nbr is None or getattr(left_nbr, "terrain", "plain") != "river":
+                            if left_nbr is None or getattr(left_nbr, "terrain", "plain") != "river" or not left_nbr.claimed:
                                 pygame.draw.line(self.screen, bank_col, (rect.left, rect.top), (rect.left, rect.bottom), 3)
                                 pygame.draw.line(self.screen, foam_col, (rect.left + 2, rect.top), (rect.left + 2, rect.bottom), 1)
-                            if right_nbr is None or getattr(right_nbr, "terrain", "plain") != "river":
+                            if right_nbr is None or getattr(right_nbr, "terrain", "plain") != "river" or not right_nbr.claimed:
                                 pygame.draw.line(self.screen, bank_col, (rect.right - 1, rect.top), (rect.right - 1, rect.bottom), 3)
                                 pygame.draw.line(self.screen, foam_col, (rect.right - 3, rect.top), (rect.right - 3, rect.bottom), 1)
+
 
 
 

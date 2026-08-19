@@ -279,15 +279,20 @@ def _try_claim_and_path(world: "World", npc: "NPC") -> None:
 
             # Hunt/Tame targets may be outside claimed territory, so allow pathing across unblocked tiles
             targets_animal = task.type in ANIMAL_TASK_TYPES
+            npc_tile = tile_at(npc.x, npc.y)
             path = find_path(
-                lambda x, y: (targets_animal or world.grid.get(x, y).claimed or (x, y) == task.target)
-                and (not is_wall_blocked(world.buildings, x, y) or (x, y) == task.target)
-                and (not is_mountain_blocked(world.grid, x, y) or (x, y) == task.target),
+                lambda x, y: (x, y) == npc_tile
+                or (
+                    (targets_animal or world.grid.get(x, y).claimed or (x, y) == task.target)
+                    and (not is_wall_blocked(world.buildings, x, y) or (x, y) == task.target)
+                    and not is_mountain_blocked(world.grid, x, y)
+                ),
                 world.grid.width,
                 world.grid.height,
-                tile_at(npc.x, npc.y),
+                npc_tile,
                 task.target,
             )
+
 
             if path is None:
                 continue
