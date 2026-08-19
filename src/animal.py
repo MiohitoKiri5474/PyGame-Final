@@ -51,6 +51,12 @@ class Animal:
         self.is_following: bool = False
         self.idle_target: tuple[float, float] | None = None
 
+        # Set by task.py each tick a Hunt/Tame task is actively working this
+        # animal, cleared right after wildlife's own tick consumes it - lets
+        # a hunted/tamed animal stop initiating new wander hops so it isn't
+        # constantly darting away from whoever's trying to catch it.
+        self.is_targeted: bool = False
+
         # Paper Mario Animation & Combat states
         self.facing_left = False
         self.display_facing_left = False
@@ -135,7 +141,12 @@ class Animal:
         elif self.is_tamed:
             pass  # holding position - idling beside its pen, or wherever it stopped
         else:
-            if not self.path:
+            # A hunter/tamer actively working this animal suppresses starting
+            # a *new* wander hop - it still finishes a hop already underway
+            # (avoids a jarring mid-stride freeze), it just stops picking a
+            # fresh direction to flee to right after, so it's not constantly
+            # dodging the very NPC trying to catch it.
+            if not self.path and not self.is_targeted:
                 cx, cy = tile_at(self.x, self.y)
                 dx, dy = self._rng.choice([(-1, 0), (1, 0), (0, -1), (0, 1)])
                 nx, ny = cx + dx, cy + dy
@@ -160,9 +171,8 @@ class Animal:
         # Moving is now judged by actual displacement rather than has_arrived
         # (path-emptiness), since following/idle-walking move via a plain
         # point target and never populate self.path at all.
-        if math.hypot(self.x - old_x, self.y - old_y) > 0.01:
-            self.is_moving = True
-            self.anim_timer += dt
-        else:
-            self.is_moving = False
+        self.is_moving = math.hypot(self.x - old_x, self.y - old_y) > 0.01
+        # Always advances (not just while moving) - render_animals also uses
+        # it to drive the settled-idle hop-in-place bounce.
+        self.anim_timer += dt
 

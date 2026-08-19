@@ -29,6 +29,15 @@ def _can_queue(world: "World", tile: "Tile") -> bool:
     )
 
 
+def _can_perform(world: "World", task: Task) -> bool:
+    """A different, already-completed Expand can claim this target as part
+    of its own radius before this one gets worked - claim radii overlap by
+    design, so this isn't rare. Once that happens the tile's just claimed
+    ground now; nothing left for this task to do."""
+    x, y = task.target
+    return world.grid.in_bounds(x, y) and not world.grid.get(x, y).claimed
+
+
 def _on_complete(world: "World", task: Task) -> bool:
     x, y = task.target
     world.grid.expand(x, y, EXPAND_CLAIM_RADIUS, EXPAND_REVEAL_RADIUS)
@@ -37,5 +46,5 @@ def _on_complete(world: "World", task: Task) -> bool:
 
 register_task_type(
     "Expand",
-    TaskType(work_seconds=EXPAND_WORK_SECONDS, can_queue=_can_queue, on_complete=_on_complete),
+    TaskType(work_seconds=EXPAND_WORK_SECONDS, can_queue=_can_queue, on_complete=_on_complete, can_perform=_can_perform),
 )

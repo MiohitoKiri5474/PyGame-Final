@@ -104,6 +104,24 @@ def test_following_animal_falls_back_to_idle_when_tamer_is_gone():
     assert animal.idle_target is not None
 
 
+def test_targeted_animal_does_not_start_a_new_wander_hop():
+    animal = Animal(16.0, 16.0, species="FlyingSquirrel", speed=1000.0, dangerous=False, health=10)
+    animal.is_targeted = True
+    start = (animal.x, animal.y)
+    for _ in range(30):
+        animal.update(1 / 60, grid_width=10, grid_height=10)
+    assert (animal.x, animal.y) == start
+
+
+def test_targeted_animal_still_finishes_a_hop_already_in_progress():
+    animal = Animal(16.0, 16.0, species="FlyingSquirrel", speed=1000.0, dangerous=False, health=10)
+    animal.set_path([(1, 0)])  # already mid-hop when targeting starts
+    animal.is_targeted = True
+    animal.update(1.0, grid_width=10, grid_height=10)  # one full second easily covers the single tile hop
+    assert (animal.x, animal.y) != (16.0, 16.0)  # let the in-flight hop land
+    assert animal.path == []  # but doesn't queue another one after
+
+
 def test_idle_target_walk_clears_on_arrival():
     animal = Animal(0.0, 0.0, species="Horse", speed=1000.0, dangerous=False, health=40)
     animal.is_tamed = True

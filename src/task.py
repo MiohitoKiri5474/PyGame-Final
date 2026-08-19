@@ -152,6 +152,10 @@ def update_npc_tasks(world: "World", dt: float) -> None:
         if npc.task.type in ANIMAL_TASK_TYPES:
             animal = resolve_task_animal(world, npc.task)
             if animal is not None and not animal.is_dead:
+                # Tells the animal (via wildlife.py's tick, later this same
+                # frame) to stop initiating fresh wander hops while someone's
+                # actively working it - see animal.py's is_targeted.
+                animal.is_targeted = True
                 if math.hypot(npc.x - animal.x, npc.y - animal.y) > npc.combat_range:
                     animal_tile = tile_at(animal.x, animal.y)
                     if npc.task.target != animal_tile or not npc.path:
