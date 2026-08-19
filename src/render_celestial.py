@@ -31,14 +31,12 @@ def _draw_paper_cloud(
     alpha: int = 210,
     cloud_index: int = 0,
 ) -> None:
-    """Draws the cloud using cloud PNG sprite #cloud_index from the 15-cloud sheet with scaling and alpha."""
+    """Draws the cloud using cached cloud PNG sprite #cloud_index with scaling and alpha."""
     cw = max(16, int(48 * scale))
-    sprite = cloud_sprite(index=cloud_index, width=cw)
-    if sprite is not None:
-        c_surf = sprite.copy()
-        if alpha < 255:
-            c_surf.fill((255, 255, 255, alpha), special_flags=pygame.BLEND_RGBA_MULT)
+    c_surf = cloud_sprite(index=cloud_index, width=cw, alpha=alpha)
+    if c_surf is not None:
         surface.blit(c_surf, c_surf.get_rect(center=(int(cx), int(cy))))
+
 
 
 

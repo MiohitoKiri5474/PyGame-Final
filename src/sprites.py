@@ -264,17 +264,22 @@ def _load_cloud_sheet() -> list[pygame.Surface]:
     return _CLOUD_RAW_SLICES
 
 
-def cloud_sprite(index: int = 0, width: int = 48) -> pygame.Surface:
-    """Returns cloud sprite #index (0..14) from the 15-cloud sheet, scaled to requested width."""
+def cloud_sprite(index: int = 0, width: int = 48, alpha: int = 255) -> pygame.Surface:
+    """Returns cloud sprite #index (0..14) from the 15-cloud sheet, scaled to requested width and alpha, fully cached."""
     slices = _load_cloud_sheet()
     idx = index % len(slices)
-    key = ("cloud_sprite", idx, width)
+    key = ("cloud_sprite", idx, width, alpha)
     if key not in _cache:
         raw = slices[idx]
         rw, rh = raw.get_size()
         height = max(1, round(rh * width / rw))
-        _cache[key] = pygame.transform.smoothscale(raw, (width, height))
+        scaled = pygame.transform.smoothscale(raw, (width, height))
+        if alpha < 255:
+            scaled = scaled.copy()
+            scaled.fill((255, 255, 255, alpha), special_flags=pygame.BLEND_RGBA_MULT)
+        _cache[key] = scaled
     return _cache[key]
+
 
 
 
