@@ -35,6 +35,16 @@ class Monster:
         self.burn_tick_timer = 0.0
         self.frozen_remaining = 0.0
 
+        # Paper Mario Animation & Combat states
+        self.facing_left = False
+        self.display_facing_left = False
+        self.flip_progress = 1.0
+        self.anim_timer = 0.0
+        self.is_moving = False
+        self.attack_timer = 0.0
+        self.hit_timer = 0.0
+        self.combat_target: tuple[float, float] | None = None
+
     @property
     def has_arrived(self) -> bool:
         return not self.path
@@ -49,6 +59,21 @@ class Monster:
 
     def set_path(self, path: list[tuple[int, int]]) -> None:
         self.path = list(path)
+
+    def trigger_attack(self, target_x: float, target_y: float) -> None:
+        """Trigger a monster pounce/bite attack towards target."""
+        self.attack_timer = 0.35
+        self.combat_target = (target_x, target_y)
+        if target_x < self.x:
+            self.facing_left = True
+            self.display_facing_left = True
+        elif target_x > self.x:
+            self.facing_left = False
+            self.display_facing_left = False
+
+    def trigger_hit(self) -> None:
+        """Trigger a damage reaction squash & hurt flash."""
+        self.hit_timer = 0.25
 
     def apply_freeze(self, duration: float) -> None:
         self.frozen_remaining = duration  # overwrite, not add - refresh, never stack
@@ -78,9 +103,35 @@ class Monster:
     def update(self, dt: float) -> None:
         self._tick_burn(dt)
         self._tick_freeze(dt)
+        self.attack_timer = max(0.0, self.attack_timer - dt)
+        self.hit_timer = max(0.0, self.hit_timer - dt)
+
         if self.is_frozen:
+            self.is_moving = False
             return  # movement skipped entirely while frozen, not halved
+
+        old_x = self.x
         self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
+        dx = self.x - old_x
+        if abs(dx) > 0.01:
+            new_facing = (dx < 0.0)
+            if new_facing != self.facing_left:
+                self.facing_left = new_facing
+                self.flip_progress = 0.0
+
+        if self.flip_progress < 1.0:
+            self.flip_progress = min(1.0, self.flip_progress + dt * 8.0)
+            if self.flip_progress >= 0.5:
+                self.display_facing_left = self.facing_left
+        else:
+            self.display_facing_left = self.facing_left
+
+        if not self.has_arrived:
+            self.is_moving = True
+            self.anim_timer += dt
+        else:
+            self.is_moving = False
+
 
 
 def nearest_claimed_tile(grid, from_tile: tuple[int, int]) -> tuple[int, int] | None:
