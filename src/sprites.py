@@ -53,14 +53,25 @@ _ANIMAL_PATHS = {
 _cache: dict[tuple[str, int], pygame.Surface] = {}
 
 
+def _load_image(path: Path | str) -> pygame.Surface:
+    img = pygame.image.load(str(path))
+    if pygame.display.get_surface() is not None:
+        try:
+            return img.convert_alpha()
+        except pygame.error:
+            pass
+    return img
+
+
 def _load_scaled(rel_path: str, height: int) -> pygame.Surface:
     key = (rel_path, height)
     if key not in _cache:
-        image = pygame.image.load(str(_ASSETS_DIR / rel_path)).convert_alpha()
+        image = _load_image(_ASSETS_DIR / rel_path)
         w, h = image.get_size()
         width = max(1, round(w * height / h))
         _cache[key] = pygame.transform.smoothscale(image, (width, height))
     return _cache[key]
+
 
 
 def npc_sprite(role: str | None = None) -> pygame.Surface:
@@ -201,5 +212,39 @@ def get_magic_orb_sprite() -> pygame.Surface:
 
     _PROJECTILE_CACHE["magic_orb"] = surf
     return surf
+
+
+def cloud_sprite(width: int = 48) -> pygame.Surface:
+    """Returns the cloud PNG sprite from assets/terrain/cloud.png, scaled to requested width."""
+    path = _ASSETS_DIR / "terrain" / "cloud.png"
+    key = ("terrain/cloud.png", width)
+    if key not in _cache:
+        if path.exists():
+            img = _load_image(path)
+            w, h = img.get_size()
+            height = max(1, round(h * width / w))
+            _cache[key] = pygame.transform.smoothscale(img, (width, height))
+        else:
+            c_surf = pygame.Surface((width, max(1, width // 2)), pygame.SRCALPHA)
+            pygame.draw.ellipse(c_surf, (245, 250, 255, 240), pygame.Rect(0, 0, width, max(1, width // 2)))
+            _cache[key] = c_surf
+    return _cache[key]
+
+
+def fog_sprite(size: int = TILE_SIZE) -> pygame.Surface:
+    """Returns the fog PNG sprite from assets/terrain/fog.png, scaled to requested size."""
+    path = _ASSETS_DIR / "terrain" / "fog.png"
+    key = ("terrain/fog.png", size)
+    if key not in _cache:
+        if path.exists():
+            img = _load_image(path)
+            _cache[key] = pygame.transform.smoothscale(img, (size, size))
+        else:
+            f_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            pygame.draw.rect(f_surf, (16, 14, 24, 255), pygame.Rect(0, 0, size, size))
+            _cache[key] = f_surf
+    return _cache[key]
+
+
 
 

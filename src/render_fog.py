@@ -5,6 +5,8 @@ import pygame
 
 from constants import TILE_SIZE
 
+from sprites import fog_sprite
+
 _COLOR_VOID = (16, 14, 24)
 _COLOR_MIST_SMOKE = (72, 68, 92)
 _COLOR_MIST_SILVER = (175, 190, 218)
@@ -20,8 +22,8 @@ def render_fog_tile(
     time_s: float,
     has_revealed_neighbor: bool = False,
 ) -> None:
-    """Renders a dynamic, procedural drifting fog tile with rolling white vapor mist waves,
-    swirling ethereal clouds, and puffy scalloped paper cloud borders on frontier edges."""
+    """Renders a dynamic, procedural drifting fog tile using fog.png texture from
+    assets/terrain/fog.png blended with drifting waves and border clouds."""
     # 1. Base Dark Ground Void
     pygame.draw.rect(surface, _COLOR_VOID, rect)
 
@@ -32,16 +34,23 @@ def render_fog_tile(
 
     density = (w1 + w2 + 2.0) / 4.0  # Normalized 0.0 to 1.0
 
-    fog_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+    sprite = fog_sprite(TILE_SIZE)
+    if sprite is not None:
+        fog_surf = sprite.copy()
+        alpha = int(140 + 115 * density)
+        if alpha < 255:
+            fog_surf.fill((255, 255, 255, alpha), special_flags=pygame.BLEND_RGBA_MULT)
+        surface.blit(fog_surf, (rect.x + int(w1 * 3), rect.y + int(w2 * 3)))
+    else:
+        fog_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        alpha1 = int(110 + 75 * density)
+        pygame.draw.circle(
+            fog_surf,
+            (_COLOR_MIST_SMOKE[0], _COLOR_MIST_SMOKE[1], _COLOR_MIST_SMOKE[2], alpha1),
+            (TILE_SIZE // 2 + int(w1 * 5), TILE_SIZE // 2 + int(w2 * 5)),
+            TILE_SIZE // 2 + 6,
+        )
 
-    # Deep smoke mist foundation
-    alpha1 = int(110 + 75 * density)
-    pygame.draw.circle(
-        fog_surf,
-        (_COLOR_MIST_SMOKE[0], _COLOR_MIST_SMOKE[1], _COLOR_MIST_SMOKE[2], alpha1),
-        (TILE_SIZE // 2 + int(w1 * 5), TILE_SIZE // 2 + int(w2 * 5)),
-        TILE_SIZE // 2 + 6,
-    )
 
     # Rolling silver-white vapor cloud
     if density > 0.35:

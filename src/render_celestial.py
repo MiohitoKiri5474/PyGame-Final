@@ -7,6 +7,9 @@ import pygame
 from constants import DAY_SECONDS, NIGHT_SECONDS
 
 
+from sprites import cloud_sprite
+
+
 def get_celestial_position(rect: pygame.Rect, progress: float) -> tuple[float, float]:
     """Calculates the parabolic arc (x, y) coordinates for the Sun or Moon
     across the celestial skybox based on phase progress (0.0 to 1.0)."""
@@ -27,32 +30,15 @@ def _draw_paper_cloud(
     scale: float = 1.0,
     alpha: int = 210,
 ) -> None:
-    """Draws a fluffy Paper Mario cloud with soft depth shading and highlights."""
-    cw = int(36 * scale)
-    ch = int(18 * scale)
-    c_surf = pygame.Surface((cw + 12, ch + 12), pygame.SRCALPHA)
+    """Draws the cloud using cloud PNG sprite from assets/terrain/cloud.png with scaling and alpha."""
+    cw = max(16, int(44 * scale))
+    sprite = cloud_sprite(cw)
+    if sprite is not None:
+        c_surf = sprite.copy()
+        if alpha < 255:
+            c_surf.fill((255, 255, 255, alpha), special_flags=pygame.BLEND_RGBA_MULT)
+        surface.blit(c_surf, c_surf.get_rect(center=(int(cx), int(cy))))
 
-    r1 = int(7 * scale)
-    r2 = int(9 * scale)
-    r3 = int(6 * scale)
-
-    # Base bottom body
-    base_rect = pygame.Rect(4, int(ch * 0.45), cw, int(ch * 0.45))
-    pygame.draw.rect(c_surf, (215, 232, 248, alpha), base_rect, border_radius=int(4 * scale))
-
-    # Fluffy overlapping puffy circles
-    p1 = (int(cw * 0.25 + 4), int(ch * 0.52))
-    p2 = (int(cw * 0.52 + 4), int(ch * 0.38))
-    p3 = (int(cw * 0.78 + 4), int(ch * 0.55))
-
-    pygame.draw.circle(c_surf, (255, 255, 255, alpha), p1, r1)
-    pygame.draw.circle(c_surf, (255, 255, 255, alpha), p2, r2)
-    pygame.draw.circle(c_surf, (255, 255, 255, alpha), p3, r3)
-
-    # Top highlight sheen
-    pygame.draw.circle(c_surf, (255, 255, 255, min(255, alpha + 35)), (p2[0] - 2, p2[1] - 2), max(1, int(r2 * 0.55)))
-
-    surface.blit(c_surf, (int(cx - cw // 2), int(cy - ch // 2)))
 
 
 def render_celestial_dial(
