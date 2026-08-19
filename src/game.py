@@ -603,8 +603,27 @@ class Game:
                         "gravity": 10.0,
                     })
 
+            # Auto-deployed from Sanctuary on full health: Celebratory sound & particle burst
+            for npc in self.world.npcs:
+                if getattr(npc, "_auto_deployed", False):
+                    npc._auto_deployed = False
+                    play_sfx("dawn")
+                    for _ in range(16):
+                        self.particles.append({
+                            "type": "star",
+                            "x": npc.x + random.uniform(-8, 8),
+                            "y": npc.y + random.uniform(-8, 8),
+                            "vx": random.uniform(-40, 40),
+                            "vy": random.uniform(-60, -10),
+                            "color": (80, 240, 120),
+                            "size": 4.5,
+                            "life": 0.50,
+                            "max_life": 0.50,
+                            "gravity": 30.0,
+                        })
 
             monster_count_before_combat = len(self.monsters)
+
 
             def _on_damage(src, target, dmg):
                 is_npc_target = hasattr(target, "role")

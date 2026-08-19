@@ -106,3 +106,20 @@ def test_sanctuary_ui_deploy_click():
     # Click outside sanctuary
     assert ui.handle_click((10, 10), world) is None
 
+
+def test_resting_npc_auto_deploys_to_orig_pos_on_full_health():
+    world = World(npc_count=1)
+    npc = world.npcs[0]
+    npc.x, npc.y = 80.0, 120.0
+    npc.sanctuary_orig_pos = (80.0, 120.0)
+    npc.health = npc.max_health - 1.0
+    npc.is_resting = True
+
+    # Update for enough time to reach full health
+    update_npc_tasks(world, 2.0)
+
+    assert npc.health == npc.max_health
+    assert npc.is_resting is False, "NPC must auto-deploy when full health is reached!"
+    assert (npc.x, npc.y) == (80.0, 120.0), "NPC must return to its original position!"
+
+

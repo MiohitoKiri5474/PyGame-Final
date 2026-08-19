@@ -6,8 +6,9 @@ from typing import Callable, TYPE_CHECKING
 from audio import play_sfx
 from blocking import is_wall_blocked
 from constants import HUNGER_EAT_THRESHOLD
-from coords import tile_at
+from coords import tile_at, tile_center
 from pathfinding import find_path
+
 from skills import gather_speed_multiplier
 
 
@@ -84,7 +85,18 @@ def update_npc_tasks(world: "World", dt: float) -> None:
                 if world.inventory.consume_soonest_food(1) is not None:
                     npc.eat()
             npc.update(dt)
+            # Full health: forcibly auto-deploy back to map at original position!
+            if npc.health >= npc.max_health:
+                npc.is_resting = False
+                if getattr(npc, "sanctuary_orig_pos", None) is not None:
+                    npc.x, npc.y = npc.sanctuary_orig_pos
+                else:
+                    cx, cy = world.grid.width // 2, world.grid.height // 2
+                    npc.x, npc.y = tile_center(cx, cy)
+                npc.path = []
+                npc._auto_deployed = True
             continue
+
 
         # Colony food consumption: hungry NPCs eat from inventory (soonest-to-expire first)
         if npc.hunger <= HUNGER_EAT_THRESHOLD and not npc.is_dead:
