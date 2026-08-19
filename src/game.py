@@ -62,6 +62,7 @@ from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
 from npc_status_ui import NpcStatusUI
+from sanctuary_ui import SanctuaryUI
 import top_bar
 import top_buttons
 import magic_panel
@@ -102,6 +103,10 @@ class Game:
         self.priority_ui = PriorityTableUI()
         self.skill_ui = SkillUI()
         self.npc_status_ui = NpcStatusUI()
+        self.sanctuary_ui = SanctuaryUI()
+        self.dragging_npc: NPC | None = None
+        self.drag_start_pos: tuple[int, int] | None = None
+        self.is_dragging: bool = False
 
         checkpoint = load_checkpoint()
         if checkpoint is not None:
@@ -134,6 +139,10 @@ class Game:
         self._monsters_killed_this_night = 0
         self.particles = []
         self.projectiles = []
+        self.dragging_npc = None
+        self.drag_start_pos = None
+        self.is_dragging = False
+
 
 
     def restart(self) -> None:
@@ -226,7 +235,82 @@ class Game:
                     if self.skill_points_available < pts_before:
                         self._spawn_skill_upgrade_fx()
                 elif not self.priority_ui.visible and not self.npc_status_ui.visible:
-                    self.handle_click(event.pos)
+                    # 1. Check if clicking deploy button on Sanctuary UI
+                    deployed = self.sanctuary_ui.handle_click(event.pos, self.world)
+                    if deployed is not None:
+                        deployed.is_resting = False
+                        cx, cy = self.world.grid.width // 2, self.world.grid.height // 2
+                        deployed.x, deployed.y = tile_center(cx, cy)
+                        deployed.path = []
+                        play_sfx("dawn")
+                        for _ in range(12):
+                            self.particles.append({
+                                "type": "star",
+                                "x": deployed.x + random.uniform(-8, 8),
+                                "y": deployed.y + random.uniform(-8, 8),
+                                "vx": random.uniform(-40, 40),
+                                "vy": random.uniform(-60, -10),
+                                "color": (80, 230, 110),
+                                "size": 4.0,
+                                "life": 0.45,
+                                "max_life": 0.45,
+                                "gravity": 30.0,
+                            })
+                    elif not self.sanctuary_ui.is_hovering(event.pos):
+                        world_x = event.pos[0] + self.camera.x
+                        world_y = event.pos[1] + self.camera.y
+                        clicked_npc = self._npc_at_world_pos(world_x, world_y)
+                        if clicked_npc is not None and not getattr(clicked_npc, "is_resting", False):
+                            self.dragging_npc = clicked_npc
+                            self.drag_start_pos = event.pos
+                            self.is_dragging = False
+                        else:
+                            self.handle_click(event.pos)
+            elif event.type == pygame.MOUSEMOTION:
+                if self.dragging_npc is not None and self.drag_start_pos is not None:
+                    if math.hypot(event.pos[0] - self.drag_start_pos[0], event.pos[1] - self.drag_start_pos[1]) > 6:
+                        self.is_dragging = True
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                if self.is_dragging and self.dragging_npc is not None:
+                    if self.sanctuary_ui.is_hovering(event.pos):
+                        resting_count = sum(1 for n in self.world.npcs if getattr(n, "is_resting", False))
+                        if resting_count < 3:
+                            self.dragging_npc.is_resting = True
+                            if self.dragging_npc.task is not None:
+                                self.dragging_npc.task.assigned_npc = None
+                                self.dragging_npc.task = None
+                            self.dragging_npc.path = []
+                            self.dragging_npc.is_moving = False
+                            play_sfx("dawn")
+                            for _ in range(16):
+                                self.particles.append({
+                                    "type": "star",
+                                    "x": float(self.sanctuary_ui.PANEL_X + self.sanctuary_ui.PANEL_WIDTH // 2 + random.uniform(-40, 40)),
+                                    "y": float(self.sanctuary_ui.PANEL_Y + 40 + random.uniform(-20, 20)),
+                                    "vx": random.uniform(-60, 60),
+                                    "vy": random.uniform(-80, 10),
+                                    "color": (90, 240, 120),
+                                    "size": 5.0,
+                                    "life": 0.55,
+                                    "max_life": 0.55,
+                                    "gravity": 40.0,
+                                })
+                    elif not self.sanctuary_ui.is_hovering(event.pos):
+                        world_x = event.pos[0] + self.camera.x
+                        world_y = event.pos[1] + self.camera.y
+                        gx, gy = tile_at(world_x, world_y)
+                        if self.world.grid.in_bounds(gx, gy) and self.world.grid.get(gx, gy).revealed:
+                            self.dragging_npc.x, self.dragging_npc.y = tile_center(gx, gy)
+                            self.dragging_npc.path = []
+                    self.dragging_npc = None
+                    self.is_dragging = False
+                    self.drag_start_pos = None
+                elif self.dragging_npc is not None:
+                    self.selected_npc = self.dragging_npc
+                    self.dragging_npc = None
+                    self.is_dragging = False
+                    self.drag_start_pos = None
+
 
 
     def _select_build_by_number(self, key: int) -> None:
@@ -334,9 +418,12 @@ class Game:
             top_buttons.is_hovering(pos)
             or magic_panel.is_hovering(pos, top_bar.left_box_bottom())
             or self.build_bar.is_hovering(pos)
+            or self.sanctuary_ui.is_hovering(pos)
+            or self.is_dragging
             or (self.action_menu.visible and self.action_menu.is_hovering(pos))
             or self._npc_at_world_pos(pos[0] + self.camera.x, pos[1] + self.camera.y) is not None
         )
+
 
         if not hovering and not self.action_menu.visible:
             gx, gy = tile_at(pos[0] + self.camera.x, pos[1] + self.camera.y)
@@ -497,6 +584,25 @@ class Game:
                 if monster.is_dead and not getattr(monster, "_death_fx_spawned", False):
                     monster._death_fx_spawned = True
                     self._spawn_monster_death_fx(monster.x, monster.y)
+
+            # Sanctuary Resting VFX (Green healing stars)
+            resting_npcs = [n for n in self.world.npcs if getattr(n, "is_resting", False)]
+            for idx, npc in enumerate(resting_npcs):
+                if npc.health < npc.max_health and random.random() < 0.25:
+                    slot_y = self.sanctuary_ui.PANEL_Y + 42 + idx * 74
+                    self.particles.append({
+                        "type": "star",
+                        "x": float(self.sanctuary_ui.PANEL_X + 24 + random.uniform(-6, 6)),
+                        "y": float(slot_y + 20 + random.uniform(-6, 6)),
+                        "vx": random.uniform(-10, 10),
+                        "vy": random.uniform(-35, -15),
+                        "color": random.choice([(80, 240, 120), (120, 255, 160), (255, 255, 255)]),
+                        "size": random.uniform(3.0, 4.5),
+                        "life": 0.45,
+                        "max_life": 0.45,
+                        "gravity": 10.0,
+                    })
+
 
             monster_count_before_combat = len(self.monsters)
 
@@ -771,8 +877,25 @@ class Game:
         self.priority_ui.render(self.screen, self.font, self.world.npcs)
         self.skill_ui.render(self.screen, self.font, self.world, self.skill_points_available)
         self.npc_status_ui.render(self.screen, self.font, self.world.npcs)
+
+        # Right-side Healing Sanctuary Box
+        is_over_sanctuary = self.is_dragging and self.sanctuary_ui.is_hovering(pygame.mouse.get_pos())
+        self.sanctuary_ui.render(self.screen, self.font, self.world, is_dragging_over=is_over_sanctuary)
+
+        # Floating Dragged Paper NPC under cursor
+        if self.is_dragging and self.dragging_npc is not None:
+            mpos = pygame.mouse.get_pos()
+            sprite = npc_sprite(self.dragging_npc.role)
+            if sprite is not None:
+                shadow = pygame.Surface((28, 10), pygame.SRCALPHA)
+                pygame.draw.ellipse(shadow, (0, 0, 0, 95), pygame.Rect(0, 0, 28, 10))
+                self.screen.blit(shadow, (mpos[0] - 14, mpos[1] + 16))
+                tilted = pygame.transform.rotate(sprite, 12.0)
+                self.screen.blit(tilted, tilted.get_rect(center=(mpos[0], mpos[1] - 8)))
+
         self.render_game_over()
         pygame.display.flip()
+
 
     def render_projectiles(self) -> None:
         """Draws Paper Mario flying arcane magic orbs and feathered wooden arrows."""
@@ -882,8 +1005,11 @@ class Game:
         bar_h = 4
 
         for npc in self.world.npcs:
+            if getattr(npc, "is_resting", False):
+                continue
             base_sx = int(npc.x - cam_x)
             base_sy = int(npc.y - cam_y)
+
 
             # Paper Mario: 2D Soft Ground Shadow
             shadow_w = 22

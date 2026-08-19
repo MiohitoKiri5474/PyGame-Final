@@ -289,3 +289,6 @@ DEFENSE_BONUS_PER_LEVEL = 2  # flat defense, on top of role-based base
 HEALTH_BONUS_PER_LEVEL = 10  # flat max_health (and current health), on top of role-based base
 MAGIC_DAMAGE_MULTIPLIER_PER_LEVEL = 0.15  # +15% spell damage, per level
 AOE_RADIUS_BONUS_PER_LEVEL = 1  # +1 tile to Freeze's 3x3 box radius, per level
+
+# --- NPC Drag-to-Heal Sanctuary System ---
+SANCTUARY_HEAL_RATE = 12.0  # HP restored per second while in Sanctuary

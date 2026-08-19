@@ -78,17 +78,25 @@ def update_npc_tasks(world: "World", dt: float) -> None:
     to and perform it. If a task is blocked (e.g. missing materials), NPCs skip
     it and work on available tasks. Hungry NPCs consume food from the colony inventory."""
     for npc in world.npcs:
+        if getattr(npc, "is_resting", False):
+            # Resting in sanctuary: check food consumption if hungry, and update recovery/hunger
+            if npc.hunger <= HUNGER_EAT_THRESHOLD and not npc.is_dead:
+                if world.inventory.consume_soonest_food(1) is not None:
+                    npc.eat()
+            npc.update(dt)
+            continue
+
         # Colony food consumption: hungry NPCs eat from inventory (soonest-to-expire first)
         if npc.hunger <= HUNGER_EAT_THRESHOLD and not npc.is_dead:
             if world.inventory.consume_soonest_food(1) is not None:
                 npc.eat()
-
 
         if npc.task is None:
             _try_claim_and_path(world, npc)
             if npc.task is None:
                 npc.update(dt)
                 continue
+
 
         task_type = TASK_TYPES.get(npc.task.type)
         if task_type is not None and task_type.can_perform is not None:

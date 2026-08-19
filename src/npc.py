@@ -7,7 +7,9 @@ from constants import (
     NPC_DEFENSE,
     COMBAT_RANGE,
     ROLE_STATS,
+    SANCTUARY_HEAL_RATE,
 )
+
 from movement import step_toward_path
 
 DEFAULT_SPEED = 120.0  # pixels/sec
@@ -52,9 +54,11 @@ class NPC:
         self.health = self.max_health
         self.hunger = NPC_MAX_HUNGER
         self.alive = True
+        self.is_resting = False
         self.priority = priority  # None = fall back to task-type registration order
         self.task = None  # set by task.update_npc_tasks; typed loosely to avoid a task.py<->npc.py import cycle
         self.task_progress = 0.0
+
 
         # Paper Mario Animation states
         self.facing_left = False
@@ -114,8 +118,18 @@ class NPC:
             self.kill()
             return
 
+        if self.is_resting:
+            # Sanctuary Resting: Regenerate health, clear movement/tasks, hunger still decays
+            self.health = min(float(self.max_health), self.health + SANCTUARY_HEAL_RATE * dt)
+            self.is_moving = False
+            self.path = []
+            self.attack_timer = 0.0
+            self.hit_timer = 0.0
+            return
+
         self.attack_timer = max(0.0, self.attack_timer - dt)
         self.hit_timer = max(0.0, self.hit_timer - dt)
+
 
         old_x = self.x
         self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
