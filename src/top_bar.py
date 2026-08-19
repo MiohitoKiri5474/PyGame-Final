@@ -1,10 +1,9 @@
-"""Top info bar: a narrow left-edge column (round/phase/ring box, then
-Inventory stacked below it - narrow on purpose, so it covers as little of
-the map as possible) and two stacked middle boxes (NPC count, Hint) - each
-framed to match the build bar's button styling. The top-right Pause/
-Priority/Skill buttons and the left-edge magic panel are separate modules
-(top_buttons.py, magic_panel.py); magic_panel sits below the whole left
-column (round/ring box + Inventory), same x-range, via left_box_bottom().
+"""Top info bar: a small left box for round/phase/countdown, then three
+stacked middle boxes (NPC count, Inventory, Hint) - each framed to match
+the build bar's button styling. The top-right Pause/Priority/Skill buttons
+and the left-edge magic panel are separate modules (top_buttons.py,
+magic_panel.py); this one only lays out the round box and the three
+middle boxes so each stays independently sized.
 
 Thin rendering layer, not itself unit tested, matching priority_ui.py's
 precedent.
@@ -29,6 +28,7 @@ _RIGHT_COL_W = 150  # matches top_buttons._BUTTON_W, kept clear of overlap
 _ROW_H = 22
 _ITEM_ROW_H = 28  # inventory rows are taller: they carry an icon
 _ICON = 22
+_ITEM_GAP = 24  # horizontal gap between inventory items sharing a row
 
 _BOX_BG = (24, 26, 32)
 _BOX_BORDER = (70, 74, 86)
@@ -55,23 +55,35 @@ def _draw_progress_ring(
         pygame.draw.arc(surface, color, rect, start_angle, end_angle, _RING_WIDTH)
 
 
-def _inventory_height(item_count: int) -> int:
-    return _PAD * 2 + max(1, item_count) * _ITEM_ROW_H
-
-
-def left_box_bottom(item_count: int) -> int:
-    """The whole left column's bottom y (round/ring box + Inventory below
-    it) - so magic_panel can anchor to it for both click hit-testing
-    (before render() runs each frame) and drawing, without needing
-    render()'s return value first. `item_count` must match what render()
-    is about to be called with, same reasoning as ui_layout.py's row-
-    sharing warning: two things computing the same geometry have to agree."""
-    return _MARGIN + _LEFT_MIN_H + _MARGIN + _inventory_height(item_count)
+def left_box_bottom() -> int:
+    """The round/phase/countdown box's bottom y - fixed, so magic_panel can
+    anchor to it for both click hit-testing (before render() runs each
+    frame) and drawing, without needing render()'s return value first."""
+    return _MARGIN + _LEFT_MIN_H
 
 
 def _box(surface: pygame.Surface, rect: pygame.Rect) -> None:
     pygame.draw.rect(surface, _BOX_BG, rect, border_radius=8)
     pygame.draw.rect(surface, _BOX_BORDER, rect, 2, border_radius=8)
+
+
+def _layout_inventory_rows(
+    items: list[tuple[str, int]], font: pygame.font.Font, max_width: int
+) -> list[list[tuple[str, str, int]]]:
+    """Packs items left-to-right - several per row, e.g. 5 side by side -
+    and only starts a new row once the current one actually runs out of
+    width, rather than always dropping to one item per line."""
+    rows: list[list[tuple[str, str, int]]] = [[]]
+    x = 0
+    for resource, count in items:
+        label = f"{resource}  x{count}"
+        w = _ICON + 8 + font.size(label)[0]
+        if x > 0 and x + w > max_width:
+            rows.append([])
+            x = 0
+        rows[-1].append((resource, label, w))
+        x += w + _ITEM_GAP
+    return rows
 
 
 def render(
@@ -86,10 +98,9 @@ def render(
     inventory_items: list[tuple[str, int]],
     hint_lines: list[tuple[str, tuple[int, int, int]]],
 ) -> int:
-    """Draws the bar. Returns the whole left column's bottom y (round/ring
-    box + Inventory) - the magic panel starts there, not at the (possibly
-    taller) middle/right columns' bottom, since it shares the left
-    column's x-range but not theirs."""
+    """Draws the bar. Returns the left box's own bottom y - the magic panel
+    starts there, not at the (possibly taller) middle/right columns'
+    bottom, since it shares the left box's x-range but not theirs."""
     left_rect = pygame.Rect(_MARGIN, _MARGIN, LEFT_W, _LEFT_MIN_H)
     _box(surface, left_rect)
 
@@ -109,28 +120,8 @@ def render(
     number_surf = font.render(f"{remaining_seconds:.0f}s", True, phase_color)
     surface.blit(number_surf, number_surf.get_rect(center=ring_center))
 
-    # Inventory sits below the round/ring box, same narrow column - keeps
-    # collected items out of the wide middle strip so they cover less of
-    # the map. Icon + count only (no resource name): this column is too
-    # narrow to fit "raw_stone  x12" without overflow.
-    inv_h = _inventory_height(len(inventory_items))
-    inv_rect = pygame.Rect(_MARGIN, left_rect.bottom + _MARGIN, LEFT_W, inv_h)
-    _box(surface, inv_rect)
-    iy = inv_rect.y + _PAD
-    if not inventory_items:
-        surface.blit(font.render("(empty)", True, _EMPTY_COLOR), (inv_rect.x + _PAD, iy))
-    else:
-        for resource, count in inventory_items:
-            icon = resource_sprite(resource)
-            if icon is not None:
-                small = pygame.transform.smoothscale(icon, (_ICON, _ICON))
-                surface.blit(small, (inv_rect.x + _PAD, iy))
-            label_x = inv_rect.x + _PAD + _ICON + 8
-            surface.blit(font.render(f"x{count}", True, _LABEL), (label_x, iy + 3))
-            iy += _ITEM_ROW_H
-
-    # Middle column: NPC (fixed), Hint (grows with active hints) - two
-    # independently-sized boxes, stacked.
+    # Middle column: NPC (fixed), Inventory (grows with item count), Hint
+    # (grows with active hints) - three independently-sized boxes, stacked.
     middle_x = left_rect.right + _MARGIN
     middle_w = WINDOW_WIDTH - middle_x - _MARGIN - _RIGHT_COL_W - _MARGIN
     my = _MARGIN
@@ -144,6 +135,26 @@ def render(
     )
     my = npc_rect.bottom + _MIDDLE_GAP
 
+    inv_rows = _layout_inventory_rows(inventory_items, font, middle_w - _PAD * 2)
+    inv_h = _PAD * 2 + max(1, len(inv_rows)) * _ITEM_ROW_H
+    inv_rect = pygame.Rect(middle_x, my, middle_w, inv_h)
+    _box(surface, inv_rect)
+    iy = inv_rect.y + _PAD
+    if not inventory_items:
+        surface.blit(font.render("Inventory: (empty)", True, _EMPTY_COLOR), (inv_rect.x + _PAD, iy))
+    else:
+        for row in inv_rows:
+            ix = inv_rect.x + _PAD
+            for resource, label, w in row:
+                icon = resource_sprite(resource)
+                if icon is not None:
+                    small = pygame.transform.smoothscale(icon, (_ICON, _ICON))
+                    surface.blit(small, (ix, iy))
+                surface.blit(font.render(label, True, _LABEL), (ix + _ICON + 8, iy + 3))
+                ix += w + _ITEM_GAP
+            iy += _ITEM_ROW_H
+    my = inv_rect.bottom + _MIDDLE_GAP
+
     # Hint box absorbs whatever's left: no fixed height, it just grows with
     # however many hint lines are active this frame.
     hint_lines = [(text, color) for text, color in hint_lines if text]
@@ -156,4 +167,4 @@ def render(
         surface.blit(font.render(text, True, color), (hint_rect.x + _PAD, hy))
         hy += _ROW_H
 
-    return inv_rect.bottom
+    return left_rect.bottom
