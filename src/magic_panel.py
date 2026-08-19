@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
+import text_wrap
 import top_bar
 import ui_tooltip
 from constants import FIRE_COOLDOWN, FREEZE_COOLDOWN, LIGHTNING_COOLDOWN
@@ -61,26 +62,8 @@ _COLORS = {"Fire": (195, 90, 30), "Lightning": (195, 165, 40), "Freeze": (55, 13
 _MAX_COOLDOWN = {"Fire": FIRE_COOLDOWN, "Lightning": LIGHTNING_COOLDOWN, "Freeze": FREEZE_COOLDOWN}
 
 
-def _wrap_text(text: str, font: pygame.font.Font, max_width: int) -> list[str]:
-    """Greedy word-wrap: packs words onto a line until the next one would
-    overflow max_width, then starts a new line."""
-    words = text.split(" ")
-    lines: list[str] = []
-    current = ""
-    for word in words:
-        candidate = f"{current} {word}".strip()
-        if current and font.size(candidate)[0] > max_width:
-            lines.append(current)
-            current = word
-        else:
-            current = candidate
-    if current:
-        lines.append(current)
-    return lines
-
-
 def _desc_lines(font: pygame.font.Font) -> list[str]:
-    return _wrap_text(_DESC_TEXT, font, _WIDTH)
+    return text_wrap.wrap(_DESC_TEXT, font, _WIDTH)
 
 
 def _outer_rect(y: int, font: pygame.font.Font) -> pygame.Rect:

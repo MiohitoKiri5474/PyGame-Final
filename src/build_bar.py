@@ -24,7 +24,7 @@ from tile_actions import build_task_types, building_label
 if TYPE_CHECKING:
     from world import World
 
-_BUTTON_W = 200
+_BUTTON_W = 230  # wide enough for two materials as "icon + amount + name" side by side (e.g. AnimalPen's wood + raw_stone)
 _BUTTON_H = 64
 _GAP = 12
 _MARGIN_BOTTOM = 10
@@ -188,9 +188,7 @@ class BuildBar:
                         small = pygame.transform.smoothscale(icon, (_COST_ICON, _COST_ICON))
                         surface.blit(small, (cx, cy + 2))
                         cx += _COST_ICON + 4
-                        amt_text = str(amt)
-                    else:
-                        amt_text = f"{amt} {res}"
+                    amt_text = f"{amt} {res}"
                     affordable = world.inventory.get(res) >= amt
                     color = _COST_OK if affordable else _COST_SHORT
                     amt_surf = font.render(amt_text, True, color)
