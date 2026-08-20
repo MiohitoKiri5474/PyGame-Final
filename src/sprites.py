@@ -448,6 +448,42 @@ def other_background_sprite(width: int, height: int) -> pygame.Surface | None:
     return _cache[key]
 
 
+def _ui_panel_sprite(filename: str, width: int, height: int) -> pygame.Surface | None:
+    """A single opaque HUD-panel card (day_panel.png/magic_panel.png/
+    gameover_panel.png/restart_button.png) stretched to exactly (width,
+    height) - each was drawn close to its target box's own aspect ratio,
+    so the stretch is minor. Unlike the full-screen backgrounds this isn't
+    cropped, since these need their whole design (corner flourishes etc.)
+    to stay intact within the box, not overflow and get cut off."""
+    path = _ASSETS_DIR / "ui" / filename
+    key = (f"ui/{filename}", width, height)
+    if key not in _cache:
+        if not path.exists():
+            return None
+        _cache[key] = pygame.transform.smoothscale(_load_image(path), (width, height))
+    return _cache[key]
+
+
+def day_panel_sprite(width: int, height: int) -> pygame.Surface | None:
+    """assets/ui/day_panel.png - the round/phase/countdown box's backing card."""
+    return _ui_panel_sprite("day_panel.png", width, height)
+
+
+def magic_panel_sprite(width: int, height: int) -> pygame.Surface | None:
+    """assets/ui/magic_panel.png - the magic spell panel's backing card."""
+    return _ui_panel_sprite("magic_panel.png", width, height)
+
+
+def gameover_panel_sprite(width: int, height: int) -> pygame.Surface | None:
+    """assets/ui/gameover_panel.png - the game-over overlay's backing card."""
+    return _ui_panel_sprite("gameover_panel.png", width, height)
+
+
+def restart_button_sprite(width: int, height: int) -> pygame.Surface | None:
+    """assets/ui/restart_button.png - the game-over screen's Restart button."""
+    return _ui_panel_sprite("restart_button.png", width, height)
+
+
 def title_logo_sprite(max_width: int) -> pygame.Surface | None:
     """assets/ui/logo.png, scaled to max_width wide (aspect preserved)."""
     path = _ASSETS_DIR / "ui" / "logo.png"

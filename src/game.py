@@ -75,6 +75,7 @@ from render_buildings import draw_single_building
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
     animal_sprite,
+    gameover_panel_sprite,
     get_arrow_sprite,
     get_magic_orb_sprite,
     get_tool_sprite,
@@ -83,6 +84,7 @@ from sprites import (
     monster_sprite,
     nest_sprite,
     npc_sprite,
+    restart_button_sprite,
 )
 from tame_task import idle_spot_near_pen
 from terrain import (
@@ -2092,23 +2094,31 @@ class Game:
             return
 
         panel = self._game_over_panel_rect()
-        overlay = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
-        overlay.fill((20, 22, 28, 235))
-        self.screen.blit(overlay, panel.topleft)
-        pygame.draw.rect(self.screen, COLOR_GAME_OVER, panel, 3, border_radius=8)
+        panel_art = gameover_panel_sprite(panel.width, panel.height)
+        if panel_art is not None:
+            self.screen.blit(panel_art, panel)
+        else:
+            overlay = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
+            overlay.fill((20, 22, 28, 235))
+            self.screen.blit(overlay, panel.topleft)
+            pygame.draw.rect(self.screen, COLOR_GAME_OVER, panel, 3, border_radius=8)
 
-        title_surf = self.big_font.render("GAME OVER", True, COLOR_GAME_OVER)
-        self.screen.blit(title_surf, title_surf.get_rect(center=(panel.centerx, panel.top + 54)))
+        title_surf = self.menu_big_font.render("GAME OVER", True, COLOR_GAME_OVER)
+        self.screen.blit(title_surf, title_surf.get_rect(center=(panel.centerx, panel.top + 80)))
 
         score_surf = self.font.render(f"Score: Round {self.game_over_state.score}", True, COLOR_TEXT)
-        self.screen.blit(score_surf, score_surf.get_rect(center=(panel.centerx, panel.top + 108)))
+        self.screen.blit(score_surf, score_surf.get_rect(center=(panel.centerx, panel.top + 130)))
 
         best_surf = self.font.render(f"Best Score: Round {self.best_score}", True, COLOR_DAY_BANNER)
-        self.screen.blit(best_surf, best_surf.get_rect(center=(panel.centerx, panel.top + 138)))
+        self.screen.blit(best_surf, best_surf.get_rect(center=(panel.centerx, panel.top + 158)))
 
         button = self._game_over_restart_button_rect()
-        hovered = button.collidepoint(pygame.mouse.get_pos())
-        pygame.draw.rect(self.screen, (48, 56, 72) if hovered else (30, 33, 40), button, border_radius=6)
-        pygame.draw.rect(self.screen, COLOR_GAME_OVER, button, 2, border_radius=6)
+        button_art = restart_button_sprite(button.width + 16, button.height + 12)
+        if button_art is not None:
+            self.screen.blit(button_art, button_art.get_rect(center=button.center))
+        else:
+            hovered = button.collidepoint(pygame.mouse.get_pos())
+            pygame.draw.rect(self.screen, (48, 56, 72) if hovered else (30, 33, 40), button, border_radius=6)
+            pygame.draw.rect(self.screen, COLOR_GAME_OVER, button, 2, border_radius=6)
         btn_label = self.font.render("Restart  [R]", True, COLOR_TEXT)
         self.screen.blit(btn_label, btn_label.get_rect(center=button.center))

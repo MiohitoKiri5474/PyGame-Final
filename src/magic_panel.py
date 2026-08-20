@@ -23,6 +23,7 @@ import text_wrap
 import top_bar
 import ui_tooltip
 from constants import FIRE_COOLDOWN, FREEZE_COOLDOWN, LIGHTNING_COOLDOWN
+from sprites import magic_panel_sprite
 
 if TYPE_CHECKING:
     from world import World
@@ -32,7 +33,7 @@ _BUTTON_H = 56
 _GAP = 8
 
 _OUTER_PAD = 10
-_HEADER_H = 22
+_HEADER_H = 48  # tall enough to clear magic_panel.png's painted banner decoration
 _DESC_LINE_H = 16
 _WIDTH = top_bar.LEFT_W - _OUTER_PAD * 2  # button content width, box matches top_bar's left box exactly
 
@@ -99,15 +100,19 @@ def handle_click(pos: tuple[int, int], y: int, font: pygame.font.Font) -> str | 
 def render(surface: pygame.Surface, font: pygame.font.Font, world: "World", y: int) -> int:
     """Returns the panel's bottom y."""
     outer = _outer_rect(y, font)
-    pygame.draw.rect(surface, _OUTER_BG, outer, border_radius=8)
-    pygame.draw.rect(surface, _OUTER_BORDER, outer, 2, border_radius=8)
+    panel_art = magic_panel_sprite(outer.width, outer.height)
+    if panel_art is not None:
+        surface.blit(panel_art, outer)
+    else:
+        pygame.draw.rect(surface, _OUTER_BG, outer, border_radius=8)
+        pygame.draw.rect(surface, _OUTER_BORDER, outer, 2, border_radius=8)
 
     font.set_bold(True)
     header_surf = font.render(_HEADER_TEXT, True, _HEADER_COLOR)
     font.set_bold(False)
-    surface.blit(header_surf, (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD - 2))
+    surface.blit(header_surf, (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD + 22))
 
-    dy = outer.y + _OUTER_PAD + _HEADER_H - 4
+    dy = outer.y + _OUTER_PAD + _HEADER_H - 2
     for line in _desc_lines(font):
         surface.blit(font.render(line, True, _DESC_COLOR), (outer.x + _OUTER_PAD, dy))
         dy += _DESC_LINE_H
