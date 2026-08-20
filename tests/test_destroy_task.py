@@ -81,3 +81,30 @@ def test_full_destroy_task_lifecycle_with_npc():
     assert len(world.buildings) == 0
     assert npc.task is None
     assert world.tasks.tasks == []
+
+
+def test_destroy_2x2_house_from_any_corner_removes_building():
+    world = World(npc_count=0)
+    for x in range(5, 7):
+        for y in range(5, 7):
+            world.grid.get(x, y).claimed = True
+
+    # Place 2x2 House at (5, 5)
+    house = Building("House", 5, 5, 0, 0)
+    world.buildings.append(house)
+
+    # Any of the 4 occupied tiles can queue Destroy
+    assert _can_queue(world, (5, 5)) is True
+    assert _can_queue(world, (6, 5)) is True
+    assert _can_queue(world, (5, 6)) is True
+    assert _can_queue(world, (6, 6)) is True
+
+    # Queue Destroy on bottom-right corner (6, 6)
+    world.tasks.add("Destroy", (6, 6))
+
+    # Other corners cannot double-queue Destroy on the same house
+    assert _can_queue(world, (5, 5)) is False
+
+    task = Task("Destroy", (6, 6))
+    assert _on_complete(world, task) is True
+    assert len(world.buildings) == 0

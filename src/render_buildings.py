@@ -74,6 +74,21 @@ def draw_single_building(surface: pygame.Surface, building, camera) -> None:
                     pygame.draw.rect(surface, (30, 40, 30), bar_rect, border_radius=2)
                     fill_w = max(1, int(bar_w * prog))
                     pygame.draw.rect(surface, (100, 225, 80), pygame.Rect(bar_rect.x, bar_rect.y, fill_w, bar_h), border_radius=2)
+        elif building.type == "House":
+            # 2x2 Multi-tile Building Footprint (80x80 px)
+            base_center_x = screen_x + TILE_SIZE
+            base_bottom = screen_y + 2 * TILE_SIZE
+
+            # Soft ground shadow spanning 2x2 base
+            sw = max(32, int(sprite.get_width() * 0.75))
+            sh = max(8, int(TILE_SIZE * 0.45))
+            shadow_surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), (0, 0, sw, sh))
+            surface.blit(shadow_surf, (base_center_x - sw // 2, base_bottom - sh // 2 - 2))
+
+            # 2.5D Anchor: Base sits at 2x2 bottom, centered at x+1
+            b_rect = sprite.get_rect(midbottom=(base_center_x, base_bottom))
+            surface.blit(sprite, b_rect)
         else:
             # 2.5D Standing Structure: Soft ground shadow at the base
             sw = max(16, int(sprite.get_width() * 0.80))
@@ -86,12 +101,14 @@ def draw_single_building(surface: pygame.Surface, building, camera) -> None:
             b_rect = sprite.get_rect(midbottom=(rect.centerx, rect.bottom))
             surface.blit(sprite, b_rect)
     else:
-        pygame.draw.rect(surface, _building_color(building), rect)
+        w = 2 * TILE_SIZE if building.type == "House" else TILE_SIZE
+        h = 2 * TILE_SIZE if building.type == "House" else TILE_SIZE
+        pygame.draw.rect(surface, _building_color(building), pygame.Rect(screen_x, screen_y, w, h))
 
 
 def draw_buildings(surface: pygame.Surface, world, camera) -> None:
-    # Sort buildings north-to-south (Y-order) so structures stack correctly
-    sorted_buildings = sorted(world.buildings, key=lambda b: (b.y, b.x))
+    # Sort buildings north-to-south (Y-order) taking 2x2 base into account
+    sorted_buildings = sorted(world.buildings, key=lambda b: (b.y + (2 if b.type == "House" else 1), b.x))
     for building in sorted_buildings:
         draw_single_building(surface, building, camera)
 
