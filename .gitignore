@@ -1,4 +1,5 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 .claude/
@@ -6,3 +7,9 @@ __pycache__/
 mcp_config.json
 save.json
 highscore.json
+
+# Showcase and Trailer generation files (local only)
+showcase_videos/
+tools/
+assets/trailer/
+assets/sfx/ending_battle_audio.wav

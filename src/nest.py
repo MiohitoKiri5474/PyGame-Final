@@ -58,6 +58,12 @@ class NestManager:
         self.rng = rng or random.Random()
         self.new_nest_timer = 0.0
 
+    def on_night_start(self, round_number: int) -> None:
+        """Called upon nightfall to prime nests so vanguard monsters emerge early."""
+        for nest in self.nests:
+            # Prime spawn timer so the first wave emerges within 3-4s of nightfall
+            nest.spawn_timer = max(0.0, nest.spawn_interval(round_number) - 4.0)
+
     def update(self, dt: float, round_number: int, phase: str) -> list[Tile]:
         spawn_tiles: list[Tile] = []
         if phase == NIGHT:

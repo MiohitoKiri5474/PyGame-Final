@@ -48,6 +48,15 @@ def resolve_combat(npcs: list, monsters: list, buildings=(), on_damage=None) -> 
                 if hasattr(npc, "trigger_hit"):
                     npc.trigger_hit()
 
+                # Mage tactical micro-kiting: step back slightly when enemies get too close
+                if getattr(npc, "role", None) == "Mage":
+                    dx = npc.x - monster.x
+                    dy = npc.y - monster.y
+                    dist = math.hypot(dx, dy)
+                    if 0.1 < dist < 45.0:
+                        npc.x += (dx / dist) * 6.0
+                        npc.y += (dy / dist) * 6.0
+
                 if monster.life_steal:
                     monster.health = min(monster.max_health, monster.health + monster_dmg)
 
@@ -55,14 +64,24 @@ def resolve_combat(npcs: list, monsters: list, buildings=(), on_damage=None) -> 
         if building.type != "Tower":
             continue
         bx, by = tile_center(building.x, building.y)
+        # Single-target priority: lock onto the nearest living monster in range
+        target_monster = None
+        min_dist = float("inf")
         for monster in monsters:
-            if _within(bx, by, monster.x, monster.y, TOWER_RANGE):
-                tower_dmg = max(COMBAT_MIN_DAMAGE, building.attack - monster.defense)
-                monster.health -= tower_dmg
-                if on_damage:
-                    on_damage(building, monster, tower_dmg)
-                if hasattr(monster, "trigger_hit"):
-                    monster.trigger_hit()
+            if monster.is_dead:
+                continue
+            d = math.hypot(bx - monster.x, by - monster.y)
+            if d <= TOWER_RANGE and d < min_dist:
+                min_dist = d
+                target_monster = monster
+
+        if target_monster is not None:
+            tower_dmg = max(COMBAT_MIN_DAMAGE, building.attack - target_monster.defense)
+            target_monster.health -= tower_dmg
+            if on_damage:
+                on_damage(building, target_monster, tower_dmg)
+            if hasattr(target_monster, "trigger_hit"):
+                target_monster.trigger_hit()
 
     npcs[:] = [npc for npc in npcs if not npc.is_dead]
     monsters[:] = [monster for monster in monsters if not monster.is_dead]

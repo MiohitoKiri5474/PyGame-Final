@@ -37,6 +37,9 @@ _DEFAULT_VOLUMES = {
     "freeze": 0.30,
     "night_howl": 0.40,
     "dawn": 0.35,
+    "sword_slash": 0.35,
+    "staff_swing": 0.35,
+    "arrow_shoot": 0.30,
 }
 
 # Cooldown between same-sound triggers to prevent multi-unit clutter (seconds)
@@ -50,6 +53,9 @@ _SFX_COOLDOWN = {
     "freeze": 0.1,
     "night_howl": 1.0,
     "dawn": 1.0,
+    "sword_slash": 0.15,
+    "staff_swing": 0.15,
+    "arrow_shoot": 0.15,
 }
 
 
@@ -69,7 +75,7 @@ def play_sfx(name: str, volume: float | None = None, min_interval: float | None 
 
     if name not in _SOUND_CACHE:
         sound = None
-        for ext in (".mp3", ".wav", ".ogg"):
+        for ext in (".mp3", ".wav", ".ogg", ".wav.wav"):
             sound_path = _SFX_DIR / f"{name}{ext}"
             if sound_path.exists():
                 try:

@@ -8,16 +8,26 @@ from nest import Nest, NestManager, create_initial_nests
 
 def test_spawn_interval_shrinks_with_round_and_floors_at_minimum():
     nest = Nest(0, 0)
-    assert nest.spawn_interval(1) == 40.0
-    assert nest.spawn_interval(5) == 30.0
+    assert nest.spawn_interval(1) == 25.0
+    assert nest.spawn_interval(5) == 17.0
     assert nest.spawn_interval(50) == 4.0  # floored at NEST_MIN_SPAWN_INTERVAL
 
 
 def test_nest_update_fires_once_interval_elapsed_and_resets_timer():
     nest = Nest(0, 0)
-    assert nest.update(dt=30.0, round_number=1) is False
-    assert nest.update(dt=11.0, round_number=1) is True  # 41s total >= 40s interval
+    assert nest.update(dt=15.0, round_number=1) is False
+    assert nest.update(dt=11.0, round_number=1) is True  # 26s total >= 25s interval
     assert nest.spawn_timer == 0.0
+
+
+def test_on_night_start_primes_nest_for_vanguard_wave():
+    manager = NestManager(width=10, height=10, nests=[Nest(0, 0)])
+    manager.on_night_start(round_number=1)
+    # Nest is primed so the first spawn emerges in ~4s
+    assert manager.nests[0].spawn_timer == 21.0
+    # After 4.1s at night, the vanguard monster spawns!
+    spawned = manager.update(dt=4.1, round_number=1, phase=NIGHT)
+    assert spawned == [(0, 0)]
 
 
 def test_nest_manager_only_spawns_monsters_at_night():
@@ -28,7 +38,7 @@ def test_nest_manager_only_spawns_monsters_at_night():
 
 def test_nest_manager_spawns_at_night_once_interval_elapsed():
     manager = NestManager(width=10, height=10, nests=[Nest(0, 0)])
-    spawned = manager.update(dt=41.0, round_number=1, phase=NIGHT)
+    spawned = manager.update(dt=26.0, round_number=1, phase=NIGHT)
     assert spawned == [(0, 0)]
 
 

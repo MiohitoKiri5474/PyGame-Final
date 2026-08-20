@@ -144,3 +144,31 @@ def test_life_steal_monster_killed_by_one_npc_cannot_resurrect_off_a_second():
     resolve_combat([lethal_npc, second_npc], [monster])
     assert monster.is_dead
     assert monster.health <= 0
+
+
+def test_tower_attacks_only_single_closest_target():
+    tower = _Building("Tower", x=0, y=0, attack=15)
+    mx1, my1 = tile_center(1, 0)  # Close monster (40px)
+    mx2, my2 = tile_center(3, 0)  # Far monster in range (120px)
+    m1 = _Entity(mx1, my1, health=40, attack=10, defense=2)
+    m2 = _Entity(mx2, my2, health=40, attack=10, defense=2)
+
+    resolve_combat([], [m1, m2], [tower])
+    # Closer monster took damage, further monster was untouched
+    assert m1.health == 40 - (15 - 2)
+    assert m2.health == 40
+
+
+def test_mage_kites_back_when_monster_is_adjacent():
+    class _Mage(_Entity):
+        def __init__(self, x, y):
+            super().__init__(x, y, health=95, attack=22, defense=4, combat_range=120)
+            self.role = "Mage"
+
+    mage = _Mage(50.0, 50.0)
+    # Monster immediately adjacent (30px away)
+    monster = _Entity(50.0, 80.0, health=75, attack=14, defense=2)
+
+    resolve_combat([mage], [monster])
+    # Mage nudged backward away from monster
+    assert mage.y < 50.0

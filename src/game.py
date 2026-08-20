@@ -579,7 +579,10 @@ class Game:
         to - the keyboard-only overlays (priority/skill/NPC-status) block
         every mouse action while open, so cursor just stays default there."""
         if self.priority_ui.visible or self.skill_ui.visible or self.npc_status_ui.visible:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            try:
+                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            except pygame.error:
+                pass
             return
 
         if self.game_over_state.is_over:
@@ -634,6 +637,7 @@ class Game:
             transitioned = self.cycle.update(dt)
             if transitioned and self.cycle.phase == NIGHT:
                 self._monsters_killed_this_night = 0
+                self.nest_manager.on_night_start(self.cycle.round_number)
                 play_sfx("night_howl")
                 play_bgm("night")
 
@@ -813,8 +817,10 @@ class Game:
                 is_npc_target = hasattr(target, "role")
                 is_mage = hasattr(src, "role") and src.role == ROLE_MAGE
                 is_tower = hasattr(src, "type") and src.type == "Tower"
+                is_knight = hasattr(src, "role") and src.role == ROLE_KNIGHT
 
                 if is_mage:
+                    play_sfx("staff_swing")
                     # Spawn Mage Arcane Magic Orb projectile
                     self.projectiles.append({
                         "type": "magic_orb",
@@ -828,6 +834,7 @@ class Game:
                         "target_is_npc": is_npc_target,
                     })
                 elif is_tower:
+                    play_sfx("arrow_shoot")
                     # Spawn Defense Tower Arrow projectile
                     bx, by = tile_center(src.x, src.y)
                     self.projectiles.append({
@@ -842,19 +849,28 @@ class Game:
                         "target_is_npc": is_npc_target,
                     })
                 else:
+                    if is_knight:
+                        play_sfx("sword_slash")
+
                     # Melee attack: Immediate damage popup & hit confetti
-                    col = (255, 80, 80) if is_npc_target else (255, 220, 60)
+                    is_crit = is_knight and dmg >= 25
+                    popup_text = f"💥CRIT -{int(dmg)}" if is_crit else f"-{int(dmg)}"
+                    if is_crit:
+                        col = (255, 235, 60)
+                    else:
+                        col = (255, 80, 80) if is_npc_target else (255, 220, 60)
+
                     self.particles.append({
                         "type": "damage_num",
-                        "text": f"-{int(dmg)}",
+                        "text": popup_text,
                         "x": target.x + random.uniform(-4, 4),
-                        "y": target.y - 12,
+                        "y": target.y - (16 if is_crit else 12),
                         "vx": random.uniform(-15, 15),
-                        "vy": -55.0,
+                        "vy": -65.0 if is_crit else -55.0,
                         "color": col,
-                        "life": 0.65,
-                        "max_life": 0.65,
-                        "gravity": 40.0,
+                        "life": 0.85 if is_crit else 0.65,
+                        "max_life": 0.85 if is_crit else 0.65,
+                        "gravity": 35.0 if is_crit else 40.0,
                     })
                     confetti_colors = [
                         (255, 220, 50),

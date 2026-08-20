@@ -59,11 +59,9 @@ COMBAT_MIN_DAMAGE = 1  # damage floor so attack <= defense still chips away
 
 NEST_INITIAL_COUNT = 3
 NEST_MAX_COUNT = 8
-# At round 1 this yields ~1 spawn/nest over a NIGHT_SECONDS=60 night (3 nests
-# -> ~3 monsters) - the old 15.0 gave up to 4/nest (~12 total) on the very
-# first night, before the colony has any defenses.
-NEST_BASE_SPAWN_INTERVAL = 40.0  # seconds between spawns at round 1
-NEST_SPAWN_RAMP_PER_ROUND = 2.5  # interval shrinks by this much per round
+# Scaled so round 1 provides steady vanguard spawns arriving early in the night
+NEST_BASE_SPAWN_INTERVAL = 25.0  # seconds between spawns at round 1
+NEST_SPAWN_RAMP_PER_ROUND = 2.0  # interval shrinks by this much per round
 NEST_MIN_SPAWN_INTERVAL = 4.0  # floor so late rounds don't spawn every tick
 NEW_NEST_INTERVAL = 240.0  # seconds between chances for a new nest to appear
 
@@ -126,7 +124,7 @@ ROLE_STATS = {
         "combat_range": COMBAT_RANGE, "work_multiplier": 1.0,
     },
     ROLE_MAGE: {
-        "attack": 22, "defense": 2, "max_health": 70,
+        "attack": 22, "defense": 4, "max_health": 95,
         "combat_range": MAGE_COMBAT_RANGE, "work_multiplier": 1.0,
     },
 }
@@ -184,9 +182,9 @@ MONSTER_ZOMBIE = "Zombie"
 
 MONSTER_STATS = {
     # speeds scaled with the TILE_SIZE 32->40 zoom bump, same tiles/sec pacing
-    MONSTER_WEREWOLF: {"speed": 100.0, "max_health": 50, "attack": 14, "defense": 2, "life_steal": False},
-    MONSTER_VAMPIRE: {"speed": 87.5, "max_health": 40, "attack": 12, "defense": 3, "life_steal": True},
-    MONSTER_ZOMBIE: {"speed": 50.0, "max_health": 90, "attack": 8, "defense": 4, "life_steal": False},
+    MONSTER_WEREWOLF: {"speed": 100.0, "max_health": 75, "attack": 14, "defense": 2, "life_steal": False},
+    MONSTER_VAMPIRE: {"speed": 87.5, "max_health": 65, "attack": 12, "defense": 3, "life_steal": True},
+    MONSTER_ZOMBIE: {"speed": 50.0, "max_health": 120, "attack": 9, "defense": 4, "life_steal": False},
 }
 
 MONSTER_SPAWN_WEIGHTS = {MONSTER_WEREWOLF: 4, MONSTER_VAMPIRE: 3, MONSTER_ZOMBIE: 3}
