@@ -44,6 +44,7 @@ class Monster:
         self.is_moving = False
         self.attack_timer = 0.0
         self.hit_timer = 0.0
+        self.attack_cooldown = 0.0
         self.combat_target: tuple[float, float] | None = None
 
     @property
@@ -106,6 +107,7 @@ class Monster:
         self._tick_freeze(dt)
         self.attack_timer = max(0.0, self.attack_timer - dt)
         self.hit_timer = max(0.0, self.hit_timer - dt)
+        self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
 
         if self.is_frozen:
             self.is_moving = False

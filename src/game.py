@@ -643,6 +643,9 @@ class Game:
 
             update_npc_tasks(self.world, dt)
             run_ticks(self.world, dt)
+            for b in self.world.buildings:
+                if hasattr(b, "attack_cooldown") and b.attack_cooldown > 0:
+                    b.attack_cooldown = max(0.0, b.attack_cooldown - dt)
 
             for p in self.particles:
                 p["x"] += p["vx"] * dt

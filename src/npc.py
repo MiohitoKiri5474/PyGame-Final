@@ -76,6 +76,7 @@ class NPC:
         self.display_facing_left = False
         self.attack_timer = 0.0
         self.hit_timer = 0.0
+        self.attack_cooldown = 0.0
         self.combat_target: tuple[float, float] | None = None
 
     @property
@@ -133,10 +134,12 @@ class NPC:
             self.path = []
             self.attack_timer = 0.0
             self.hit_timer = 0.0
+            self.attack_cooldown = 0.0
             return
 
         self.attack_timer = max(0.0, self.attack_timer - dt)
         self.hit_timer = max(0.0, self.hit_timer - dt)
+        self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
 
 
         old_x = self.x

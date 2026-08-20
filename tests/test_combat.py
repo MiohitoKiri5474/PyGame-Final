@@ -172,3 +172,43 @@ def test_mage_kites_back_when_monster_is_adjacent():
     resolve_combat([mage], [monster])
     # Mage nudged backward away from monster
     assert mage.y < 50.0
+
+
+def test_npc_and_monster_attack_cooldown_delays_consecutive_hits():
+    class _Fighter(_Entity):
+        def __init__(self, x, y, role=None, mtype=None):
+            super().__init__(x, y, health=100, attack=10, defense=0)
+            self.role = role
+            self.type = mtype
+            self.attack_cooldown = 0.0
+
+    knight = _Fighter(0, 0, role="Knight")
+    zombie = _Fighter(10, 0, mtype="Zombie")
+
+    # First hit: both are ready, trade 10 damage each
+    resolve_combat([knight], [zombie])
+    assert knight.health == 90
+    assert zombie.health == 90
+    assert knight.attack_cooldown == 0.8
+    assert zombie.attack_cooldown == 1.3
+
+    # Immediate second resolve without cooldown expiring: no new damage dealt
+    resolve_combat([knight], [zombie])
+    assert knight.health == 90
+    assert zombie.health == 90
+
+
+def test_tower_attack_cooldown_delays_consecutive_shots():
+    tower = _Building("Tower", x=0, y=0, attack=15)
+    tower.attack_cooldown = 0.0
+    mx, my = tile_center(2, 0)
+    monster = _Entity(mx, my, health=100, attack=0, defense=0)
+
+    # First shot hits
+    resolve_combat([], [monster], [tower])
+    assert monster.health == 85
+    assert tower.attack_cooldown == 1.4
+
+    # Second immediate tick while on cooldown does not hit
+    resolve_combat([], [monster], [tower])
+    assert monster.health == 85
