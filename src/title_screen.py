@@ -1,9 +1,11 @@
-"""Launch-time title screen: game title text + Start/Continue/Settings
-buttons, primitive shapes/text only (no new art assets)."""
+"""Launch-time title screen: painted backdrop/logo/buttons (assets/ui) with
+Start/Continue/Settings, falling back to the old primitive shapes/text if
+that art isn't available."""
 
 import pygame
 
-from constants import WINDOW_WIDTH
+from constants import WINDOW_HEIGHT, WINDOW_WIDTH
+from sprites import other_background_sprite, title_background_sprite, title_logo_sprite
 from ui_layout import (
     BUTTON_GAP,
     BUTTON_HEIGHT,
@@ -12,13 +14,15 @@ from ui_layout import (
     SECOND_LEVEL_TOP,
     hit_test,
     render_button,
-    render_screen_frame,
+    render_screen_background,
     render_screen_title,
     stack_rect,
 )
 
-_TITLE_TEXT = "Colony Defense (WIP)"
+_TITLE_TEXT = "Colony Defense (WIP)"  # fallback heading, only shown without logo.png
 _WARNING_TEXT = "Starting a new game will overwrite your existing save."
+_LOGO_MAX_WIDTH = 600
+_LOGO_BOTTOM_CLEARANCE = 30  # gap between the logo's bottom edge and the first button row
 
 
 class TitleScreen:
@@ -34,12 +38,25 @@ class TitleScreen:
         return hit_test(pos, rect_labels)
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font, save_exists: bool) -> None:
-        render_screen_frame(surface)
-        render_screen_title(surface, font, _TITLE_TEXT)
-        render_button(surface, font, self.start_rect, "Start")
+        background = title_background_sprite(WINDOW_WIDTH, WINDOW_HEIGHT)
+        render_screen_background(surface, background)
+
+        logo = title_logo_sprite(_LOGO_MAX_WIDTH)
+        if logo is not None:
+            logo_rect = logo.get_rect(
+                centerx=WINDOW_WIDTH // 2, bottom=FIRST_LEVEL_TOP - _LOGO_BOTTOM_CLEARANCE
+            )
+            surface.blit(logo, logo_rect)
+        else:
+            render_screen_title(surface, font, _TITLE_TEXT)
+
+        # Fixed identity->slot mapping (Start=1, Continue=2, Settings=3) so
+        # each button's flourish stays the same regardless of whether
+        # Continue happens to be visible this launch.
+        render_button(surface, font, self.start_rect, "Start", slot=1)
         if save_exists:
-            render_button(surface, font, self.continue_rect, "Continue")
-        render_button(surface, font, self.settings_rect, "Settings")
+            render_button(surface, font, self.continue_rect, "Continue", slot=2)
+        render_button(surface, font, self.settings_rect, "Settings", slot=3)
 
 
 class ConfirmOverwriteDialog:
@@ -57,7 +74,8 @@ class ConfirmOverwriteDialog:
         return hit_test(pos, [(self.yes_rect, "yes"), (self.no_rect, "no")])
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
-        render_screen_frame(surface)
+        background = other_background_sprite(WINDOW_WIDTH, WINDOW_HEIGHT)
+        render_screen_background(surface, background)
         render_screen_title(surface, font, _WARNING_TEXT)
         render_button(surface, font, self.yes_rect, "Yes, start new")
         render_button(surface, font, self.no_rect, "No, go back")

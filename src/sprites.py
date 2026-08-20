@@ -389,6 +389,101 @@ def moon_sprite(size: int = 38) -> pygame.Surface | None:
     return _cache[key]
 
 
+# --- Menu-screen backdrop/logo/button art (assets/ui) ---------------------
+# Title/pause/settings/overwrite-confirm screens: primitive shapes replaced
+# with painted art, per feedback. These screens size the window's whole
+# logical surface (WINDOW_WIDTH x WINDOW_HEIGHT), which stays fixed even
+# when the actual display is fullscreen/resized (SDL's SCALED display mode
+# letterboxes that at present() time) - so callers should keep passing
+# WINDOW_WIDTH/WINDOW_HEIGHT here rather than a real window size.
+
+# The 3 ready-to-use button-bar crops inside assets/ui/button1.png (a single
+# sprite sheet, not 3 separate designs - button2.png/button3.png are
+# byte-identical copies of the same sheet). Measured directly from the
+# asset's alpha channel: each row's tight bounding box around its painted
+# content (ornate corners included), the 3 rows separated by fully
+# transparent gaps.
+_BUTTON_SLOT_RECTS = {
+    1: pygame.Rect(133, 30, 1268, 331),   # top row - banner flourish on the left corner
+    2: pygame.Rect(153, 367, 1230, 298),  # middle row - plain vine corners both sides
+    3: pygame.Rect(150, 684, 1232, 298),  # bottom row - banner flourish on the right corner
+}
+
+
+def _cover_scale(img: pygame.Surface, width: int, height: int) -> pygame.Surface:
+    """Scales `img` up just enough that it covers a width x height box
+    (like CSS background-size: cover), then crops the centered overflow -
+    for a full-screen backdrop where the image's own aspect ratio won't
+    usually match the window's, unlike a plain letterboxed fit."""
+    w, h = img.get_size()
+    scale = max(width / w, height / h)
+    scaled = pygame.transform.smoothscale(img, (max(1, round(w * scale)), max(1, round(h * scale))))
+    sw, sh = scaled.get_size()
+    crop = pygame.Rect((sw - width) // 2, (sh - height) // 2, width, height)
+    return scaled.subsurface(crop).copy()
+
+
+def title_background_sprite(width: int, height: int) -> pygame.Surface | None:
+    """assets/ui/start_background.png, cover-scaled to fill (width, height) -
+    the title screen's own backdrop."""
+    path = _ASSETS_DIR / "ui" / "start_background.png"
+    key = ("ui/start_background.png", width, height)
+    if key not in _cache:
+        if not path.exists():
+            return None
+        _cache[key] = _cover_scale(_load_image(path), width, height)
+    return _cache[key]
+
+
+def other_background_sprite(width: int, height: int) -> pygame.Surface | None:
+    """assets/ui/other_background.png, cover-scaled to fill (width, height) -
+    the shared backdrop for every menu-style screen that isn't the title
+    screen itself (pause menu, settings, overwrite-confirm)."""
+    path = _ASSETS_DIR / "ui" / "other_background.png"
+    key = ("ui/other_background.png", width, height)
+    if key not in _cache:
+        if not path.exists():
+            return None
+        _cache[key] = _cover_scale(_load_image(path), width, height)
+    return _cache[key]
+
+
+def title_logo_sprite(max_width: int) -> pygame.Surface | None:
+    """assets/ui/logo.png, scaled to max_width wide (aspect preserved)."""
+    path = _ASSETS_DIR / "ui" / "logo.png"
+    key = ("ui/logo.png", max_width)
+    if key not in _cache:
+        if not path.exists():
+            return None
+        img = _load_image(path)
+        w, h = img.get_size()
+        height = max(1, round(h * max_width / w))
+        _cache[key] = pygame.transform.smoothscale(img, (max_width, height))
+    return _cache[key]
+
+
+def menu_button_sprite(slot: int, width: int, height: int) -> pygame.Surface | None:
+    """One of the 3 button-bar crops from assets/ui/button1.png, stretched
+    to (width, height) - `slot` picks which row (1/2/3, see
+    _BUTTON_SLOT_RECTS); an ordered set of buttons (e.g. the title screen's
+    Start/Continue/Settings) uses 1/2/3 in order, any other, unordered
+    button just uses 2."""
+    path = _ASSETS_DIR / "ui" / "button1.png"
+    key = ("ui/button1.png", slot, width, height)
+    if key not in _cache:
+        if not path.exists() or slot not in _BUTTON_SLOT_RECTS:
+            return None
+        # Deliberately not _load_image(): its auto-trim-to-bounding-box
+        # would shift the sheet's coordinate origin, throwing off
+        # _BUTTON_SLOT_RECTS (measured against the raw, untrimmed PNG).
+        sheet = pygame.image.load(str(path))
+        if pygame.display.get_surface() is not None:
+            sheet = sheet.convert_alpha()
+        crop = sheet.subsurface(_BUTTON_SLOT_RECTS[slot]).copy()
+        _cache[key] = pygame.transform.smoothscale(crop, (width, height))
+    return _cache[key]
+
+
 
 
 
