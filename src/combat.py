@@ -36,7 +36,7 @@ def resolve_combat(npcs: list, monsters: list, buildings=(), on_damage=None, dt:
                 # damage later in this same tick, "resurrecting" mid-tick.
                 continue
             if _within(npc.x, npc.y, monster.x, monster.y, npc.combat_range):
-                npc.attack_cooldown = max(0.0, npc.attack_cooldown - dt)
+                npc.attack_cooldown = max(0.0, getattr(npc, "attack_cooldown", 0.0) - dt)
                 if npc.attack_cooldown <= 0.0:
                     npc_dmg = max(COMBAT_MIN_DAMAGE, npc.attack - monster.defense)
                     monster.health -= npc_dmg
@@ -48,7 +48,7 @@ def resolve_combat(npcs: list, monsters: list, buildings=(), on_damage=None, dt:
                     if hasattr(monster, "trigger_hit"):
                         monster.trigger_hit()
 
-                monster.attack_cooldown = max(0.0, monster.attack_cooldown - dt)
+                monster.attack_cooldown = max(0.0, getattr(monster, "attack_cooldown", 0.0) - dt)
                 if monster.attack_cooldown <= 0.0 and not monster.is_dead:
                     monster_dmg = max(COMBAT_MIN_DAMAGE, monster.attack - npc.defense)
                     npc.health -= monster_dmg
@@ -63,23 +63,42 @@ def resolve_combat(npcs: list, monsters: list, buildings=(), on_damage=None, dt:
                     if monster.life_steal:
                         monster.health = min(monster.max_health, monster.health + monster_dmg)
 
+                # Mage tactical micro-kiting: step back slightly when enemies get too close
+                if getattr(npc, "role", None) == "Mage":
+                    dx = npc.x - monster.x
+                    dy = npc.y - monster.y
+                    dist = math.hypot(dx, dy)
+                    if 0.1 < dist < 45.0:
+                        npc.x += (dx / dist) * 6.0
+                        npc.y += (dy / dist) * 6.0
+
     for building in buildings:
         if building.type != "Tower":
             continue
+        building.attack_cooldown = max(0.0, getattr(building, "attack_cooldown", 0.0) - dt)
+        if building.attack_cooldown > 0.0:
+            continue
+
         bx, by = tile_center(building.x, building.y)
+        # Single-target priority: lock onto the nearest living monster in range
+        target_monster = None
+        min_dist = float("inf")
         for monster in monsters:
             if monster.is_dead:
                 continue
-            if _within(bx, by, monster.x, monster.y, TOWER_RANGE):
-                building.attack_cooldown = max(0.0, building.attack_cooldown - dt)
-                if building.attack_cooldown <= 0.0:
-                    tower_dmg = max(COMBAT_MIN_DAMAGE, building.attack - monster.defense)
-                    monster.health -= tower_dmg
-                    building.attack_cooldown = COMBAT_ATTACK_INTERVAL
-                    if on_damage:
-                        on_damage(building, monster, tower_dmg)
-                    if hasattr(monster, "trigger_hit"):
-                        monster.trigger_hit()
+            d = math.hypot(bx - monster.x, by - monster.y)
+            if d <= TOWER_RANGE and d < min_dist:
+                min_dist = d
+                target_monster = monster
+
+        if target_monster is not None:
+            tower_dmg = max(COMBAT_MIN_DAMAGE, building.attack - target_monster.defense)
+            target_monster.health -= tower_dmg
+            building.attack_cooldown = COMBAT_ATTACK_INTERVAL
+            if on_damage:
+                on_damage(building, target_monster, tower_dmg)
+            if hasattr(target_monster, "trigger_hit"):
+                target_monster.trigger_hit()
 
     npcs[:] = [npc for npc in npcs if not npc.is_dead]
     monsters[:] = [monster for monster in monsters if not monster.is_dead]

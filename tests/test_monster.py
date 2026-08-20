@@ -300,3 +300,29 @@ def test_spawn_monster_has_no_path_when_a_wall_blocks_the_only_route():
     buildings = [_Building("Wall", 0, 1)]
     monster = spawn_monster((0, 0), grid, buildings)
     assert monster.path == []
+
+
+def test_retarget_monster_prioritizes_nearby_knight():
+    class _NPC:
+        def __init__(self, x, y, role):
+            self.x = x
+            self.y = y
+            self.role = role
+            self.is_dead = False
+
+    class _World:
+        def __init__(self, npcs):
+            self.npcs = npcs
+            self.grid = _FakeGrid(10, 10, claimed={(0, 0)})
+            self.buildings = []
+
+    # Mage is slightly closer (60px) than Knight (80px)
+    mage = _NPC(60.0, 0.0, "Mage")
+    knight = _NPC(80.0, 0.0, "Knight")
+    world = _World([mage, knight])
+
+    monster = Monster(0.0, 0.0)
+    retarget_monster(monster, world)
+
+    # Knight's threat discount causes monster to lock onto Knight (tile (2, 0)) rather than Mage
+    assert monster.target_tile == (2, 0)
