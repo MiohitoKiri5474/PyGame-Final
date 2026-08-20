@@ -69,6 +69,19 @@ def hit_test(pos: tuple[int, int], rect_labels: list[tuple[pygame.Rect, str]]) -
     return None
 
 
+# The 3 button-bar crops aren't vertically symmetric within their own
+# bounding box - slot 1's banner flourish hangs down-left, slot 3's hangs
+# down-right, pulling each crop's *geometric* center below the plain bar's
+# own center (slot 2 is nearly symmetric, just a small vine-corner
+# imbalance). Measured directly from the asset: how far below the crop's
+# geometric center the bar's own center actually sits, as a fraction of
+# the crop's height. Centering the raw crop on `rect` (as if this were 0
+# for every slot) left slot 1's label rendering visibly high above the
+# bar's middle - this corrects for it so the label always lands on the
+# bar's true center regardless of which slot's flourish is heavier.
+_BUTTON_SLOT_BAR_OFFSET = {1: 0.092, 2: 0.038, 3: 0.020}
+
+
 def render_button(
     surface: pygame.Surface, font: pygame.font.Font, rect: pygame.Rect, label: str, slot: int = 2
 ) -> None:
@@ -81,7 +94,9 @@ def render_button(
     rect+border look if the art isn't available."""
     art = menu_button_sprite(slot, rect.width + 32, rect.height + 24)
     if art is not None:
-        surface.blit(art, art.get_rect(center=rect.center))
+        art_rect = art.get_rect(center=rect.center)
+        art_rect.top -= round(_BUTTON_SLOT_BAR_OFFSET.get(slot, 0.0) * art_rect.height)
+        surface.blit(art, art_rect)
     else:
         pygame.draw.rect(surface, BUTTON_BG, rect)
         pygame.draw.rect(surface, BUTTON_BORDER, rect, 2)
