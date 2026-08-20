@@ -71,6 +71,8 @@ NEST_SPAWN_COUNT_BASE = 1  # monsters produced per nest firing at round 1
 NEST_SPAWN_COUNT_ROUNDS_PER_STEP = 3  # +1 monster per firing every N rounds
 NEST_SPAWN_COUNT_MAX = 4  # cap so late rounds don't overwhelm in one burst
 
+NEST_FIRST_SPAWN_DELAY = 5.0  # a monster appears this soon after night falls, regardless of any nest's own interval - otherwise round 1's 40s interval leaves night feeling empty for a long stretch
+
 COLOR_MONSTER = (200, 60, 60)
 COLOR_NEST = (120, 20, 20)
 COLOR_HEALTH_BAR = (200, 60, 60)

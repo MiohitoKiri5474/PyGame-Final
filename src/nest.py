@@ -3,6 +3,7 @@ import random
 from constants import (
     MONSTER_SPAWN_WEIGHTS,
     NEST_BASE_SPAWN_INTERVAL,
+    NEST_FIRST_SPAWN_DELAY,
     NEST_MAX_COUNT,
     NEST_MIN_SPAWN_INTERVAL,
     NEST_SPAWN_COUNT_BASE,
@@ -97,10 +98,28 @@ class NestManager:
         # (below) follow the *current* explored-territory frontier rather
         # than the fixed map edge, same reasoning as create_initial_nests.
         self.grid = grid
+        # Guarantees the first monster of each night appears quickly rather
+        # than making the player wait out a full (round 1: 40s) spawn_interval
+        # in total silence right as night falls - armed on the day->night
+        # edge, independent of any individual nest's own timer state.
+        self._was_night = False
+        self._first_spawn_timer: float | None = None
 
     def update(self, dt: float, round_number: int, phase: str) -> list[Tile]:
         spawn_tiles: list[Tile] = []
-        if phase == NIGHT:
+        is_night = phase == NIGHT
+        if is_night and not self._was_night and self.nests:
+            self._first_spawn_timer = NEST_FIRST_SPAWN_DELAY
+        self._was_night = is_night
+
+        if is_night:
+            if self._first_spawn_timer is not None:
+                self._first_spawn_timer -= dt
+                if self._first_spawn_timer <= 0.0:
+                    self._first_spawn_timer = None
+                    nest = self.rng.choice(self.nests)
+                    spawn_tiles.extend([(nest.x, nest.y)] * monsters_per_spawn(round_number))
+
             count = monsters_per_spawn(round_number)
             for nest in self.nests:
                 if nest.update(dt, round_number):

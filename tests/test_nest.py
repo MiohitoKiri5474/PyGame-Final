@@ -6,6 +6,7 @@ from constants import (
     GRID_WIDTH,
     MONSTER_SPAWN_WEIGHTS,
     MONSTER_WEREWOLF,
+    NEST_FIRST_SPAWN_DELAY,
     NEST_MAX_COUNT,
     NEST_SPAWN_COUNT_BASE,
     NEST_SPAWN_COUNT_MAX,
@@ -38,7 +39,37 @@ def test_nest_manager_only_spawns_monsters_at_night():
 
 def test_nest_manager_spawns_at_night_once_interval_elapsed():
     manager = NestManager(width=10, height=10, nests=[Nest(0, 0)])
+    # First tick after night falls consumes the guaranteed early spawn
+    # (NEST_FIRST_SPAWN_DELAY) - isolate that from the regular per-nest
+    # interval mechanism being tested here.
+    manager.update(dt=NEST_FIRST_SPAWN_DELAY, round_number=1, phase=NIGHT)
+
     spawned = manager.update(dt=41.0, round_number=1, phase=NIGHT)
+    assert spawned == [(0, 0)]
+
+
+def test_nest_manager_guarantees_a_spawn_soon_after_night_falls():
+    manager = NestManager(width=10, height=10, nests=[Nest(0, 0)])
+    spawned = manager.update(dt=NEST_FIRST_SPAWN_DELAY + 0.1, round_number=1, phase=NIGHT)
+    assert spawned == [(0, 0)]
+
+
+def test_nest_manager_first_spawn_guarantee_does_not_fire_before_its_delay():
+    manager = NestManager(width=10, height=10, nests=[Nest(0, 0)])
+    spawned = manager.update(dt=NEST_FIRST_SPAWN_DELAY - 1.0, round_number=1, phase=NIGHT)
+    assert spawned == []
+
+
+def test_nest_manager_first_spawn_guarantee_only_fires_once_per_night():
+    manager = NestManager(width=10, height=10, nests=[Nest(0, 0)])
+    manager.update(dt=NEST_FIRST_SPAWN_DELAY + 0.1, round_number=1, phase=NIGHT)  # consumes it
+
+    spawned = manager.update(dt=0.1, round_number=1, phase=NIGHT)
+    assert spawned == []
+
+    # A fresh day->night edge (next night) re-arms it
+    manager.update(dt=1.0, round_number=1, phase=DAY)
+    spawned = manager.update(dt=NEST_FIRST_SPAWN_DELAY + 0.1, round_number=1, phase=NIGHT)
     assert spawned == [(0, 0)]
 
 
@@ -84,6 +115,12 @@ def test_monsters_per_spawn_ramps_with_round_and_caps():
 def test_nest_manager_spawns_multiple_monsters_per_firing_on_later_rounds():
     manager = NestManager(width=10, height=10, nests=[Nest(0, 0)])
     round_number = NEST_SPAWN_COUNT_ROUNDS_PER_STEP + 1  # bumps monsters_per_spawn to BASE + 1
+    # First tick after night falls consumes the guaranteed early spawn -
+    # isolate that from the regular per-nest interval mechanism being
+    # tested here (it also produces monsters_per_spawn() monsters, which
+    # would otherwise double up with the assertion below).
+    manager.update(dt=NEST_FIRST_SPAWN_DELAY, round_number=round_number, phase=NIGHT)
+
     spawned = manager.update(dt=1000.0, round_number=round_number, phase=NIGHT)
     assert spawned == [(0, 0)] * (NEST_SPAWN_COUNT_BASE + 1)
 
