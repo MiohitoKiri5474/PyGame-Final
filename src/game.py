@@ -31,7 +31,6 @@ from constants import (
 
     COLOR_ANIMAL,
     COLOR_ANIMAL_DANGEROUS,
-    COLOR_HUNT_TARGET,
     COLOR_QUEUED_WAITING,
     COLOR_QUEUED_ASSIGNED,
     COLOR_PROGRESS_BAR,
@@ -1719,14 +1718,6 @@ class Game:
         else:
             color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
             pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
-
-        # A Hunt/Tame task is currently bound to this animal (queued or in
-        # progress) - frame it so the player can see, at a glance, which
-        # animal they actually selected and follow it as it moves.
-        if any(t.target_animal_id == animal.id for t in self.world.tasks.tasks):
-            half = TILE_SIZE // 2 + 4
-            frame_rect = pygame.Rect(screen_x - half, screen_y - half, half * 2, half * 2)
-            pygame.draw.rect(self.screen, COLOR_HUNT_TARGET, frame_rect, 2, border_radius=4)
 
 
     def render_animals(self) -> None:

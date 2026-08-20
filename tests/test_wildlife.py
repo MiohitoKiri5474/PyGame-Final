@@ -1,3 +1,4 @@
+import math
 import random
 
 from animal import Animal
@@ -84,26 +85,32 @@ def test_tick_wildlife_never_exceeds_max_count():
     assert len(world.animals) == ANIMAL_MAX_COUNT
 
 
-def test_tick_wildlife_holds_animal_bound_to_a_queued_hunt_task_in_place():
-    # Bug repro: a wild animal keeps wandering even after Hunt/Tame is
-    # queued on it, and since target_animal_id used to only get bound once
-    # an NPC actually claimed the task, it could wander off its original
-    # tile before that ever happened - _purge_dead_tasks would then see no
-    # animal left at task.target and silently drop the still-valid task.
-    # Binding the id at queue time (task.py's TaskQueue.add) plus this
-    # freeze together close that gap.
+def test_tick_wildlife_leashes_animal_bound_to_a_queued_hunt_task():
+    # Bug repro (now with a leash rather than a full freeze): a wild animal
+    # kept wandering arbitrarily far even after Hunt/Tame is queued on it,
+    # since target_animal_id used to only get bound once an NPC actually
+    # claimed the task - it could wander off its original tile before that
+    # ever happened, and _purge_dead_tasks would then see no animal left at
+    # task.target and silently drop the still-valid task. Binding the id at
+    # queue time (task.py's TaskQueue.add) plus this leash together close
+    # that gap while still letting the animal move a little.
+    from constants import HUNT_TARGET_LEASH_RADIUS_TILES
+    from coords import tile_at
+
     world = World(npc_count=0)
     world.animals = []
 
-    bound = Animal(100.0, 100.0, species="Fish", speed=60.0, dangerous=False, health=10)
+    bound = Animal(100.0, 100.0, species="Fish", speed=1000.0, dangerous=False, health=10)
     free = Animal(200.0, 200.0, species="Fish", speed=60.0, dangerous=False, health=10)
     world.animals = [bound, free]
     world.tasks.add("Hunt", (2, 2), target_animal_id=bound.id)
 
-    _tick_wildlife(world, 1.0)
+    start_tile = tile_at(bound.x, bound.y)
+    for _ in range(60):
+        _tick_wildlife(world, 1 / 60)
+        tile = tile_at(bound.x, bound.y)
+        assert math.hypot(tile[0] - start_tile[0], tile[1] - start_tile[1]) <= HUNT_TARGET_LEASH_RADIUS_TILES
 
-    assert (bound.x, bound.y) == (100.0, 100.0)
-    assert bound.path == []
     assert (free.x, free.y) != (200.0, 200.0) or free.path  # unbound animal is free to wander
 
 
@@ -114,10 +121,16 @@ def _cycle_with_remaining(phase: str, remaining: float) -> DayNightCycle:
     return cycle
 
 
+def _revealed_tile(world: "World") -> tuple[int, int]:
+    """A tile guaranteed revealed on a fresh World() - the small radius
+    around the map center that Grid.__init__ reveals at start."""
+    return world.grid.width // 2, world.grid.height // 2
+
+
 class TestScatterUnselectedWildlife:
     def test_never_selected_animal_flees_within_the_scatter_window(self):
         world = World(npc_count=0, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        animal = Animal(*tile_center(*_revealed_tile(world)), species="WildBoar", speed=52.5, dangerous=False, health=30)
         world.animals.append(animal)
         cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
 
@@ -127,9 +140,10 @@ class TestScatterUnselectedWildlife:
 
     def test_leaves_an_animal_bound_to_a_queued_or_in_progress_task_alone(self):
         world = World(npc_count=0, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        tile = _revealed_tile(world)
+        animal = Animal(*tile_center(*tile), species="WildBoar", speed=52.5, dangerous=False, health=30)
         world.animals.append(animal)
-        world.tasks.add("Hunt", (10, 10), target_animal_id=animal.id)  # queued, not yet assigned
+        world.tasks.add("Hunt", tile, target_animal_id=animal.id)  # queued, not yet assigned
         cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
 
         scatter_unselected_wildlife(world, cycle)
@@ -138,7 +152,7 @@ class TestScatterUnselectedWildlife:
 
     def test_leaves_an_already_tamed_animal_alone(self):
         world = World(npc_count=0, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        animal = Animal(*tile_center(*_revealed_tile(world)), species="WildBoar", speed=52.5, dangerous=False, health=30)
         animal.is_tamed = True
         world.animals.append(animal)
         cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
@@ -147,9 +161,22 @@ class TestScatterUnselectedWildlife:
 
         assert animal.idle_target is None
 
-    def test_does_nothing_outside_the_scatter_window(self):
+    def test_leaves_an_animal_outside_the_revealed_area_alone(self):
+        # Nothing to gain by fleeing something the player can't see yet.
         world = World(npc_count=0, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        far_tile = (1, 1)
+        assert not world.grid.get(*far_tile).revealed  # precondition
+        animal = Animal(*tile_center(*far_tile), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        world.animals.append(animal)
+        cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
+
+        scatter_unselected_wildlife(world, cycle)
+
+        assert animal.idle_target is None
+
+    def test_does_nothing_outside_the_scatter_window_during_day(self):
+        world = World(npc_count=0, animal_count=0)
+        animal = Animal(*tile_center(*_revealed_tile(world)), species="WildBoar", speed=52.5, dangerous=False, health=30)
         world.animals.append(animal)
         cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS + 30)
 
@@ -157,12 +184,14 @@ class TestScatterUnselectedWildlife:
 
         assert animal.idle_target is None
 
-    def test_does_nothing_during_night(self):
+    def test_scatters_a_never_selected_animal_throughout_the_night_too(self):
+        # Not just a one-time pre-night sweep: catches wildlife that wanders
+        # back into view, or spawns fresh, at any point during the night.
         world = World(npc_count=0, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        animal = Animal(*tile_center(*_revealed_tile(world)), species="WildBoar", speed=52.5, dangerous=False, health=30)
         world.animals.append(animal)
-        cycle = _cycle_with_remaining(NIGHT, 1.0)
+        cycle = _cycle_with_remaining(NIGHT, 45.0)  # well into the night, not just the first tick
 
         scatter_unselected_wildlife(world, cycle)
 
-        assert animal.idle_target is None
+        assert animal.idle_target is not None

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from animal import Animal
 from constants import ANIMAL_MAX_COUNT, ANIMAL_SPAWN_INTERVAL, ANIMAL_SPECIES, HUNT_SCATTER_LEAD_SECONDS
 from coords import tile_at, tile_center
-from day_night import DAY
+from day_night import DAY, NIGHT
 from extensions import register_tick
 
 if TYPE_CHECKING:
@@ -40,10 +40,12 @@ def create_initial_animals(grid: "Grid", count: int, rng: random.Random | None =
 def _tick_wildlife(world: "World", dt: float) -> None:
     # Any animal a queued or in-progress Hunt/Tame task is bound to (not
     # just one an NPC is actively chasing right now - task.py binds the id
-    # at queue time, well before any NPC gets around to claiming it) holds
-    # its ground instead of wandering off - otherwise a busy colony could
-    # let it wander arbitrarily far away while nobody's even started
-    # walking toward it yet, turning "queue Hunt" into a long/impractical chase.
+    # at queue time, well before any NPC gets around to claiming it) is
+    # leashed to a short range around where it was when selected (see
+    # Animal.update()) instead of wandering freely - otherwise a busy
+    # colony could let it wander arbitrarily far away while nobody's even
+    # started walking toward it yet, turning "queue Hunt" into a long/
+    # impractical chase.
     bound_animal_ids = {t.target_animal_id for t in world.tasks.tasks if t.target_animal_id is not None}
 
     for animal in world.animals:
@@ -85,18 +87,32 @@ def _flee_point(animal, grid: "Grid") -> tuple[float, float]:
 
 
 def scatter_unselected_wildlife(world: "World", cycle: "DayNightCycle") -> None:
-    """In the last HUNT_SCATTER_LEAD_SECONDS of the day, any wild animal
-    that has never been selected for Hunt/Tame (no current task - queued
-    or in-progress - references it) starts fleeing outward, away from the
-    player's claimable area. Otherwise night could show ordinary wildlife
-    wandering around right alongside real monsters, easy to mistake for
-    one. An animal already bound to a Hunt/Tame task, or already tamed,
-    is left alone - it's a deliberate target/pet, not ambient wildlife."""
-    if cycle.phase != DAY or cycle.remaining() > HUNT_SCATTER_LEAD_SECONDS:
+    """Keeps the player's visible (revealed) area free of ambient wildlife
+    at night: any wild animal that's never been selected for Hunt/Tame (no
+    current task - queued or in-progress - references it) and isn't
+    already tamed gets sent fleeing the moment it's standing on revealed
+    ground while it's night, or in the HUNT_SCATTER_LEAD_SECONDS
+    before night falls (so the area's already clear by the time night
+    actually starts). Runs every tick through the whole night, not just
+    once, so it also catches animals that wander back into view or spawn
+    fresh mid-night - otherwise night could show ordinary wildlife right
+    alongside real monsters, easy to mistake for one. A selected-but-not-
+    yet-hunted animal is explicitly left alone; it's a deliberate target,
+    not ambient wildlife."""
+    if cycle.phase == NIGHT:
+        pass
+    elif cycle.phase == DAY and cycle.remaining() <= HUNT_SCATTER_LEAD_SECONDS:
+        pass
+    else:
         return
+
     bound_ids = {t.target_animal_id for t in world.tasks.tasks if t.target_animal_id is not None}
+    grid = world.grid
     for animal in world.animals:
         if animal.id in bound_ids or getattr(animal, "is_tamed", False):
             continue
+        tx, ty = tile_at(animal.x, animal.y)
+        if not grid.in_bounds(tx, ty) or not grid.get(tx, ty).revealed:
+            continue  # already out of the player's visible area
         if animal.idle_target is None:  # already fleeing - let it finish this leg
-            animal.idle_target = _flee_point(animal, world.grid)
+            animal.idle_target = _flee_point(animal, grid)

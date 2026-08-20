@@ -1,7 +1,7 @@
 import math
 import random
 
-from constants import PET_FOLLOW_MIN_DISTANCE
+from constants import HUNT_TARGET_LEASH_RADIUS_TILES, PET_FOLLOW_MIN_DISTANCE
 from coords import tile_at, tile_center
 from movement import step_toward_path, step_toward_point
 
@@ -57,11 +57,16 @@ class Animal:
         # riding). Only ever True while is_following is also True.
         self.is_mounted: bool = False
 
-        # Set by task.py each tick a Hunt/Tame task is actively working this
-        # animal, cleared right after wildlife's own tick consumes it - lets
-        # a hunted/tamed animal stop initiating new wander hops so it isn't
-        # constantly darting away from whoever's trying to catch it.
+        # Set by task.py/wildlife.py each tick this animal is bound to a
+        # Hunt/Tame task (queued or in progress), cleared right after
+        # wildlife's own tick consumes it - keeps a selected animal from
+        # wandering far, so it stays a short, predictable chase instead of
+        # roaming the same as any other wild animal. leash_anchor is where
+        # it was standing the moment it first became targeted; cleared once
+        # untargeted so a later re-selection starts fresh from wherever it
+        # is by then.
         self.is_targeted: bool = False
+        self.leash_anchor: tuple[int, int] | None = None
 
         # Paper Mario Animation & Combat states
         self.facing_left = False
@@ -170,17 +175,38 @@ class Animal:
         elif self.is_tamed:
             pass  # holding position - idling beside its pen, or wherever it stopped
         else:
-            # A hunter/tamer actively working this animal suppresses starting
-            # a *new* wander hop - it still finishes a hop already underway
-            # (avoids a jarring mid-stride freeze), it just stops picking a
-            # fresh direction to flee to right after, so it's not constantly
-            # dodging the very NPC trying to catch it.
-            if not self.path and not self.is_targeted:
+            if not self.is_targeted:
+                # Not (or no longer) selected for Hunt/Tame - any leash from
+                # a previous selection is stale now, so a future re-selection
+                # anchors fresh from wherever it ends up by then.
+                self.leash_anchor = None
+            if not self.path:
                 cx, cy = tile_at(self.x, self.y)
-                dx, dy = self._rng.choice([(-1, 0), (1, 0), (0, -1), (0, 1)])
-                nx, ny = cx + dx, cy + dy
-                if 0 <= nx < grid_width and 0 <= ny < grid_height:
-                    self.set_path([(nx, ny)])
+                if self.is_targeted:
+                    # Selected for Hunt/Tame: still wanders, but only within
+                    # HUNT_TARGET_LEASH_RADIUS_TILES of where it was when
+                    # first targeted - a short, bounded chase instead of a
+                    # full freeze or an unbounded one.
+                    if self.leash_anchor is None:
+                        self.leash_anchor = (cx, cy)
+                    ax, ay = self.leash_anchor
+                    candidates = []
+                    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                        nx, ny = cx + dx, cy + dy
+                        if (
+                            0 <= nx < grid_width and 0 <= ny < grid_height
+                            and math.hypot(nx - ax, ny - ay) <= HUNT_TARGET_LEASH_RADIUS_TILES
+                        ):
+                            candidates.append((nx, ny))
+                    if candidates:
+                        self.set_path([self._rng.choice(candidates)])
+                    # else: already at the edge of its leash in every
+                    # direction (rare) - just hold position this tick.
+                else:
+                    dx, dy = self._rng.choice([(-1, 0), (1, 0), (0, -1), (0, 1)])
+                    nx, ny = cx + dx, cy + dy
+                    if 0 <= nx < grid_width and 0 <= ny < grid_height:
+                        self.set_path([(nx, ny)])
             self.x, self.y, self.path = step_toward_path(self.x, self.y, self.path, self.speed, dt)
 
         dx = self.x - old_x

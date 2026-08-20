@@ -1,7 +1,8 @@
 import math
 
 from animal import Animal
-from constants import TILE_SIZE
+from constants import HUNT_TARGET_LEASH_RADIUS_TILES, TILE_SIZE
+from coords import tile_at
 from npc import NPC
 
 
@@ -125,13 +126,27 @@ def test_following_animal_falls_back_to_idle_when_tamer_is_gone():
     assert animal.idle_target is not None
 
 
-def test_targeted_animal_does_not_start_a_new_wander_hop():
+def test_targeted_animal_wanders_only_within_its_leash_radius():
+    # Selected-for-Hunt/Tame no longer freezes the animal in place - it can
+    # still wander, just kept close to where it was when first targeted.
     animal = Animal(16.0, 16.0, species="FlyingSquirrel", speed=1000.0, dangerous=False, health=10)
     animal.is_targeted = True
-    start = (animal.x, animal.y)
-    for _ in range(30):
+    start_tile = tile_at(animal.x, animal.y)
+    for _ in range(120):
         animal.update(1 / 60, grid_width=10, grid_height=10)
-    assert (animal.x, animal.y) == start
+        tile = tile_at(animal.x, animal.y)
+        assert math.hypot(tile[0] - start_tile[0], tile[1] - start_tile[1]) <= HUNT_TARGET_LEASH_RADIUS_TILES
+
+
+def test_targeted_animal_leash_anchor_clears_once_untargeted():
+    animal = Animal(16.0, 16.0, species="FlyingSquirrel", speed=1000.0, dangerous=False, health=10)
+    animal.is_targeted = True
+    animal.update(1 / 60, grid_width=10, grid_height=10)
+    assert animal.leash_anchor is not None
+
+    animal.is_targeted = False
+    animal.update(1 / 60, grid_width=10, grid_height=10)
+    assert animal.leash_anchor is None
 
 
 def test_targeted_animal_still_finishes_a_hop_already_in_progress():

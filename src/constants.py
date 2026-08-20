@@ -229,7 +229,6 @@ ANIMAL_SPECIES = {
 
 COLOR_ANIMAL = (150, 190, 90)
 COLOR_ANIMAL_DANGEROUS = (200, 140, 60)
-COLOR_HUNT_TARGET = (255, 220, 60)  # frame around an animal a Hunt/Tame task is bound to, follows it as it moves
 
 # --- Hunt Task (ticket 25) ---
 HUNT_WORK_SECONDS = 2.0
@@ -266,6 +265,7 @@ HORSE_SPEED_BONUS = 37.5  # travel speed buff for colony NPCs when horse is penn
 PET_FOLLOW_MIN_DISTANCE = TILE_SIZE * 0.9  # a following animal won't close in past this - keeps it from sitting on top of an idle tamer
 MOUNTED_SPEED_BONUS = 75.0  # speed bonus for the tamer riding a mount, deliberately double the colony-wide HORSE_SPEED_BONUS
 MOUNTABLE_SPECIES = {"Horse"}  # only Horse fits the game's "mobility" role for now
+HUNT_TARGET_LEASH_RADIUS_TILES = 2  # an animal bound to a Hunt/Tame task can still wander this many tiles from where it was when selected, rather than freezing in place
 
 # --- Food Spoilage (ticket 27) ---
 DAY_NIGHT_CYCLE_SECONDS = DAY_SECONDS + NIGHT_SECONDS  # 180s per game day
