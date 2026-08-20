@@ -294,7 +294,15 @@ def _dump_grid(grid: Grid) -> dict:
         "width": grid.width,
         "height": grid.height,
         "tiles": [
-            [{"resource": t.resource, "revealed": t.revealed, "claimed": t.claimed} for t in row]
+            [
+                {
+                    "resource": t.resource,
+                    "revealed": t.revealed,
+                    "claimed": t.claimed,
+                    "terrain": getattr(t, "terrain", "plain"),
+                }
+                for t in row
+            ]
             for row in grid.tiles
         ],
     }
@@ -305,7 +313,17 @@ def _load_grid(data: dict) -> Grid:
     grid.width = data["width"]
     grid.height = data["height"]
     grid.tiles = [
-        [Tile(resource=t["resource"], revealed=t["revealed"], claimed=t["claimed"]) for t in row]
+        [
+            Tile(
+                resource=None if t.get("terrain", "plain") == "mountain" else t["resource"],
+                revealed=t["revealed"],
+                claimed=t["claimed"],
+                terrain=t.get("terrain", "plain"),
+            )
+            for t in row
+        ]
         for row in data["tiles"]
     ]
     return grid
+
+

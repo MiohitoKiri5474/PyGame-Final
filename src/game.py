@@ -82,7 +82,16 @@ from sprites import (
     npc_sprite,
 )
 from tame_task import idle_spot_near_pen
-from terrain import grass, parchment
+from terrain import (
+    get_swamp_piece,
+    get_terrain_9slice_surface,
+    get_terrain_surface,
+    grass,
+    parchment,
+)
+
+
+
 from title_screen import ConfirmOverwriteDialog, TitleScreen
 from pause_menu import PauseMenu
 from settings_screen import SettingsScreen
@@ -1273,6 +1282,19 @@ class Game:
         pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, shadow_w, shadow_h))
         self.screen.blit(shadow_surf, shadow_rect)
 
+        # River / Mud Ground Footing Effects
+        t_now = time.monotonic()
+        if getattr(npc, "is_in_river", False):
+            r_w = int(24 + math.sin(t_now * 7.0 + npc.id) * 4.0)
+            water_surf = pygame.Surface((r_w, 8), pygame.SRCALPHA)
+            pygame.draw.ellipse(water_surf, (160, 220, 255, 180), pygame.Rect(0, 0, r_w, 8), 2)
+            self.screen.blit(water_surf, (base_sx - r_w // 2, base_sy + 10))
+        elif getattr(npc, "immobilized_timer", 0.0) > 0.0:
+            mud_surf = pygame.Surface((28, 12), pygame.SRCALPHA)
+            pygame.draw.ellipse(mud_surf, (65, 45, 25, 220), pygame.Rect(0, 0, 28, 12))
+            pygame.draw.ellipse(mud_surf, (110, 80, 50, 230), pygame.Rect(4, 2, 20, 8), 2)
+            self.screen.blit(mud_surf, (base_sx - 14, base_sy + 9))
+
         # Paper Mario: Card Flip Horizontal Scale
         flip_p = getattr(npc, "flip_progress", 1.0)
         paper_flip_scale = max(0.08, abs(math.cos(flip_p * math.pi)))
@@ -1458,13 +1480,82 @@ class Game:
                     hand_dy = 6.0 * (1.0 - recoil_prog)
 
             if display_facing:
-                tool_surf = pygame.transform.flip(tool_surf, True, False)
-                tool_angle = -tool_angle
                 hand_dx = -hand_dx
+                tool_angle = -tool_angle
+                tool_surf = pygame.transform.flip(tool_surf, True, False)
 
-            rot_tool = pygame.transform.rotate(tool_surf, tool_angle)
-            hand_pos = (sx + int(hand_dx), sy + int(hand_dy))
-            self.screen.blit(rot_tool, rot_tool.get_rect(center=hand_pos))
+            tw = max(1, int(tool_surf.get_width() * paper_flip_scale * 1.15))
+            th = max(1, int(tool_surf.get_height() * 1.15))
+            scaled_tool = pygame.transform.smoothscale(tool_surf, (tw, th))
+            rotated_tool = pygame.transform.rotate(scaled_tool, tool_angle)
+            tool_pos = (sx + int(hand_dx), sy + int(hand_dy))
+
+            # Combat & Work Slash Smear Arc
+            show_arc = (is_attacking and 0.40 <= ap < 0.85) or (not is_attacking and 0.50 <= cycle < 0.65)
+            if show_arc:
+                trail_surf = pygame.Surface((TILE_SIZE * 2, TILE_SIZE * 2), pygame.SRCALPHA)
+                trail_center = (TILE_SIZE, TILE_SIZE)
+                arc_rect = pygame.Rect(trail_center[0] - 18, trail_center[1] - 18, 36, 36)
+                arc_col = (255, 240, 100, 240) if npc.role == ROLE_KNIGHT else ((200, 100, 255, 240) if npc.role == ROLE_MAGE else (255, 255, 255, 210))
+                if not display_facing:
+                    pygame.draw.arc(trail_surf, (255, 255, 255, 210), arc_rect, 0.0, 2.1, 4)
+                    pygame.draw.arc(trail_surf, arc_col, arc_rect, 0.3, 1.7, 3)
+                else:
+                    pygame.draw.arc(trail_surf, (255, 255, 255, 210), arc_rect, 1.0, 3.14, 4)
+                    pygame.draw.arc(trail_surf, arc_col, arc_rect, 1.4, 2.8, 3)
+                self.screen.blit(trail_surf, (tool_pos[0] - TILE_SIZE, tool_pos[1] - TILE_SIZE))
+
+            self.screen.blit(rotated_tool, rotated_tool.get_rect(center=tool_pos))
+
+            # Arcane Casting Flare at Mage staff crystal tip
+            if is_attacking and npc.role == ROLE_MAGE and ap < 0.45:
+                flare_surf = pygame.Surface((24, 24), pygame.SRCALPHA)
+                flare_r = int(6 + 3 * math.sin(time.monotonic() * 22.0))
+                pygame.draw.circle(flare_surf, (200, 100, 255, 190), (12, 12), flare_r)
+                pygame.draw.circle(flare_surf, (255, 255, 255, 240), (12, 12), 3)
+                for dx_f, dy_f in [(0, -7), (0, 7), (-7, 0), (7, 0)]:
+                    pygame.draw.line(flare_surf, (255, 230, 255, 220), (12, 12), (12 + dx_f, 12 + dy_f), 1)
+                self.screen.blit(flare_surf, (tool_pos[0] - 12, tool_pos[1] - 12))
+
+        # Environmental Status Effects: Burning Flames on NPC
+        if getattr(npc, "is_burning", False):
+            flame_surf = pygame.Surface((38, 48), pygame.SRCALPHA)
+            # Soft heat haze aura
+            pygame.draw.ellipse(flame_surf, (255, 90, 20, 100), pygame.Rect(4, 14, 30, 28))
+            pygame.draw.ellipse(flame_surf, (255, 180, 40, 150), pygame.Rect(8, 18, 22, 22))
+
+            # 4 Rising flame tongues
+            flame_tongues = [
+                (-9, 6, 20.0, (255, 60, 20)),
+                (-3, 0, 24.0, (255, 140, 30)),
+                (3, 2, 22.0, (255, 210, 40)),
+                (9, 7, 18.0, (255, 80, 20)),
+            ]
+            for off_x, base_y, speed_f, col in flame_tongues:
+                f_h = 12 + math.sin(t_now * speed_f + off_x) * 5.0
+                f_x = 19 + off_x + math.sin(t_now * 12.0 + off_x) * 2.0
+                f_y = 34 - f_h
+                p1 = (f_x, f_y)
+                p2 = (f_x - 4, 34)
+                p3 = (f_x + 4, 34)
+                pygame.draw.polygon(flame_surf, col, [p1, p2, p3])
+
+            # Floating glowing heat sparks
+            for k in range(3):
+                emb_x = 19 + math.sin(t_now * 15.0 + k * 2.1) * 11.0
+                emb_y = 22 - ((t_now * 30.0 + k * 11.0) % 26.0)
+                pygame.draw.circle(flame_surf, (255, 245, 120, 230), (int(emb_x), int(emb_y)), 2)
+
+            self.screen.blit(flame_surf, (base_sx - 19, base_sy - 24))
+
+        # Mud Immobilized Countdown Badge
+        if getattr(npc, "immobilized_timer", 0.0) > 0.0:
+            bubble_surf = pygame.Surface((32, 16), pygame.SRCALPHA)
+            pygame.draw.rect(bubble_surf, (50, 35, 20, 220), pygame.Rect(0, 0, 32, 16), border_radius=4)
+            pygame.draw.rect(bubble_surf, (150, 110, 60, 240), pygame.Rect(0, 0, 32, 16), 1, border_radius=4)
+            sec_txt = self.font.render(f"{npc.immobilized_timer:.1f}s", True, (255, 225, 130))
+            bubble_surf.blit(sec_txt, (bubble_surf.get_width() // 2 - sec_txt.get_width() // 2, 1))
+            self.screen.blit(bubble_surf, (base_sx - 16, base_sy - 38))
 
         # Sweat drop animation when hungry (< 35%)
         if npc.hunger < 35.0:
@@ -1587,12 +1678,12 @@ class Game:
                 arc_rect = pygame.Rect(4, 4, 28, 28)
                 if not facing_left:
                     pygame.draw.arc(claw_surf, (255, 90, 60, 230), arc_rect, 0.2, 2.0, 3)
-                else:
                     pygame.draw.arc(claw_surf, (255, 90, 60, 230), arc_rect, 1.2, 3.0, 3)
                 self.screen.blit(claw_surf, (screen_x - 18, screen_y - 18))
         else:
             color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
             pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
+
 
     def render_animals(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y
@@ -1763,7 +1854,7 @@ class Game:
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
                 tile = grid.get(col, row)
-                if tile.revealed and tile.resource:
+                if tile.revealed and tile.resource and getattr(tile, "terrain", "plain") != "mountain":
                     sort_y = (row + 1) * TILE_SIZE - 2
                     draw_list.append((sort_y, lambda c=col, r=row, res=tile.resource: self._render_single_resource(c, r, res, cam_x, cam_y)))
 
@@ -1834,12 +1925,26 @@ class Game:
 
                 if not tile.revealed:
                     render_fog_base_tile(self.screen, rect)
-                elif tile.claimed:
-                    self.screen.blit(grass(), rect)
-                else:
+                elif not tile.claimed:
+                    # Unclaimed frontier: hidden under parchment until explored & claimed
                     self.screen.blit(parchment(), rect)
+                else:
+                    # Explored territory: real terrain is revealed and rendered
+                    terrain_type = getattr(tile, "terrain", "plain")
 
+                    if terrain_type in ("mud", "river", "mountain", "scorched"):
+                        # Base grass ground layer
+                        self.screen.blit(grass(), rect)
 
+                        top_t = (row > 0 and getattr(grid.get(col, row - 1), "terrain", "plain") == terrain_type and grid.get(col, row - 1).claimed)
+                        bot_t = (row < grid.height - 1 and getattr(grid.get(col, row + 1), "terrain", "plain") == terrain_type and grid.get(col, row + 1).claimed)
+                        left_t = (col > 0 and getattr(grid.get(col - 1, row), "terrain", "plain") == terrain_type and grid.get(col - 1, row).claimed)
+                        right_t = (col < grid.width - 1 and getattr(grid.get(col + 1, row), "terrain", "plain") == terrain_type and grid.get(col + 1, row).claimed)
+
+                        piece_surf = get_terrain_9slice_surface(terrain_type, top_t, bot_t, left_t, right_t)
+                        self.screen.blit(piece_surf, rect)
+                    else:
+                        self.screen.blit(grass(), rect)
 
                 # Queued-task marker: waiting for an NPC vs. already claimed
                 # by one, so a click's effect stays visible instead of just

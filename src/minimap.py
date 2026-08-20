@@ -41,6 +41,14 @@ def outer_rect(build_bar_top: int) -> pygame.Rect:
     return pygame.Rect(_MARGIN, bottom - height, width, height)
 
 
+_TERRAIN_COLORS = {
+    "river": (50, 130, 215),
+    "mountain": (120, 125, 140),
+    "mud": (95, 68, 45),
+    "scorched": (180, 60, 30),
+}
+
+
 def render(surface: pygame.Surface, grid: "Grid", camera: "Camera", build_bar_top: int) -> None:
     outer = outer_rect(build_bar_top)
     pygame.draw.rect(surface, _OUTER_BG, outer, border_radius=8)
@@ -52,11 +60,17 @@ def render(surface: pygame.Surface, grid: "Grid", camera: "Camera", build_bar_to
             tile = grid.get(x, y)
             if not tile.revealed:
                 color = _FOG_COLOR
-            elif tile.claimed:
-                color = _CLAIMED_COLOR
-            else:
+            elif not tile.claimed:
                 color = _UNCLAIMED_COLOR
+            else:
+                terrain_type = getattr(tile, "terrain", "plain")
+                if terrain_type in _TERRAIN_COLORS:
+                    color = _TERRAIN_COLORS[terrain_type]
+                else:
+                    color = _CLAIMED_COLOR
             small.set_at((x, y), color)
+
+
 
     map_pos = (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD)
     scaled = pygame.transform.scale(small, (_WIDTH, _HEIGHT))
