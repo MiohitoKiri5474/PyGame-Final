@@ -57,7 +57,8 @@ from monster import retarget_monster, spawn_monster
 from pathfinding import find_path
 from settlement import evaluate_wave
 from population import maybe_spawn_npc
-from task import TASK_TYPES, task_can_perform, update_npc_tasks
+from hunt_task import scatter_unclaimed_hunt_targets
+from task import ANIMAL_TASK_TYPES, TASK_TYPES, animal_at_tile, task_can_perform, update_npc_tasks
 from extensions import hud_lines, render_fx_overlays, render_overlays, run_ticks
 from tile_actions import applicable_tasks
 from world import World
@@ -499,9 +500,11 @@ class Game:
         # a map click underneath.
         if self.action_menu.visible:
             tile = self.action_menu.tile  # handle_click() closes the menu (clears .tile) before returning
+            animal_id = self.action_menu.animal_id  # resolved back when the menu opened, not now
             choice = self.action_menu.handle_click(screen_pos)
             if choice is not None and tile is not None:
-                self.world.tasks.add(choice, tile, world=self.world)
+                bound_id = animal_id if choice in ANIMAL_TASK_TYPES else None
+                self.world.tasks.add(choice, tile, target_animal_id=bound_id, world=self.world)
             return
 
         # Same click-consuming precedence as the tile action menu above, for
@@ -570,7 +573,16 @@ class Game:
             else:
                 self.world.tasks.add(options[0], (gx, gy), world=self.world)
         elif len(options) > 1:
-            self.action_menu.open(options, (gx, gy), screen_pos)
+            # Resolve the animal now, while it's still guaranteed to be on
+            # this tile (applicable_tasks just confirmed it) - by the time
+            # the player actually picks a row in the menu it may have
+            # already wandered off, so the choice-handling above uses this
+            # captured id rather than re-resolving by tile at that point.
+            animal_id = None
+            if any(o in ANIMAL_TASK_TYPES for o in options):
+                animal = animal_at_tile(self.world, (gx, gy))
+                animal_id = animal.id if animal is not None else None
+            self.action_menu.open(options, (gx, gy), screen_pos, animal_id=animal_id)
 
 
     def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
@@ -668,6 +680,7 @@ class Game:
                 play_sfx("night_howl")
                 play_bgm("night")
 
+            scatter_unclaimed_hunt_targets(self.world, self.cycle)
             update_npc_tasks(self.world, dt)
             run_ticks(self.world, dt)
 

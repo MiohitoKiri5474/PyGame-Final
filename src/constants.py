@@ -234,6 +234,7 @@ COLOR_ANIMAL_DANGEROUS = (200, 140, 60)
 HUNT_WORK_SECONDS = 2.0
 KNIGHT_CRIT_CHANCE = 0.50
 KNIGHT_CRIT_MULTIPLIER = 2.0
+HUNT_SCATTER_LEAD_SECONDS = 10.0  # unassigned Hunt tasks get cancelled and their target flees this many seconds before night, so night doesn't show a queued-Hunt marker alongside real monsters
 
 # --- Post-Hunt & Taming (ticket 26) ---
 ANIMAL_MEAT_YIELD = {

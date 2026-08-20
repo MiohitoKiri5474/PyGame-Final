@@ -4,19 +4,23 @@ and remove hunted animal on death."""
 
 from __future__ import annotations
 
+import math
 import random
 from typing import TYPE_CHECKING
 
 from constants import (
+    HUNT_SCATTER_LEAD_SECONDS,
     HUNT_WORK_SECONDS,
     KNIGHT_CRIT_MULTIPLIER,
     ROLE_KNIGHT,
 )
-from coords import tile_at
+from coords import tile_at, tile_center
+from day_night import DAY
 from skills import hunting_crit_chance
 from task import register_task_type, resolve_task_animal, TaskType
 
 if TYPE_CHECKING:
+    from day_night import DayNightCycle
     from task import Task
     from world import World
 
@@ -79,3 +83,35 @@ register_task_type(
         can_perform=can_perform_hunt,
     ),
 )
+
+
+def _flee_point(animal, grid) -> tuple[float, float]:
+    """A point further out from the map center, along the direction the
+    animal already sits relative to it - "fleeing outward" away from the
+    player's territory, which always starts at the map center."""
+    cx, cy = grid.width / 2.0, grid.height / 2.0
+    ax, ay = tile_at(animal.x, animal.y)
+    dx, dy = ax - cx, ay - cy
+    dist = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / dist, dy / dist
+    flee_tiles = 10
+    tx = max(0, min(grid.width - 1, round(ax + ux * flee_tiles)))
+    ty = max(0, min(grid.height - 1, round(ay + uy * flee_tiles)))
+    return tile_center(tx, ty)
+
+
+def scatter_unclaimed_hunt_targets(world: "World", cycle: "DayNightCycle") -> None:
+    """In the last HUNT_SCATTER_LEAD_SECONDS of the day, cancel any Hunt
+    task no NPC has claimed yet and send its target animal fleeing outward
+    - otherwise the player would see a queued-Hunt marker sitting right
+    alongside real night monsters, which reads as confusing (which threat
+    is which?). Claimed/in-progress Hunts are left alone; an NPC already
+    working one keeps going into the night."""
+    if cycle.phase != DAY or cycle.remaining() > HUNT_SCATTER_LEAD_SECONDS:
+        return
+    stale = [t for t in world.tasks.tasks if t.type == "Hunt" and t.assigned_npc is None]
+    for task in stale:
+        animal = resolve_task_animal(world, task)
+        world.tasks.remove(task)
+        if animal is not None:
+            animal.idle_target = _flee_point(animal, world.grid)

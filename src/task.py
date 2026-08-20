@@ -53,16 +53,28 @@ def register_task_type(name: str, task_type: TaskType) -> None:
     TASK_TYPES[name] = task_type
 
 
-def resolve_task_animal(world: "World", task: "Task"):
-    """Shared lookup for Hunt/Tame targets: by the id bound at claim time if
-    there is one, else by whichever animal currently sits on task.target.
-    Duck-typed (id/x/y/is_dead) so task.py doesn't need to import animal.py."""
+def animal_at_tile(world: "World", tile: Tile):
+    """Living animal currently on `tile`, or None. Duck-typed (id/x/y/
+    is_dead) so task.py doesn't need to import animal.py. Used both by
+    resolve_task_animal's tile fallback and by callers that need to
+    identify a target before any Task exists yet (e.g. the instant a tile
+    menu opens, so a Hunt/Tame choice can bind the id it saw then rather
+    than whatever's on the tile once the player actually clicks a row)."""
     animals = getattr(world, "animals", None)
     if not animals:
         return None
+    return next((a for a in animals if tile_at(a.x, a.y) == tile and not a.is_dead), None)
+
+
+def resolve_task_animal(world: "World", task: "Task"):
+    """Shared lookup for Hunt/Tame targets: by the id bound at claim time if
+    there is one, else by whichever animal currently sits on task.target."""
     if task.target_animal_id is not None:
+        animals = getattr(world, "animals", None)
+        if not animals:
+            return None
         return next((a for a in animals if a.id == task.target_animal_id and not a.is_dead), None)
-    return next((a for a in animals if tile_at(a.x, a.y) == task.target and not a.is_dead), None)
+    return animal_at_tile(world, task.target)
 
 
 class TaskQueue:

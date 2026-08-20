@@ -1,5 +1,5 @@
 import task as task_module
-from task import TaskQueue, TaskType, update_npc_tasks
+from task import TaskQueue, TaskType, animal_at_tile, update_npc_tasks
 from npc import NPC
 from world import World
 from constants import ROLE_FARMER
@@ -448,3 +448,26 @@ def test_queued_hunt_task_survives_the_animal_wandering_off_its_original_tile():
     update_npc_tasks(world, 0.1)
 
     assert task in world.tasks.tasks  # still queued, not silently dropped
+
+
+def test_animal_at_tile_finds_the_living_animal_there():
+    from animal import Animal
+    from coords import tile_center
+
+    world = World(npc_count=0, animal_count=0)
+    animal = Animal(*tile_center(4, 4), species="Fish", speed=60.0, dangerous=False, health=10)
+    world.animals.append(animal)
+
+    assert animal_at_tile(world, (4, 4)) is animal
+    assert animal_at_tile(world, (5, 5)) is None
+
+
+def test_animal_at_tile_skips_dead_animals():
+    from animal import Animal
+    from coords import tile_center
+
+    world = World(npc_count=0, animal_count=0)
+    animal = Animal(*tile_center(4, 4), species="Fish", speed=60.0, dangerous=False, health=0)
+    world.animals.append(animal)
+
+    assert animal_at_tile(world, (4, 4)) is None
