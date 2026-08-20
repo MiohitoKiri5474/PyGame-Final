@@ -76,7 +76,12 @@ class SanctuaryUI:
 
         title_text = f"Sanctuary ({len(resting_npcs)}/3)"
         title_surf = font.render(title_text, True, _LABEL)
-        screen.blit(title_surf, (self.PANEL_X + 28, self.PANEL_Y + 9))
+        # Panel is narrow (150px, minus the cross icon) - shrink to match the
+        # scaled-down labels used throughout the rest of this box below.
+        title_scaled = pygame.transform.scale(
+            title_surf, (int(title_surf.get_width() * 0.82), int(title_surf.get_height() * 0.82))
+        )
+        screen.blit(title_scaled, (self.PANEL_X + 28, self.PANEL_Y + 10))
 
         # 2. Render 3 Compact Resting Slots
         slot_y = self.PANEL_Y + 36

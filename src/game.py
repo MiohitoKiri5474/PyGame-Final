@@ -2087,12 +2087,18 @@ class Game:
     def _game_over_restart_button_rect(self) -> pygame.Rect:
         panel = self._game_over_panel_rect()
         btn_w, btn_h = 200, 48
-        return pygame.Rect(panel.centerx - btn_w // 2, panel.bottom - btn_h - 24, btn_w, btn_h)
+        return pygame.Rect(panel.centerx - btn_w // 2, panel.bottom - btn_h - 38, btn_w, btn_h)
 
 
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:
             return
+
+        # Full-screen dim behind the panel - darker than the night sky tint
+        # so the panel reads as a clear modal even during a daytime death.
+        dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 210))
+        self.screen.blit(dim, (0, 0))
 
         panel = self._game_over_panel_rect()
         panel_art = gameover_panel_sprite(panel.width, panel.height)
@@ -2105,7 +2111,7 @@ class Game:
             pygame.draw.rect(self.screen, COLOR_GAME_OVER, panel, 3, border_radius=8)
 
         title_surf = self.menu_big_font.render("GAME OVER", True, COLOR_GAME_OVER)
-        self.screen.blit(title_surf, title_surf.get_rect(center=(panel.centerx, panel.top + 80)))
+        self.screen.blit(title_surf, title_surf.get_rect(center=(panel.centerx, panel.top + 94)))
 
         score_surf = self.font.render(f"Score: Round {self.game_over_state.score}", True, COLOR_TEXT)
         self.screen.blit(score_surf, score_surf.get_rect(center=(panel.centerx, panel.top + 130)))
