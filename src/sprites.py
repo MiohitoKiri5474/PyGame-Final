@@ -122,7 +122,7 @@ def map_resource_sprite(resource: str) -> pygame.Surface | None:
 
 
 _BUILDING_HEIGHTS = {
-    "House": int(TILE_SIZE * 1.95),
+    "House": int(TILE_SIZE * 2.70),
     "Tower": int(TILE_SIZE * 2.45),
     "Wall": int(TILE_SIZE * 1.25),
     "AnimalPen": int(TILE_SIZE * 0.90),

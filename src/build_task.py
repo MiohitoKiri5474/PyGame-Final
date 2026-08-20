@@ -39,15 +39,56 @@ class Building:
     ready: bool = False  # Farmland only; no-op default for every other type
 
 
+def building_size(b_type: str) -> tuple[int, int]:
+    return (2, 2) if b_type == "House" else (1, 1)
+
+
+def building_tiles(building: Building) -> list[tuple[int, int]]:
+    w, h = building_size(building.type)
+    return [(building.x + dx, building.y + dy) for dy in range(h) for dx in range(w)]
+
+
+def building_occupies_tile(building: Building, x: int, y: int) -> bool:
+    w, h = building_size(building.type)
+    return building.x <= x < building.x + w and building.y <= y < building.y + h
+
+
+def task_overlaps_tile(task: Task, x: int, y: int) -> bool:
+    if not (task.type.startswith("Build") or task.type in ("BuildWall", "BuildTower", "BuildHouse", "BuildFarmland", "BuildAnimalPen")):
+        return False
+    tx, ty = task.target
+    w, h = (2, 2) if task.type == "BuildHouse" else (1, 1)
+    return tx <= x < tx + w and ty <= y < ty + h
+
+
 def _can_queue(world: "World", tile: "Tile") -> bool:
     x, y = tile
+    if not world.grid.in_bounds(x, y):
+        return False
     t = world.grid.get(x, y)
     if not t.claimed or t.resource is not None:
         return False
-    if any(b.x == x and b.y == y for b in world.buildings):
+    if any(building_occupies_tile(b, x, y) for b in world.buildings):
         return False
-    if any(task.type.startswith("Build") and task.target == tile for task in world.tasks.tasks):
+    if any(task_overlaps_tile(task, x, y) for task in world.tasks.tasks):
         return False
+    return True
+
+
+def _can_queue_house(world: "World", tile: "Tile") -> bool:
+    x, y = tile
+    for dy in range(2):
+        for dx in range(2):
+            tx, ty = x + dx, y + dy
+            if not world.grid.in_bounds(tx, ty):
+                return False
+            t = world.grid.get(tx, ty)
+            if not t.claimed or t.resource is not None:
+                return False
+            if any(building_occupies_tile(b, tx, ty) for b in world.buildings):
+                return False
+            if any(task_overlaps_tile(task, tx, ty) for task in world.tasks.tasks):
+                return False
     return True
 
 
@@ -180,7 +221,7 @@ register_task_type(
     "BuildHouse",
     TaskType(
         work_seconds=HOUSE_WORK_SECONDS,
-        can_queue=_can_queue,
+        can_queue=_can_queue_house,
         on_complete=_on_complete_house,
         can_perform=_can_perform_house,
     ),

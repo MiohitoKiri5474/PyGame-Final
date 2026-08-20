@@ -2,6 +2,9 @@ from blocking import is_wall_blocked
 from build_task import (
     Building,
     _can_queue,
+    _can_queue_house,
+    building_occupies_tile,
+    building_tiles,
     _on_complete_wall,
     _on_complete_house,
     _blocked_builds_hud_line,
@@ -169,11 +172,55 @@ def test_blocked_builds_hud_line_empty_once_affordable():
     assert _blocked_builds_hud_line(world) == ""
 
 
-def test_house_can_queue_same_rule_as_wall_tower():
+def test_house_can_queue_requires_full_2x2_claimed_empty_area():
     world = World(npc_count=0)
-    world.grid.get(10, 10).claimed = True
-    world.grid.get(10, 10).resource = None
-    assert _can_queue(world, (10, 10))
+    # Claim all 4 tiles for 2x2 house at (10, 10)
+    for dx in range(2):
+        for dy in range(2):
+            world.grid.get(10 + dx, 10 + dy).claimed = True
+            world.grid.get(10 + dx, 10 + dy).resource = None
+
+    assert _can_queue_house(world, (10, 10))
+
+    # If any single tile in the 2x2 area is unclaimed, reject
+    world.grid.get(11, 11).claimed = False
+    assert not _can_queue_house(world, (10, 10))
+    world.grid.get(11, 11).claimed = True
+
+    # If any single tile has a resource, reject
+    world.grid.get(10, 11).resource = "wood"
+    assert not _can_queue_house(world, (10, 10))
+    world.grid.get(10, 11).resource = None
+
+    # If building exists on any of the 4 tiles, reject
+    world.buildings.append(Building("Wall", 11, 10, 100, 0))
+    assert not _can_queue_house(world, (10, 10))
+
+
+def test_house_occupies_all_4_tiles_and_blocks_other_buildings():
+    world = World(npc_count=0)
+    for x in range(10, 14):
+        for y in range(10, 14):
+            world.grid.get(x, y).claimed = True
+            world.grid.get(x, y).resource = None
+
+    house = Building("House", 10, 10, 0, 0)
+    world.buildings.append(house)
+
+    assert building_occupies_tile(house, 10, 10)
+    assert building_occupies_tile(house, 11, 10)
+    assert building_occupies_tile(house, 10, 11)
+    assert building_occupies_tile(house, 11, 11)
+    assert not building_occupies_tile(house, 12, 10)
+
+    # 1x1 buildings cannot be placed on any of the 4 house tiles
+    assert not _can_queue(world, (10, 10))
+    assert not _can_queue(world, (11, 10))
+    assert not _can_queue(world, (10, 11))
+    assert not _can_queue(world, (11, 11))
+
+    # But can be placed adjacent at (12, 10)
+    assert _can_queue(world, (12, 10))
 
 
 def test_house_can_perform_checks_materials():
@@ -194,6 +241,8 @@ def test_house_on_complete_builds_and_spends():
     assert _on_complete_house(world, task) is True
     assert len(world.buildings) == 1
     assert world.buildings[0].type == "House"
+    assert world.buildings[0].x == 10
+    assert world.buildings[0].y == 10
     for res in HOUSE_COST:
         assert world.inventory.get(res) == 0
 
@@ -207,7 +256,7 @@ def test_population_cap_increases_per_house():
     world = World(npc_count=0)
     world.buildings.append(Building("House", 1, 1, 0, 0))
     assert population_cap(world) == BASE_POPULATION_CAP + 1
-    world.buildings.append(Building("House", 2, 2, 0, 0))
+    world.buildings.append(Building("House", 5, 5, 0, 0))
     assert population_cap(world) == BASE_POPULATION_CAP + 2
 
 

@@ -1868,8 +1868,8 @@ class Game:
         for building in self.world.buildings:
             if building.type == "Farmland":
                 continue  # Farmlands are flat ground tiles drawn during render_grid
-            if start_col <= building.x <= end_col and start_row <= building.y <= end_row:
-                sort_y = (building.y + 1) * TILE_SIZE
+            if start_col - 1 <= building.x <= end_col and start_row - 1 <= building.y <= end_row:
+                sort_y = (building.y + 2) * TILE_SIZE if building.type == "House" else (building.y + 1) * TILE_SIZE
                 draw_list.append((sort_y, lambda b=building: draw_single_building(self.screen, b, self.camera)))
 
         # 2. Resource Nodes on the map (Trees, Rocks, Crops, Berries, Mushrooms, etc.)
@@ -1988,8 +1988,19 @@ class Game:
             self._render_expand_preview(hover_gx, hover_gy)
             hover_screen_x = hover_gx * TILE_SIZE - cam_x
             hover_screen_y = hover_gy * TILE_SIZE - cam_y
-            hover_rect = pygame.Rect(hover_screen_x, hover_screen_y, TILE_SIZE, TILE_SIZE)
-            pygame.draw.rect(self.screen, COLOR_HOVER_BORDER, hover_rect, 2)
+            if self.build_bar.selected == "BuildHouse":
+                task_type = TASK_TYPES.get("BuildHouse")
+                can_place = task_type is not None and task_type.can_queue(self.world, (hover_gx, hover_gy))
+                p_col = (100, 255, 120, 90) if can_place else (255, 90, 90, 90)
+                b_col = (140, 255, 140) if can_place else (255, 110, 110)
+                p_surf = pygame.Surface((2 * TILE_SIZE, 2 * TILE_SIZE), pygame.SRCALPHA)
+                p_surf.fill(p_col)
+                self.screen.blit(p_surf, (hover_screen_x, hover_screen_y))
+                hover_rect = pygame.Rect(hover_screen_x, hover_screen_y, 2 * TILE_SIZE, 2 * TILE_SIZE)
+                pygame.draw.rect(self.screen, b_col, hover_rect, 2)
+            else:
+                hover_rect = pygame.Rect(hover_screen_x, hover_screen_y, TILE_SIZE, TILE_SIZE)
+                pygame.draw.rect(self.screen, COLOR_HOVER_BORDER, hover_rect, 2)
 
     def _render_expand_preview(self, gx: int, gy: int) -> None:
         """While hovering a valid Expand target, lightly tint only the tiles
