@@ -66,19 +66,27 @@ def hit_test(pos: tuple[int, int], rect_labels: list[tuple[pygame.Rect, str]]) -
     return None
 
 
+_BUTTON_SLOT_OFFSETS = {
+    1: 28.5 / 331,   # top row: banner flourish on top-left
+    2: 11.0 / 298,   # middle row: symmetric plain stone
+    3: 5.0 / 298,    # bottom row: banner flourish on bottom-right
+}
+
+
 def render_button(
     surface: pygame.Surface, font: pygame.font.Font, rect: pygame.Rect, label: str, slot: int = 2
 ) -> None:
     """`slot` (1/2/3) picks which of the 3 painted button-bar crops to draw
     - an ordered set of buttons (title screen's Start/Continue/Settings)
     uses 1/2/3 in order; any other, standalone button just uses 2 (the
-    plain symmetric one). The art is drawn a little larger than `rect` for
-    breathing room around its ornate border, but `rect` itself - and so the
-    actual click hit-box - is unchanged. Falls back to the old flat
+    plain symmetric one). The art is drawn with its visual stone center
+    strictly aligned with `rect.center`, ensuring button text is 100%
+    dead-centered vertically and horizontally. Falls back to the old flat
     rect+border look if the art isn't available."""
     art = menu_button_sprite(slot, rect.width + 32, rect.height + 24)
     if art is not None:
-        surface.blit(art, art.get_rect(center=rect.center))
+        y_offset = round(_BUTTON_SLOT_OFFSETS.get(slot, 0.0) * art.get_height())
+        surface.blit(art, art.get_rect(center=(rect.centerx, rect.centery - y_offset)))
     else:
         pygame.draw.rect(surface, BUTTON_BG, rect)
         pygame.draw.rect(surface, BUTTON_BORDER, rect, 2)

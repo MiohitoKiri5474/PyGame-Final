@@ -21,15 +21,35 @@ from ui_layout import (
 
 _TITLE_TEXT = "Colony Defense (WIP)"  # fallback heading, only shown without logo.png
 _WARNING_TEXT = "Starting a new game will overwrite your existing save."
-_LOGO_MAX_WIDTH = 600
-_LOGO_BOTTOM_CLEARANCE = 30  # gap between the logo's bottom edge and the first button row
+_LOGO_MAX_WIDTH = 540
+_LOGO_TOP = 140
+_TITLE_BUTTON_TOP = 390
+
+_VIGNETTE_SURFACE: pygame.Surface | None = None
+
+
+def _get_title_vignette() -> pygame.Surface:
+    """Pre-renders a smooth radial gradient scrim that softly darkens the
+    outer perimeter while leaving the center crystal clear, preventing the
+    ornate medieval background details from cluttering the logo and menu text."""
+    global _VIGNETTE_SURFACE
+    if _VIGNETTE_SURFACE is None:
+        surf = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        cx, cy = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
+        max_r = 780
+        for r in range(max_r, 100, -15):
+            factor = ((r - 100) / (max_r - 100)) ** 1.8
+            alpha = int(75 * factor)
+            pygame.draw.circle(surf, (15, 12, 10, alpha), (cx, cy), r)
+        _VIGNETTE_SURFACE = surf
+    return _VIGNETTE_SURFACE
 
 
 class TitleScreen:
     def __init__(self) -> None:
-        self.start_rect = stack_rect(FIRST_LEVEL_TOP, 0)
-        self.continue_rect = stack_rect(FIRST_LEVEL_TOP, 1)
-        self.settings_rect = stack_rect(FIRST_LEVEL_TOP, 2)
+        self.start_rect = stack_rect(_TITLE_BUTTON_TOP, 0)
+        self.continue_rect = stack_rect(_TITLE_BUTTON_TOP, 1)
+        self.settings_rect = stack_rect(_TITLE_BUTTON_TOP, 2)
 
     def handle_click(self, pos: tuple[int, int], save_exists: bool) -> str | None:
         rect_labels = [(self.start_rect, "start"), (self.settings_rect, "settings")]
@@ -40,12 +60,12 @@ class TitleScreen:
     def render(self, surface: pygame.Surface, font: pygame.font.Font, save_exists: bool) -> None:
         background = title_background_sprite(WINDOW_WIDTH, WINDOW_HEIGHT)
         render_screen_background(surface, background)
+        if background is not None:
+            surface.blit(_get_title_vignette(), (0, 0))
 
         logo = title_logo_sprite(_LOGO_MAX_WIDTH)
         if logo is not None:
-            logo_rect = logo.get_rect(
-                centerx=WINDOW_WIDTH // 2, bottom=FIRST_LEVEL_TOP - _LOGO_BOTTOM_CLEARANCE
-            )
+            logo_rect = logo.get_rect(centerx=WINDOW_WIDTH // 2, top=_LOGO_TOP)
             surface.blit(logo, logo_rect)
         else:
             render_screen_title(surface, font, _TITLE_TEXT)
