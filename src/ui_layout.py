@@ -23,7 +23,8 @@ from sprites import menu_button_sprite
 
 BUTTON_WIDTH = 320  # wide enough to read as deliberate, not a leftover default-sized control
 BUTTON_HEIGHT = 56
-BUTTON_GAP = 8
+BUTTON_GAP = 12  # vertical gap between stacked rows - capped by the WINDOW_HEIGHT budget below (see the assert)
+BUTTON_GAP_HORIZONTAL = 24  # gap between side-by-side buttons (ConfirmOverwriteDialog's Yes/No) - not height-budget-limited, so free to be wider
 ROW_HEIGHT = BUTTON_HEIGHT + BUTTON_GAP
 
 BUTTON_BG = (60, 64, 80)
@@ -31,7 +32,7 @@ BUTTON_BORDER = (140, 150, 180)
 
 _SCREEN_TITLE_Y = WINDOW_HEIGHT // 3
 _FRAME_MARGIN = 24
-_TITLE_CLEARANCE = 40  # gap between the screen title text and the first button row
+_TITLE_CLEARANCE = 30  # gap between the screen title text and the first button row
 
 # Tallest screen at each level, in rows - keep these equal to the actual
 # max (TitleScreen uses 3, PauseMenu uses 4; SettingsScreen uses 3, only

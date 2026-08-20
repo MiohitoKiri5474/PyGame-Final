@@ -7,7 +7,7 @@ import pygame
 from constants import WINDOW_HEIGHT, WINDOW_WIDTH
 from sprites import other_background_sprite, title_background_sprite, title_logo_sprite
 from ui_layout import (
-    BUTTON_GAP,
+    BUTTON_GAP_HORIZONTAL,
     BUTTON_HEIGHT,
     BUTTON_WIDTH,
     FIRST_LEVEL_TOP,
@@ -66,9 +66,11 @@ class ConfirmOverwriteDialog:
         # at FIRST_LEVEL_TOP - see ui_layout.py for why these must differ.
         y = SECOND_LEVEL_TOP
         self.yes_rect = pygame.Rect(
-            WINDOW_WIDTH // 2 - BUTTON_WIDTH - BUTTON_GAP // 2, y, BUTTON_WIDTH, BUTTON_HEIGHT
+            WINDOW_WIDTH // 2 - BUTTON_WIDTH - BUTTON_GAP_HORIZONTAL // 2, y, BUTTON_WIDTH, BUTTON_HEIGHT
         )
-        self.no_rect = pygame.Rect(WINDOW_WIDTH // 2 + BUTTON_GAP // 2, y, BUTTON_WIDTH, BUTTON_HEIGHT)
+        self.no_rect = pygame.Rect(
+            WINDOW_WIDTH // 2 + BUTTON_GAP_HORIZONTAL // 2, y, BUTTON_WIDTH, BUTTON_HEIGHT
+        )
 
     def handle_click(self, pos: tuple[int, int]) -> str | None:
         return hit_test(pos, [(self.yes_rect, "yes"), (self.no_rect, "no")])
