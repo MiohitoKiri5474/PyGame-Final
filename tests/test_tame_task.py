@@ -10,6 +10,7 @@ from build_task import Building
 from constants import (
     BASE_TAME_SUCCESS_RATE,
     FARMER_TAME_SUCCESS_MULTIPLIER,
+    ANIMAL_TAMED_SPEED,
     HORSE_SPEED_BONUS,
     MOUNTED_SPEED_BONUS,
     PEN_PRODUCTION_INTERVAL,
@@ -126,6 +127,23 @@ class TestTameTask:
         # Walks over to idle beside the pen rather than teleporting into it
         assert not animal.is_following
         assert animal.idle_target == idle_spot_near_pen(world, 5, 5)
+
+    def test_successful_tame_restores_the_species_tamed_speed(self):
+        # Wild spawn speed is deliberately slow so Hunt/Tame can catch it;
+        # a successful tame should bump it back up to its full pace.
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
+        animal = Animal(*tile_center(10, 10), species="Horse", speed=105.0, dangerous=False, health=40)
+        world.animals.append(animal)
+
+        npc = NPC(*tile_center(10, 10))
+        task = Task(type="Tame", target=(10, 10), assigned_npc=npc, target_animal_id=animal.id)
+
+        class AlwaysSuccessRNG:
+            def random(self):
+                return 0.0
+
+        on_complete_tame(world, task, rng=AlwaysSuccessRNG())
+        assert animal.speed == ANIMAL_TAMED_SPEED["Horse"]
 
     def test_tamed_animal_waits_if_no_pen_available(self):
         world = World(animal_count=0)  # No pens; animal_count=0 avoids random-wildlife collisions too

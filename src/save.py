@@ -267,7 +267,7 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
     game_over_state.is_over = data["game_over"]["is_over"]
     game_over_state.score = data["game_over"]["score"]
 
-    nest_manager = NestManager(world.grid.width, world.grid.height)
+    nest_manager = NestManager(world.grid.width, world.grid.height, grid=world.grid)
     nest_manager.new_nest_timer = data["nests"]["new_nest_timer"]
     nest_manager.nests = []
     for nd in data["nests"]["nests"]:

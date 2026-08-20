@@ -67,6 +67,12 @@ NEST_SPAWN_RAMP_PER_ROUND = 2.5  # interval shrinks by this much per round
 NEST_MIN_SPAWN_INTERVAL = 4.0  # floor so late rounds don't spawn every tick
 NEW_NEST_INTERVAL = 240.0  # seconds between chances for a new nest to appear
 
+NEST_SPAWN_COUNT_BASE = 1  # monsters produced per nest firing at round 1
+NEST_SPAWN_COUNT_ROUNDS_PER_STEP = 3  # +1 monster per firing every N rounds
+NEST_SPAWN_COUNT_MAX = 4  # cap so late rounds don't overwhelm in one burst
+
+NEST_FIRST_SPAWN_DELAY = 5.0  # a monster appears this soon after night falls, regardless of any nest's own interval - otherwise round 1's 40s interval leaves night feeling empty for a long stretch
+
 COLOR_MONSTER = (200, 60, 60)
 COLOR_NEST = (120, 20, 20)
 COLOR_HEALTH_BAR = (200, 60, 60)
@@ -216,15 +222,30 @@ ANIMAL_INITIAL_COUNT = 10
 ANIMAL_MAX_COUNT = 20
 ANIMAL_SPAWN_INTERVAL = 30.0  # seconds between top-up spawn attempts while under cap
 
-# species -> (speed px/s, dangerous, health) - speeds scaled with the
-# TILE_SIZE 32->40 zoom bump, same tiles/sec pacing
+# species -> (wild speed px/s, dangerous, health) - a wild/untamed animal
+# uses this slower speed so Hunt/Tame can actually close the distance (all
+# values here sit below NPC DEFAULT_SPEED 150); ANIMAL_TAMED_SPEED below is
+# what it's bumped back up to once taming succeeds. Speeds scaled with the
+# TILE_SIZE 32->40 zoom bump, same tiles/sec pacing as everything else.
 ANIMAL_SPECIES = {
-    "FlyingSquirrel": (125.0, False, 10),
-    "Fish": (75.0, False, 10),
-    "WildBoar": (87.5, False, 30),
-    "Horse": (175.0, False, 40),
-    "Wolf": (112.5, True, 35),
-    "Bear": (62.5, True, 60),
+    "FlyingSquirrel": (40.0, False, 10),
+    "Fish": (45.0, False, 10),
+    "WildBoar": (52.5, False, 30),
+    "Horse": (60.0, False, 40),
+    "Wolf": (67.5, True, 35),
+    "Bear": (37.5, True, 60),
+}
+
+# species -> tamed speed px/s - restored (Horse: exceeded) once an animal is
+# successfully tamed, since a tamed pet no longer needs to be catchable and
+# following/mount feel benefits from its old, faster pace.
+ANIMAL_TAMED_SPEED = {
+    "FlyingSquirrel": 125.0,
+    "Fish": 75.0,
+    "WildBoar": 87.5,
+    "Horse": 175.0,
+    "Wolf": 112.5,
+    "Bear": 62.5,
 }
 
 COLOR_ANIMAL = (150, 190, 90)

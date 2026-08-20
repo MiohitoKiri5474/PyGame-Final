@@ -154,9 +154,12 @@ class Game:
         self.world = World()
         self.cycle = DayNightCycle()
         initial_nests = create_initial_nests(
-            self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random()
+            self.world.grid.width, self.world.grid.height, NEST_INITIAL_COUNT, random.Random(),
+            grid=self.world.grid,
         )
-        self.nest_manager = NestManager(self.world.grid.width, self.world.grid.height, initial_nests)
+        self.nest_manager = NestManager(
+            self.world.grid.width, self.world.grid.height, initial_nests, grid=self.world.grid
+        )
         self.monsters = []
         self.game_over_state = GameOverState()
         self.skill_points_available = 0

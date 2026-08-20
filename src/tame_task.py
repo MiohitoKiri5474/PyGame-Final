@@ -22,6 +22,7 @@ from constants import (
     ANIMAL_PEN_BLOCK,
     ANIMAL_PEN_COST,
     ANIMAL_PEN_WORK_SECONDS,
+    ANIMAL_TAMED_SPEED,
     BASE_TAME_SUCCESS_RATE,
     FARMER_TAME_SUCCESS_MULTIPLIER,
     HORSE_SPEED_BONUS,
@@ -102,6 +103,9 @@ def on_complete_tame(world: "World", task: "Task", rng: random.Random | None = N
     if rng.random() < success_rate:
         animal.is_tamed = True
         animal.tamer_npc_id = getattr(npc, "id", None)
+        # Wild speed is deliberately slow so Hunt/Tame can catch it -
+        # restore its full (faster) pace now that it's caught.
+        animal.speed = ANIMAL_TAMED_SPEED.get(animal.species, animal.speed)
 
         pen = _find_available_pen(world)
         if pen is not None:
