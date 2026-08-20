@@ -41,8 +41,14 @@ _BOX_BG = (24, 26, 32)
 _BOX_BORDER = (70, 74, 86)
 _ROUND_COLOR = (220, 220, 225)
 _LABEL = (225, 225, 230)
-_HINT_TEXT = (200, 200, 205)
 _EMPTY_COLOR = (120, 120, 130)
+
+# Tip box gets its own warm-yellow styling (border + tinted background) so
+# it visually stands out from the plain NPC/Tasks boxes above it - it's
+# meant to catch the eye, not blend in.
+_HINT_BOX_BG = (48, 40, 16)
+_HINT_BOX_BORDER = (255, 214, 100)
+_HINT_TEXT = (255, 224, 140)
 
 _RING_RADIUS = 34
 _RING_WIDTH = 7
@@ -194,9 +200,14 @@ def render_side_info(
         rows = rows[: _MAX_HINT_ROWS - 1] + [("...", _EMPTY_COLOR)]
     hint_h = _PAD * 2 + max(1, len(rows)) * _ROW_H
     hint_rect = pygame.Rect(x, y, _RIGHT_COL_W, hint_h)
-    _box(surface, hint_rect)
+    pygame.draw.rect(surface, _HINT_BOX_BG, hint_rect, border_radius=8)
+    pygame.draw.rect(surface, _HINT_BOX_BORDER, hint_rect, 2, border_radius=8)
     hy = hint_rect.y + _PAD
-    for text, color in (rows or [("(nothing to report)", _EMPTY_COLOR)]):
+    for text, _ in (rows or [("(nothing to report)", _EMPTY_COLOR)]):
+        # "..." (truncation) and the no-hint fallback stay muted; actual
+        # tip text always renders in the box's own warm-yellow tone,
+        # regardless of whatever color the caller happened to pass in.
+        color = _EMPTY_COLOR if text in ("...", "(nothing to report)") else _HINT_TEXT
         surface.blit(font.render(text, True, color), (hint_rect.x + _PAD, hy))
         hy += _ROW_H
 
