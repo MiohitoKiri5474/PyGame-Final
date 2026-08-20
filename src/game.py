@@ -572,13 +572,19 @@ class Game:
         if not self.world.grid.in_bounds(gx, gy):
             return
 
-        # A building is armed: place it here (or fall through, if this tile
-        # can't take one - can_queue rejects it silently, same as before).
+        # A building is armed: place it here if this tile can take one.
         if self.build_bar.selected is not None:
             task_type = TASK_TYPES.get(self.build_bar.selected)
             if task_type is not None and task_type.can_queue(self.world, (gx, gy)):
                 self.world.tasks.add(self.build_bar.selected, (gx, gy))
-            return
+                return
+            # This tile can't take the armed building (e.g. it's a resource
+            # tile, not empty claimed ground) - the player's next click here
+            # is far more likely "do something else with this tile" (gather
+            # it, tame it, ...) than "try placing again", so disarm and fall
+            # through to the normal tile-click resolution below instead of
+            # silently eating the click and leaving them stuck armed.
+            self.build_bar.clear()
 
         # Otherwise infer from what's actually on the tile: queue directly
         # when exactly one constructive task applies, ask when there's a real choice
@@ -612,12 +618,22 @@ class Game:
         mounted_rider_ids = {
             a.tamer_npc_id for a in self.world.animals if a.is_mounted and a.tamer_npc_id is not None
         }
+        # Nearest match, not first-in-list-order match - NPCs cluster tightly
+        # around shared resource tiles, so more than one can fall within the
+        # hit-test radius at once. Picking the first one in world.npcs order
+        # regardless of actual distance meant a click clearly on top of one
+        # NPC could silently select a different, merely-nearby one instead -
+        # seen as a selection box appearing on the "wrong" NPC.
+        best: NPC | None = None
+        best_dist = NPC_RADIUS * 1.5
         for npc in self.world.npcs:
             if npc.id in mounted_rider_ids:
                 continue
-            if math.hypot(npc.x - wx, npc.y - wy) <= NPC_RADIUS * 1.5:
-                return npc
-        return None
+            dist = math.hypot(npc.x - wx, npc.y - wy)
+            if dist <= best_dist:
+                best = npc
+                best_dist = dist
+        return best
 
     def _tamed_animal_at_world_pos(self, wx: float, wy: float):
         # Only tamed animals are click-interactive this way - a wild one

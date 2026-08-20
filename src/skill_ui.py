@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
+import text_wrap
 from constants import SKILL_NAMES, WINDOW_HEIGHT, WINDOW_WIDTH
 from skills import spend_point
 
@@ -66,7 +67,7 @@ class SkillUI:
         if not self.visible:
             return points_available
         panel_w = 420
-        panel_h = 280
+        panel_h = 304  # tall enough for the footer hint's 2 wrapped lines, see render()
         panel_x = (WINDOW_WIDTH - panel_w) // 2
         panel_y = (WINDOW_HEIGHT - panel_h) // 2
         pad = 16
@@ -87,7 +88,7 @@ class SkillUI:
             return
 
         panel_w = 420
-        panel_h = 280
+        panel_h = 304  # tall enough for the footer hint's 2 wrapped lines
         panel_x = (WINDOW_WIDTH - panel_w) // 2
         panel_y = (WINDOW_HEIGHT - panel_h) // 2
 
@@ -119,6 +120,11 @@ class SkillUI:
             surface.blit(level_surf, (panel_x + panel_w - pad - level_surf.get_width() - 8, y + 2))
             y += row_h + 2
 
-        y = panel_y + panel_h - row_h - pad
-        hint_surf = font.render("[Up/Down] select   [Enter/Right] spend point   [K/Esc] close", True, _HINT_TEXT)
-        surface.blit(hint_surf, (panel_x + pad, y))
+        hint_lines = text_wrap.wrap_groups(
+            "[Up/Down] select   [Enter/Right] spend point   [K/Esc] close", font, panel_w - pad * 2
+        )
+        line_h = font.get_linesize()
+        y = panel_y + panel_h - len(hint_lines) * line_h - pad
+        for line in hint_lines:
+            surface.blit(font.render(line, True, _HINT_TEXT), (panel_x + pad, y))
+            y += line_h

@@ -145,9 +145,10 @@ class BuildBar:
         pygame.draw.rect(surface, _OUTER_BG, outer, border_radius=8)
         pygame.draw.rect(surface, _OUTER_BORDER, outer, 2, border_radius=8)
 
-        font.set_bold(True)
+        # Micro5 is a pixel-styled font - SDL's synthetic bold (set_bold)
+        # smears its pixel edges together instead of thickening them
+        # cleanly, so this header renders at the font's own regular weight.
         header_surf = font.render(_HEADER_TEXT, True, _HEADER_COLOR)
-        font.set_bold(False)
         surface.blit(header_surf, (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD - 2))
         desc_surf = font.render(_DESC_TEXT, True, _DESC_COLOR)
         surface.blit(desc_surf, (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD + _HEADER_H - 4))
