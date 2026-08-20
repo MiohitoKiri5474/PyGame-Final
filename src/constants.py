@@ -231,7 +231,7 @@ ANIMAL_SPECIES = {
     "FlyingSquirrel": (40.0, False, 10),
     "Fish": (45.0, False, 10),
     "WildBoar": (52.5, False, 30),
-    "Horse": (105.0, False, 40),
+    "Horse": (60.0, False, 40),
     "Wolf": (67.5, True, 35),
     "Bear": (37.5, True, 60),
 }
