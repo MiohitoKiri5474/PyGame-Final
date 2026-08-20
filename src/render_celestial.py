@@ -47,6 +47,11 @@ _TIMER_FONT: pygame.font.Font | None = None
 
 def _get_timer_font() -> pygame.font.Font:
     global _TIMER_FONT
+    try:
+        if _TIMER_FONT is not None:
+            _TIMER_FONT.size("0")
+    except (pygame.error, Exception):
+        _TIMER_FONT = None
     if _TIMER_FONT is None:
         _TIMER_FONT = pygame.font.Font(None, 50)
     return _TIMER_FONT

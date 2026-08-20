@@ -1,5 +1,6 @@
 import math
 import random
+import warnings
 
 import pygame
 
@@ -68,6 +69,7 @@ import top_buttons
 import magic_panel
 import minimap
 from render_fog import render_fog_base_tile, render_drifting_fog_layer, render_fog_tile
+from render_buildings import draw_single_building
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
     animal_sprite,
@@ -111,7 +113,7 @@ class Game:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("Colony Defense (WIP)")
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.screen = self._create_display(pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
         self.big_font = pygame.font.Font(None, 40)  # top bar's countdown number
@@ -193,24 +195,31 @@ class Game:
         self.state = PLAYING
         play_bgm(self.cycle.phase)
 
+    def _create_display(self, extra_flags: int) -> pygame.Surface:
+        """SCALED lets SDL letterbox/scale our fixed logical resolution to
+        whatever the real window/display size is, instead of gameplay and
+        HUD staying pinned at WINDOW_WIDTH x WINDOW_HEIGHT regardless of
+        the actual window size (windowed is RESIZABLE; fullscreen matches
+        the display) - covers both without any per-widget layout math.
+        Falls back without it on drivers that don't provide the renderer
+        backend SCALED needs (e.g. the dummy driver used for headless
+        testing, or some minimal/software display setups) - that failure
+        surfaces as a "no fast renderer available" warning rather than a
+        pygame.error, so it's promoted to one here to actually trigger the
+        fallback instead of silently keeping a broken renderer."""
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                return pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), extra_flags | pygame.SCALED)
+        except (pygame.error, Warning):
+            return pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), extra_flags)
+
     def _set_fullscreen(self, enabled: bool) -> None:
         self.fullscreen = enabled
         if not enabled:
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), 0)
+            self.screen = self._create_display(pygame.RESIZABLE)
             return
-        try:
-            # SCALED lets SDL letterbox/scale our fixed logical resolution to
-            # whatever the real display is, instead of changing the actual
-            # display mode to match ours.
-            self.screen = pygame.display.set_mode(
-                (WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN | pygame.SCALED
-            )
-        except pygame.error:
-            # SCALED needs a renderer backend some drivers don't provide
-            # (e.g. the dummy driver used for headless testing, or some
-            # minimal/software display setups) - fall back to plain
-            # fullscreen rather than crash on toggle.
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN)
+        self.screen = self._create_display(pygame.FULLSCREEN)
 
     def restart(self) -> None:
         """Only meaningful after game over - starts a brand new colony and
@@ -1084,10 +1093,7 @@ class Game:
             return
         self.render_grid()
         self.render_nests()
-        render_overlays(self.screen, self.world, self.camera)  # buildings: ground layer, under characters
-        self.render_animals()
-        self.render_npcs()
-        self.render_monsters()
+        self.render_world_entities()
         self.render_projectiles()
         self.render_particles()
         render_fx_overlays(self.screen, self.world, self.camera)  # spell flashes: stay visible over their targets
@@ -1262,534 +1268,618 @@ class Game:
         overlay.fill((r, g, b, int(a * fade)))
         self.screen.blit(overlay, (0, 0))
 
-    def render_npcs(self) -> None:
-        cam_x, cam_y = self.camera.x, self.camera.y
+    def _render_single_npc(self, npc, cam_x: float, cam_y: float) -> None:
         bar_w = TILE_SIZE - 4
         bar_h = 4
+        base_sx = int(npc.x - cam_x)
+        base_sy = int(npc.y - cam_y)
 
-        for npc in self.world.npcs:
-            if getattr(npc, "is_resting", False):
-                continue
-            base_sx = int(npc.x - cam_x)
-            base_sy = int(npc.y - cam_y)
+        # Paper Mario: 2D Soft Ground Shadow
+        shadow_w = 22
+        shadow_h = 7
+        shadow_rect = pygame.Rect(base_sx - shadow_w // 2, base_sy + 14 - shadow_h // 2, shadow_w, shadow_h)
+        shadow_surf = pygame.Surface((shadow_w, shadow_h), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, shadow_w, shadow_h))
+        self.screen.blit(shadow_surf, shadow_rect)
 
+        # River / Mud Ground Footing Effects
+        t_now = time.monotonic()
+        if getattr(npc, "is_in_river", False):
+            r_w = int(24 + math.sin(t_now * 7.0 + npc.id) * 4.0)
+            water_surf = pygame.Surface((r_w, 8), pygame.SRCALPHA)
+            pygame.draw.ellipse(water_surf, (160, 220, 255, 180), pygame.Rect(0, 0, r_w, 8), 2)
+            self.screen.blit(water_surf, (base_sx - r_w // 2, base_sy + 10))
+        elif getattr(npc, "immobilized_timer", 0.0) > 0.0:
+            mud_surf = pygame.Surface((28, 12), pygame.SRCALPHA)
+            pygame.draw.ellipse(mud_surf, (65, 45, 25, 220), pygame.Rect(0, 0, 28, 12))
+            pygame.draw.ellipse(mud_surf, (110, 80, 50, 230), pygame.Rect(4, 2, 20, 8), 2)
+            self.screen.blit(mud_surf, (base_sx - 14, base_sy + 9))
 
-            # Paper Mario: 2D Soft Ground Shadow
-            shadow_w = 22
-            shadow_h = 7
-            shadow_rect = pygame.Rect(base_sx - shadow_w // 2, base_sy + 14 - shadow_h // 2, shadow_w, shadow_h)
-            shadow_surf = pygame.Surface((shadow_w, shadow_h), pygame.SRCALPHA)
-            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, shadow_w, shadow_h))
-            self.screen.blit(shadow_surf, shadow_rect)
+        # Paper Mario: Card Flip Horizontal Scale
+        flip_p = getattr(npc, "flip_progress", 1.0)
+        paper_flip_scale = max(0.08, abs(math.cos(flip_p * math.pi)))
 
-            # River / Mud Ground Footing Effects
-            t_now = time.monotonic()
-            if getattr(npc, "is_in_river", False):
-                r_w = int(24 + math.sin(t_now * 7.0 + npc.id) * 4.0)
-                water_surf = pygame.Surface((r_w, 8), pygame.SRCALPHA)
-                pygame.draw.ellipse(water_surf, (160, 220, 255, 180), pygame.Rect(0, 0, r_w, 8), 2)
-                self.screen.blit(water_surf, (base_sx - r_w // 2, base_sy + 10))
-            elif getattr(npc, "immobilized_timer", 0.0) > 0.0:
-                mud_surf = pygame.Surface((28, 12), pygame.SRCALPHA)
-                pygame.draw.ellipse(mud_surf, (65, 45, 25, 220), pygame.Rect(0, 0, 28, 12))
-                pygame.draw.ellipse(mud_surf, (110, 80, 50, 230), pygame.Rect(4, 2, 20, 8), 2)
-                self.screen.blit(mud_surf, (base_sx - 14, base_sy + 9))
+        draw_x = npc.x
+        draw_y = npc.y
+        tilt_angle = 0.0
+        scale_x = 1.0
+        scale_y = 1.0
+        display_facing = getattr(npc, "display_facing_left", False)
+        is_attacking = (getattr(npc, "attack_timer", 0.0) > 0)
+        ap = (1.0 - (npc.attack_timer / 0.35)) if is_attacking else 0.0
 
+        if getattr(npc, "hit_timer", 0.0) > 0:
+            # 1. Hit Hurt Reaction (Squash & Wobble)
+            hp = npc.hit_timer / 0.25
+            scale_x = 1.0 + 0.35 * hp
+            scale_y = 1.0 - 0.30 * hp
+            draw_y -= 4.0 * hp
+            tilt_angle = math.sin(hp * 30.0) * 16.0
+        elif is_attacking:
+            # 2. Combat Attack Strike (Lunge & Weapon Swing)
+            if ap < 0.40:
+                prog = ap / 0.40
+                scale_y = 1.0 + 0.25 * prog
+                scale_x = 1.0 - 0.15 * prog
+                tilt_angle = -24.0 * prog
+                draw_y -= 3.0 * prog
+            else:
+                prog = (ap - 0.40) / 0.60
+                scale_y = 0.70 + 0.30 * prog
+                scale_x = 1.30 - 0.30 * prog
+                tilt_angle = 30.0 * (1.0 - prog)
+                lunge_dir = -1.0 if display_facing else 1.0
+                draw_x += lunge_dir * 8.0 * (1.0 - prog)
+        elif getattr(npc, "is_moving", False):
+            # 3. Hop & Squash Walk
+            timer = getattr(npc, "anim_timer", 0.0)
+            hop_phase = math.sin(timer * 16.0)
+            if hop_phase > 0:
+                draw_y -= hop_phase * 6.0
+                scale_y = 1.0 + 0.14 * hop_phase
+                scale_x = 1.0 - 0.08 * hop_phase
+                tilt_angle = math.sin(timer * 16.0) * 8.0
+            else:
+                squash = abs(hop_phase)
+                scale_y = 1.0 - 0.16 * squash
+                scale_x = 1.0 + 0.16 * squash
+                tilt_angle = 0.0
+        elif npc.task is not None:
+            # 4. Origami Fold & Hammer/Tool Slam
+            timer = getattr(npc, "work_anim_timer", 0.0)
+            cycle = (timer % 0.90) / 0.90
+            if cycle < 0.50:
+                p = cycle / 0.50
+                scale_y = 1.0 + 0.25 * p
+                scale_x = 1.0 - 0.15 * p
+                tilt_angle = -26.0 * p
+                draw_y -= 3.0 * p
+                offset_dir = 1.0 if display_facing else -1.0
+                draw_x += offset_dir * 3.0 * p
+            elif cycle < 0.65:
+                strike_prog = (cycle - 0.50) / 0.15
+                scale_y = 0.65 + 0.25 * strike_prog
+                scale_x = 1.35 - 0.15 * strike_prog
+                tilt_angle = 28.0 * (1.0 - strike_prog)
+                draw_y += 2.0
+                offset_dir = -1.0 if display_facing else 1.0
+                draw_x += offset_dir * 5.0
 
-            # Paper Mario: Card Flip Horizontal Scale
-            flip_p = getattr(npc, "flip_progress", 1.0)
-            paper_flip_scale = max(0.08, abs(math.cos(flip_p * math.pi)))
+                if strike_prog < 0.25 and random.random() < 0.65:
+                    confetti_colors = [
+                        (255, 220, 50),
+                        (255, 75, 75),
+                        (60, 190, 255),
+                        (85, 230, 95),
+                        (215, 95, 255),
+                        (255, 255, 255),
+                    ]
+                    tx, ty = tile_center(*npc.task.target)
+                    for _ in range(3):
+                        c = random.choice(confetti_colors)
+                        self.particles.append({
+                            "x": tx + random.uniform(-6, 6),
+                            "y": ty + random.uniform(-6, 6),
+                            "vx": random.uniform(-65, 65),
+                            "vy": random.uniform(-85, -30),
+                            "color": c,
+                            "size": random.uniform(3.0, 5.0),
+                            "life": 0.40,
+                            "max_life": 0.40,
+                            "rot": random.uniform(0, 360),
+                            "vrot": random.uniform(-360, 360),
+                        })
+            else:
+                recoil_prog = (cycle - 0.65) / 0.35
+                wobble = math.sin(recoil_prog * math.pi * 3.0) * (1.0 - recoil_prog) * 0.18
+                scale_y = 1.0 + wobble
+                scale_x = 1.0 - wobble
+                tilt_angle = wobble * 18.0
+        else:
+            draw_y += math.sin(time.monotonic() * 2.8 + npc.id) * 1.2
+            tilt_angle = math.sin(time.monotonic() * 2.0 + npc.id) * 2.0
 
-            draw_x = npc.x
-            draw_y = npc.y
-            tilt_angle = 0.0
-            scale_x = 1.0
-            scale_y = 1.0
-            display_facing = getattr(npc, "display_facing_left", False)
-            is_attacking = (getattr(npc, "attack_timer", 0.0) > 0)
-            ap = (1.0 - (npc.attack_timer / 0.35)) if is_attacking else 0.0
+        sx = int(draw_x - cam_x)
+        sy = int(draw_y - cam_y)
 
-            if getattr(npc, "hit_timer", 0.0) > 0:
-                # 1. Hit Hurt Reaction (Squash & Wobble)
-                hp = npc.hit_timer / 0.25
-                scale_x = 1.0 + 0.35 * hp
-                scale_y = 1.0 - 0.30 * hp
-                draw_y -= 4.0 * hp
-                tilt_angle = math.sin(hp * 30.0) * 16.0
-            elif is_attacking:
-                # 2. Combat Attack Strike (Lunge & Weapon Swing)
+        # Main Body Sprite
+        base_sprite = npc_sprite(npc.role)
+        if display_facing:
+            base_sprite = pygame.transform.flip(base_sprite, True, False)
+            tilt_angle = -tilt_angle
+
+        final_w = max(1, int(base_sprite.get_width() * scale_x * paper_flip_scale))
+        final_h = max(1, int(base_sprite.get_height() * scale_y))
+        transformed_sprite = pygame.transform.smoothscale(base_sprite, (final_w, final_h))
+
+        if abs(tilt_angle) > 0.5:
+            rendered_sprite = pygame.transform.rotate(transformed_sprite, tilt_angle)
+        else:
+            rendered_sprite = transformed_sprite
+
+        sprite_rect = rendered_sprite.get_rect(center=(sx, sy))
+        if npc is self.selected_npc:
+            pygame.draw.rect(self.screen, COLOR_NPC_SELECTED, sprite_rect.inflate(6, 6), 2, border_radius=4)
+        self.screen.blit(rendered_sprite, sprite_rect)
+
+        # Tool & Combat Weapon Overlay
+        if is_attacking or npc.task is not None:
+            if is_attacking:
+                tool_type = "sword" if npc.role == ROLE_KNIGHT else ("staff" if npc.role == ROLE_MAGE else "axe")
+            else:
+                tool_type = "axe"
+                if npc.task.type == "Gather":
+                    target_tile = (
+                        self.world.grid.get(*npc.task.target)
+                        if self.world.grid.in_bounds(*npc.task.target)
+                        else None
+                    )
+                    if target_tile and target_tile.resource in ("raw_stone", "bricks", "marble"):
+                        tool_type = "pickaxe"
+                    elif target_tile and target_tile.resource in ("crop", "berries"):
+                        tool_type = "sickle"
+                    else:
+                        tool_type = "axe"
+                elif "Build" in npc.task.type or npc.task.type in ("Farmland", "Destroy"):
+                    tool_type = "hammer"
+                elif npc.task.type in ("Hunt", "Tame"):
+                    if npc.role == ROLE_KNIGHT:
+                        tool_type = "sword"
+                    elif npc.role == ROLE_MAGE:
+                        tool_type = "staff"
+                    else:
+                        tool_type = "sickle"
+
+            tool_surf = get_tool_sprite(tool_type)
+            if is_attacking:
                 if ap < 0.40:
-                    prog = ap / 0.40
-                    scale_y = 1.0 + 0.25 * prog
-                    scale_x = 1.0 - 0.15 * prog
-                    tilt_angle = -24.0 * prog
-                    draw_y -= 3.0 * prog
+                    tool_angle = -60.0 * (ap / 0.40)
+                    hand_dx = 8.0 * paper_flip_scale
+                    hand_dy = 1.0 - 6.0 * (ap / 0.40)
                 else:
-                    prog = (ap - 0.40) / 0.60
-                    scale_y = 0.70 + 0.30 * prog
-                    scale_x = 1.30 - 0.30 * prog
-                    tilt_angle = 30.0 * (1.0 - prog)
-                    lunge_dir = -1.0 if display_facing else 1.0
-                    draw_x += lunge_dir * 8.0 * (1.0 - prog)
-            elif getattr(npc, "is_moving", False):
-                # 3. Hop & Squash Walk
-                timer = getattr(npc, "anim_timer", 0.0)
-                hop_phase = math.sin(timer * 16.0)
-                if hop_phase > 0:
-                    draw_y -= hop_phase * 6.0
-                    scale_y = 1.0 + 0.14 * hop_phase
-                    scale_x = 1.0 - 0.08 * hop_phase
-                    tilt_angle = math.sin(timer * 16.0) * 8.0
-                else:
-                    squash = abs(hop_phase)
-                    scale_y = 1.0 - 0.16 * squash
-                    scale_x = 1.0 + 0.16 * squash
-                    tilt_angle = 0.0
-            elif npc.task is not None:
-                # 4. Origami Fold & Hammer/Tool Slam
+                    strike_p = (ap - 0.40) / 0.60
+                    tool_angle = -60.0 + 140.0 * strike_p
+                    hand_dx = (8.0 + 10.0 * strike_p) * paper_flip_scale
+                    hand_dy = -5.0 + 12.0 * strike_p
+            else:
                 timer = getattr(npc, "work_anim_timer", 0.0)
                 cycle = (timer % 0.90) / 0.90
                 if cycle < 0.50:
-                    p = cycle / 0.50
-                    scale_y = 1.0 + 0.25 * p
-                    scale_x = 1.0 - 0.15 * p
-                    tilt_angle = -26.0 * p
-                    draw_y -= 3.0 * p
-                    offset_dir = 1.0 if display_facing else -1.0
-                    draw_x += offset_dir * 3.0 * p
+                    tool_angle = -55.0 * (cycle / 0.50)
+                    hand_dx = 9.0 * paper_flip_scale
+                    hand_dy = 1.0 - 5.0 * (cycle / 0.50)
                 elif cycle < 0.65:
                     strike_prog = (cycle - 0.50) / 0.15
-                    scale_y = 0.65 + 0.25 * strike_prog
-                    scale_x = 1.35 - 0.15 * strike_prog
-                    tilt_angle = 28.0 * (1.0 - strike_prog)
-                    draw_y += 2.0
-                    offset_dir = -1.0 if display_facing else 1.0
-                    draw_x += offset_dir * 5.0
-
-                    if strike_prog < 0.25 and random.random() < 0.65:
-                        confetti_colors = [
-                            (255, 220, 50),
-                            (255, 75, 75),
-                            (60, 190, 255),
-                            (85, 230, 95),
-                            (215, 95, 255),
-                            (255, 255, 255),
-                        ]
-                        tx, ty = tile_center(*npc.task.target)
-                        for _ in range(3):
-                            c = random.choice(confetti_colors)
-                            self.particles.append({
-                                "x": tx + random.uniform(-6, 6),
-                                "y": ty + random.uniform(-6, 6),
-                                "vx": random.uniform(-65, 65),
-                                "vy": random.uniform(-85, -30),
-                                "color": c,
-                                "size": random.uniform(3.0, 5.0),
-                                "life": 0.40,
-                                "max_life": 0.40,
-                                "rot": random.uniform(0, 360),
-                                "vrot": random.uniform(-360, 360),
-                            })
+                    tool_angle = -55.0 + 130.0 * strike_prog
+                    hand_dx = (9.0 + 8.0 * strike_prog) * paper_flip_scale
+                    hand_dy = -4.0 + 10.0 * strike_prog
                 else:
                     recoil_prog = (cycle - 0.65) / 0.35
-                    wobble = math.sin(recoil_prog * math.pi * 3.0) * (1.0 - recoil_prog) * 0.18
-                    scale_y = 1.0 + wobble
-                    scale_x = 1.0 - wobble
-                    tilt_angle = wobble * 18.0
-            else:
-                draw_y += math.sin(time.monotonic() * 2.8 + npc.id) * 1.2
-                tilt_angle = math.sin(time.monotonic() * 2.0 + npc.id) * 2.0
+                    tool_angle = 75.0 * (1.0 - recoil_prog)
+                    hand_dx = (9.0 + 8.0 * (1.0 - recoil_prog)) * paper_flip_scale
+                    hand_dy = 6.0 * (1.0 - recoil_prog)
 
-            sx = int(draw_x - cam_x)
-            sy = int(draw_y - cam_y)
-
-            # Main Body Sprite
-            base_sprite = npc_sprite(npc.role)
             if display_facing:
-                base_sprite = pygame.transform.flip(base_sprite, True, False)
+                hand_dx = -hand_dx
+                tool_angle = -tool_angle
+                tool_surf = pygame.transform.flip(tool_surf, True, False)
+
+            tw = max(1, int(tool_surf.get_width() * paper_flip_scale * 1.15))
+            th = max(1, int(tool_surf.get_height() * 1.15))
+            scaled_tool = pygame.transform.smoothscale(tool_surf, (tw, th))
+            rotated_tool = pygame.transform.rotate(scaled_tool, tool_angle)
+            tool_pos = (sx + int(hand_dx), sy + int(hand_dy))
+
+            # Combat & Work Slash Smear Arc
+            show_arc = (is_attacking and 0.40 <= ap < 0.85) or (not is_attacking and 0.50 <= cycle < 0.65)
+            if show_arc:
+                trail_surf = pygame.Surface((TILE_SIZE * 2, TILE_SIZE * 2), pygame.SRCALPHA)
+                trail_center = (TILE_SIZE, TILE_SIZE)
+                arc_rect = pygame.Rect(trail_center[0] - 18, trail_center[1] - 18, 36, 36)
+                arc_col = (255, 240, 100, 240) if npc.role == ROLE_KNIGHT else ((200, 100, 255, 240) if npc.role == ROLE_MAGE else (255, 255, 255, 210))
+                if not display_facing:
+                    pygame.draw.arc(trail_surf, (255, 255, 255, 210), arc_rect, 0.0, 2.1, 4)
+                    pygame.draw.arc(trail_surf, arc_col, arc_rect, 0.3, 1.7, 3)
+                else:
+                    pygame.draw.arc(trail_surf, (255, 255, 255, 210), arc_rect, 1.0, 3.14, 4)
+                    pygame.draw.arc(trail_surf, arc_col, arc_rect, 1.4, 2.8, 3)
+                self.screen.blit(trail_surf, (tool_pos[0] - TILE_SIZE, tool_pos[1] - TILE_SIZE))
+
+            self.screen.blit(rotated_tool, rotated_tool.get_rect(center=tool_pos))
+
+            # Arcane Casting Flare at Mage staff crystal tip
+            if is_attacking and npc.role == ROLE_MAGE and ap < 0.45:
+                flare_surf = pygame.Surface((24, 24), pygame.SRCALPHA)
+                flare_r = int(6 + 3 * math.sin(time.monotonic() * 22.0))
+                pygame.draw.circle(flare_surf, (200, 100, 255, 190), (12, 12), flare_r)
+                pygame.draw.circle(flare_surf, (255, 255, 255, 240), (12, 12), 3)
+                for dx_f, dy_f in [(0, -7), (0, 7), (-7, 0), (7, 0)]:
+                    pygame.draw.line(flare_surf, (255, 230, 255, 220), (12, 12), (12 + dx_f, 12 + dy_f), 1)
+                self.screen.blit(flare_surf, (tool_pos[0] - 12, tool_pos[1] - 12))
+
+        # Environmental Status Effects: Burning Flames on NPC
+        if getattr(npc, "is_burning", False):
+            flame_surf = pygame.Surface((38, 48), pygame.SRCALPHA)
+            # Soft heat haze aura
+            pygame.draw.ellipse(flame_surf, (255, 90, 20, 100), pygame.Rect(4, 14, 30, 28))
+            pygame.draw.ellipse(flame_surf, (255, 180, 40, 150), pygame.Rect(8, 18, 22, 22))
+
+            # 4 Rising flame tongues
+            flame_tongues = [
+                (-9, 6, 20.0, (255, 60, 20)),
+                (-3, 0, 24.0, (255, 140, 30)),
+                (3, 2, 22.0, (255, 210, 40)),
+                (9, 7, 18.0, (255, 80, 20)),
+            ]
+            for off_x, base_y, speed_f, col in flame_tongues:
+                f_h = 12 + math.sin(t_now * speed_f + off_x) * 5.0
+                f_x = 19 + off_x + math.sin(t_now * 12.0 + off_x) * 2.0
+                f_y = 34 - f_h
+                p1 = (f_x, f_y)
+                p2 = (f_x - 4, 34)
+                p3 = (f_x + 4, 34)
+                pygame.draw.polygon(flame_surf, col, [p1, p2, p3])
+
+            # Floating glowing heat sparks
+            for k in range(3):
+                emb_x = 19 + math.sin(t_now * 15.0 + k * 2.1) * 11.0
+                emb_y = 22 - ((t_now * 30.0 + k * 11.0) % 26.0)
+                pygame.draw.circle(flame_surf, (255, 245, 120, 230), (int(emb_x), int(emb_y)), 2)
+
+            self.screen.blit(flame_surf, (base_sx - 19, base_sy - 24))
+
+        # Mud Immobilized Countdown Badge
+        if getattr(npc, "immobilized_timer", 0.0) > 0.0:
+            bubble_surf = pygame.Surface((32, 16), pygame.SRCALPHA)
+            pygame.draw.rect(bubble_surf, (50, 35, 20, 220), pygame.Rect(0, 0, 32, 16), border_radius=4)
+            pygame.draw.rect(bubble_surf, (150, 110, 60, 240), pygame.Rect(0, 0, 32, 16), 1, border_radius=4)
+            sec_txt = self.font.render(f"{npc.immobilized_timer:.1f}s", True, (255, 225, 130))
+            bubble_surf.blit(sec_txt, (bubble_surf.get_width() // 2 - sec_txt.get_width() // 2, 1))
+            self.screen.blit(bubble_surf, (base_sx - 16, base_sy - 38))
+
+        # Sweat drop animation when hungry (< 35%)
+        if npc.hunger < 35.0:
+            sweat_t = time.monotonic() * 4.0
+            sweat_phase = math.sin(sweat_t + npc.id)
+            if sweat_phase > 0.2:
+                sweat_y = base_sy - 18 + (1.0 - sweat_phase) * 5.0
+                sweat_x = base_sx + (10 if not display_facing else -10)
+                sweat_surf = pygame.Surface((10, 14), pygame.SRCALPHA)
+                pygame.draw.polygon(sweat_surf, (110, 225, 255, 230), [(5, 1), (1, 9), (5, 12), (9, 9)])
+                pygame.draw.circle(sweat_surf, (255, 255, 255, 240), (4, 5), 1)
+                self.screen.blit(sweat_surf, (int(sweat_x) - 5, int(sweat_y)))
+
+        # Hunger Bar (above the NPC)
+        bar_x = base_sx - bar_w // 2
+        bar_y = base_sy - TILE_SIZE // 2 - bar_h - 4
+        hunger_ratio = max(0.0, min(1.0, npc.hunger / NPC_MAX_HUNGER))
+        pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, bar_y, bar_w, bar_h))
+        fill_w = max(0, int(bar_w * hunger_ratio))
+        if fill_w > 0:
+            pygame.draw.rect(self.screen, COLOR_HUNGER_BAR, pygame.Rect(bar_x, bar_y, fill_w, bar_h))
+
+        # Work-in-progress bar (below the NPC)
+        if npc.task is not None and npc.has_arrived:
+            task_type = TASK_TYPES.get(npc.task.type)
+            if task_type is not None and task_type.work_seconds > 0:
+                progress_ratio = max(0.0, min(1.0, npc.task_progress / task_type.work_seconds))
+                pbar_y = sprite_rect.bottom + 4
+                pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, pbar_y, bar_w, bar_h))
+                pfill_w = max(0, int(bar_w * progress_ratio))
+                if pfill_w > 0:
+                    pygame.draw.rect(self.screen, COLOR_PROGRESS_BAR, pygame.Rect(bar_x, pbar_y, pfill_w, bar_h))
+
+    def render_npcs(self) -> None:
+        cam_x, cam_y = self.camera.x, self.camera.y
+        for npc in self.world.npcs:
+            if not getattr(npc, "is_resting", False):
+                self._render_single_npc(npc, cam_x, cam_y)
+
+    def _render_single_animal(self, animal, cam_x: float, cam_y: float) -> None:
+        base_sx = int(animal.x - cam_x)
+        base_sy = int(animal.y - cam_y)
+
+        # Paper Mario Ground Shadow
+        shadow_surf = pygame.Surface((20, 6), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (0, 0, 0, 75), pygame.Rect(0, 0, 20, 6))
+        self.screen.blit(shadow_surf, (base_sx - 10, base_sy + 12))
+
+        draw_x = animal.x
+        draw_y = animal.y
+        tilt_angle = 0.0
+        scale_x = 1.0
+        scale_y = 1.0
+        facing_left = getattr(animal, "facing_left", False)
+        is_attacking = (getattr(animal, "attack_timer", 0.0) > 0)
+        ap = (1.0 - (animal.attack_timer / 0.35)) if is_attacking else 0.0
+
+        if getattr(animal, "hit_timer", 0.0) > 0:
+            # 1. Hurt Squash & Shake
+            hp = animal.hit_timer / 0.25
+            scale_x = 1.0 + 0.30 * hp
+            scale_y = 1.0 - 0.25 * hp
+            draw_y -= 4.0 * hp
+            tilt_angle = math.sin(hp * 30.0) * 15.0
+        elif is_attacking:
+            # 2. Retaliation Beast Strike / Claw Attack
+            if ap < 0.40:
+                prog = ap / 0.40
+                scale_y = 1.0 + 0.35 * prog
+                scale_x = 1.0 - 0.20 * prog
+                tilt_angle = -22.0 * prog
+            else:
+                prog = (ap - 0.40) / 0.60
+                scale_y = 0.70 + 0.30 * prog
+                scale_x = 1.30 - 0.30 * prog
+                tilt_angle = 26.0 * (1.0 - prog)
+                lunge_dir = -1.0 if facing_left else 1.0
+                draw_x += lunge_dir * 8.0 * (1.0 - prog)
+        elif getattr(animal, "is_moving", False):
+            # 3. Hop & Squash Walk
+            timer = getattr(animal, "anim_timer", 0.0)
+            bounce_speed = 16.0 if animal.speed > 90 else 11.0
+            hop = math.sin(timer * bounce_speed)
+            if hop > 0:
+                draw_y -= hop * 5.0
+                scale_y = 1.0 + 0.12 * hop
+                scale_x = 1.0 - 0.08 * hop
+                tilt_angle = hop * 6.0
+            else:
+                squash = abs(hop)
+                scale_y = 1.0 - 0.14 * squash
+                scale_x = 1.0 + 0.14 * squash
+        elif getattr(animal, "is_tamed", False) and not getattr(animal, "is_following", False) and getattr(animal, "idle_target", None) is None:
+            # 4. Settled Idle Hop
+            timer = getattr(animal, "anim_timer", 0.0)
+            hop = max(0.0, math.sin(timer * 3.0))
+            if hop > 0:
+                draw_y -= hop * 3.0
+                scale_y = 1.0 + 0.05 * hop
+                scale_x = 1.0 - 0.03 * hop
+
+        screen_x = int(draw_x - cam_x)
+        screen_y = int(draw_y - cam_y)
+        sprite = animal_sprite(animal.species)
+        if sprite is not None:
+            if facing_left:
+                sprite = pygame.transform.flip(sprite, True, False)
                 tilt_angle = -tilt_angle
 
-            final_w = max(1, int(base_sprite.get_width() * scale_x * paper_flip_scale))
-            final_h = max(1, int(base_sprite.get_height() * scale_y))
-            transformed_sprite = pygame.transform.smoothscale(base_sprite, (final_w, final_h))
-
+            tw = max(1, int(sprite.get_width() * scale_x))
+            th = max(1, int(sprite.get_height() * scale_y))
+            transformed = pygame.transform.smoothscale(sprite, (tw, th))
             if abs(tilt_angle) > 0.5:
-                rendered_sprite = pygame.transform.rotate(transformed_sprite, tilt_angle)
-            else:
-                rendered_sprite = transformed_sprite
+                transformed = pygame.transform.rotate(transformed, tilt_angle)
+            self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
 
-            sprite_rect = rendered_sprite.get_rect(center=(sx, sy))
-            if npc is self.selected_npc:
-                pygame.draw.rect(self.screen, COLOR_NPC_SELECTED, sprite_rect.inflate(6, 6), 2, border_radius=4)
-            self.screen.blit(rendered_sprite, sprite_rect)
-
-            # Tool & Combat Weapon Overlay
-            if is_attacking or npc.task is not None:
-                if is_attacking:
-                    tool_type = "sword" if npc.role == ROLE_KNIGHT else ("staff" if npc.role == ROLE_MAGE else "axe")
-                else:
-                    tool_type = "axe"
-                    if npc.task.type == "Gather":
-                        target_tile = (
-                            self.world.grid.get(*npc.task.target)
-                            if self.world.grid.in_bounds(*npc.task.target)
-                            else None
-                        )
-                        if target_tile and target_tile.resource in ("raw_stone", "bricks", "marble"):
-                            tool_type = "pickaxe"
-                        elif target_tile and target_tile.resource in ("crop", "berries"):
-                            tool_type = "sickle"
-                        else:
-                            tool_type = "axe"
-                    elif "Build" in npc.task.type or npc.task.type in ("Farmland", "Destroy"):
-                        tool_type = "hammer"
-                    elif npc.task.type in ("Hunt", "Tame"):
-                        if npc.role == ROLE_KNIGHT:
-                            tool_type = "sword"
-                        elif npc.role == ROLE_MAGE:
-                            tool_type = "staff"
-                        else:
-                            tool_type = "sickle"
-
-                tool_surf = get_tool_sprite(tool_type)
-                if is_attacking:
-                    if ap < 0.40:
-                        tool_angle = -60.0 * (ap / 0.40)
-                        hand_dx = 8.0 * paper_flip_scale
-                        hand_dy = 1.0 - 6.0 * (ap / 0.40)
-                    else:
-                        strike_p = (ap - 0.40) / 0.60
-                        tool_angle = -60.0 + 140.0 * strike_p
-                        hand_dx = (8.0 + 10.0 * strike_p) * paper_flip_scale
-                        hand_dy = -5.0 + 12.0 * strike_p
-                else:
-                    timer = getattr(npc, "work_anim_timer", 0.0)
-                    cycle = (timer % 0.90) / 0.90
-                    if cycle < 0.50:
-                        tool_angle = -55.0 * (cycle / 0.50)
-                        hand_dx = 9.0 * paper_flip_scale
-                        hand_dy = 1.0 - 5.0 * (cycle / 0.50)
-                    elif cycle < 0.65:
-                        strike_prog = (cycle - 0.50) / 0.15
-                        tool_angle = -55.0 + 130.0 * strike_prog
-                        hand_dx = (9.0 + 8.0 * strike_prog) * paper_flip_scale
-                        hand_dy = -4.0 + 10.0 * strike_prog
-                    else:
-                        recoil_prog = (cycle - 0.65) / 0.35
-                        tool_angle = 75.0 * (1.0 - recoil_prog)
-                        hand_dx = (9.0 + 8.0 * (1.0 - recoil_prog)) * paper_flip_scale
-                        hand_dy = 6.0 * (1.0 - recoil_prog)
-
-                if display_facing:
-                    hand_dx = -hand_dx
-                    tool_angle = -tool_angle
-                    tool_surf = pygame.transform.flip(tool_surf, True, False)
-
-                tw = max(1, int(tool_surf.get_width() * paper_flip_scale * 1.15))
-                th = max(1, int(tool_surf.get_height() * 1.15))
-                scaled_tool = pygame.transform.smoothscale(tool_surf, (tw, th))
-                rotated_tool = pygame.transform.rotate(scaled_tool, tool_angle)
-                tool_pos = (sx + int(hand_dx), sy + int(hand_dy))
-
-                # Combat & Work Slash Smear Arc
-                show_arc = (is_attacking and 0.40 <= ap < 0.85) or (not is_attacking and 0.50 <= cycle < 0.65)
-                if show_arc:
-                    trail_surf = pygame.Surface((TILE_SIZE * 2, TILE_SIZE * 2), pygame.SRCALPHA)
-                    trail_center = (TILE_SIZE, TILE_SIZE)
-                    arc_rect = pygame.Rect(trail_center[0] - 18, trail_center[1] - 18, 36, 36)
-                    arc_col = (255, 240, 100, 240) if npc.role == ROLE_KNIGHT else ((200, 100, 255, 240) if npc.role == ROLE_MAGE else (255, 255, 255, 210))
-                    if not display_facing:
-                        pygame.draw.arc(trail_surf, (255, 255, 255, 210), arc_rect, 0.0, 2.1, 4)
-                        pygame.draw.arc(trail_surf, arc_col, arc_rect, 0.3, 1.7, 3)
-                    else:
-                        pygame.draw.arc(trail_surf, (255, 255, 255, 210), arc_rect, 1.0, 3.14, 4)
-                        pygame.draw.arc(trail_surf, arc_col, arc_rect, 1.4, 2.8, 3)
-                    self.screen.blit(trail_surf, (tool_pos[0] - TILE_SIZE, tool_pos[1] - TILE_SIZE))
-
-                self.screen.blit(rotated_tool, rotated_tool.get_rect(center=tool_pos))
-
-                # Arcane Casting Flare at Mage staff crystal tip
-                if is_attacking and npc.role == ROLE_MAGE and ap < 0.45:
-                    flare_surf = pygame.Surface((24, 24), pygame.SRCALPHA)
-                    flare_r = int(6 + 3 * math.sin(time.monotonic() * 22.0))
-                    pygame.draw.circle(flare_surf, (200, 100, 255, 190), (12, 12), flare_r)
-                    pygame.draw.circle(flare_surf, (255, 255, 255, 240), (12, 12), 3)
-                    for dx_f, dy_f in [(0, -7), (0, 7), (-7, 0), (7, 0)]:
-                        pygame.draw.line(flare_surf, (255, 230, 255, 220), (12, 12), (12 + dx_f, 12 + dy_f), 1)
-                    self.screen.blit(flare_surf, (tool_pos[0] - 12, tool_pos[1] - 12))
-
-
-            # Environmental Status Effects: Burning Flames on NPC
-            if getattr(npc, "is_burning", False):
-                flame_surf = pygame.Surface((38, 48), pygame.SRCALPHA)
-                # Soft heat haze aura
-                pygame.draw.ellipse(flame_surf, (255, 90, 20, 100), pygame.Rect(4, 14, 30, 28))
-                pygame.draw.ellipse(flame_surf, (255, 180, 40, 150), pygame.Rect(8, 18, 22, 22))
-
-                # 4 Rising flame tongues
-                flame_tongues = [
-                    (-9, 6, 20.0, (255, 60, 20)),
-                    (-3, 0, 24.0, (255, 140, 30)),
-                    (3, 2, 22.0, (255, 210, 40)),
-                    (9, 7, 18.0, (255, 80, 20)),
-                ]
-                for off_x, base_y, speed_f, col in flame_tongues:
-                    f_h = 12 + math.sin(t_now * speed_f + off_x) * 5.0
-                    f_x = 19 + off_x + math.sin(t_now * 12.0 + off_x) * 2.0
-                    f_y = 34 - f_h
-                    p1 = (f_x, f_y)
-                    p2 = (f_x - 4, 34)
-                    p3 = (f_x + 4, 34)
-                    pygame.draw.polygon(flame_surf, col, [p1, p2, p3])
-
-                # Floating glowing heat sparks
-                for k in range(3):
-                    emb_x = 19 + math.sin(t_now * 15.0 + k * 2.1) * 11.0
-                    emb_y = 22 - ((t_now * 30.0 + k * 11.0) % 26.0)
-                    pygame.draw.circle(flame_surf, (255, 245, 120, 230), (int(emb_x), int(emb_y)), 2)
-
-                self.screen.blit(flame_surf, (base_sx - 19, base_sy - 24))
-
-            # Mud Immobilized Countdown Badge
-            if getattr(npc, "immobilized_timer", 0.0) > 0.0:
-                bubble_surf = pygame.Surface((32, 16), pygame.SRCALPHA)
-                pygame.draw.rect(bubble_surf, (50, 35, 20, 220), pygame.Rect(0, 0, 32, 16), border_radius=4)
-                pygame.draw.rect(bubble_surf, (150, 110, 60, 240), pygame.Rect(0, 0, 32, 16), 1, border_radius=4)
-                sec_txt = self.font.render(f"{npc.immobilized_timer:.1f}s", True, (255, 225, 130))
-                bubble_surf.blit(sec_txt, (bubble_surf.get_width() // 2 - sec_txt.get_width() // 2, 1))
-                self.screen.blit(bubble_surf, (base_sx - 16, base_sy - 38))
-
-            # Hunger bar
-            bar_x = base_sx - bar_w // 2
-            bar_y = base_sy - TILE_SIZE // 2 - bar_h - 4
-            hunger_ratio = max(0.0, min(1.0, npc.hunger / NPC_MAX_HUNGER))
-            pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, bar_y, bar_w, bar_h))
-            fill_w = max(0, int(bar_w * hunger_ratio))
-            if fill_w > 0:
-                pygame.draw.rect(self.screen, COLOR_HUNGER_BAR, pygame.Rect(bar_x, bar_y, fill_w, bar_h))
-
-            # Work-in-progress bar (below the NPC) - task_progress only ticks
-            # once the NPC has actually arrived at its target (task.py), so
-            # this only ever shows while real work is happening, not travel.
-            if npc.task is not None and npc.has_arrived:
-                task_type = TASK_TYPES.get(npc.task.type)
-                if task_type is not None and task_type.work_seconds > 0:
-                    progress_ratio = max(0.0, min(1.0, npc.task_progress / task_type.work_seconds))
-                    pbar_y = sprite_rect.bottom + 4
-                    pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, pbar_y, bar_w, bar_h))
-                    pfill_w = max(0, int(bar_w * progress_ratio))
-                    if pfill_w > 0:
-                        pygame.draw.rect(self.screen, COLOR_PROGRESS_BAR, pygame.Rect(bar_x, pbar_y, pfill_w, bar_h))
+            # Beast claw swipe arc on attack
+            if is_attacking and 0.40 <= ap < 0.85:
+                claw_surf = pygame.Surface((36, 36), pygame.SRCALPHA)
+                arc_rect = pygame.Rect(4, 4, 28, 28)
+                if not facing_left:
+                    pygame.draw.arc(claw_surf, (255, 90, 60, 230), arc_rect, 0.2, 2.0, 3)
+                    pygame.draw.arc(claw_surf, (255, 90, 60, 230), arc_rect, 1.2, 3.0, 3)
+                self.screen.blit(claw_surf, (screen_x - 18, screen_y - 18))
+        else:
+            color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
+            pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
 
 
     def render_animals(self) -> None:
+        cam_x, cam_y = self.camera.x, self.camera.y
+        grid = self.world.grid
         for animal in self.world.animals:
             tx, ty = tile_at(animal.x, animal.y)
-            if not self.world.grid.get(tx, ty).revealed:
-                continue
-            base_sx = int(animal.x - self.camera.x)
-            base_sy = int(animal.y - self.camera.y)
+            if grid.in_bounds(tx, ty) and grid.get(tx, ty).revealed:
+                self._render_single_animal(animal, cam_x, cam_y)
 
-            # Paper Mario Ground Shadow
-            shadow_surf = pygame.Surface((20, 6), pygame.SRCALPHA)
-            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 75), pygame.Rect(0, 0, 20, 6))
-            self.screen.blit(shadow_surf, (base_sx - 10, base_sy + 12))
+    def _render_single_monster(self, monster, cam_x: float, cam_y: float) -> None:
+        base_sx = int(monster.x - cam_x)
+        base_sy = int(monster.y - cam_y)
 
-            draw_x = animal.x
-            draw_y = animal.y
-            tilt_angle = 0.0
-            scale_x = 1.0
-            scale_y = 1.0
-            facing_left = getattr(animal, "facing_left", False)
-            is_attacking = (getattr(animal, "attack_timer", 0.0) > 0)
-            ap = (1.0 - (animal.attack_timer / 0.35)) if is_attacking else 0.0
+        # Paper Mario Ground Shadow
+        shadow_surf = pygame.Surface((22, 7), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, 22, 7))
+        self.screen.blit(shadow_surf, (base_sx - 11, base_sy + 13))
 
-            if getattr(animal, "hit_timer", 0.0) > 0:
-                # 1. Hurt Squash & Shake
-                hp = animal.hit_timer / 0.25
-                scale_x = 1.0 + 0.30 * hp
-                scale_y = 1.0 - 0.25 * hp
-                draw_y -= 4.0 * hp
-                tilt_angle = math.sin(hp * 30.0) * 15.0
-            elif is_attacking:
-                # 2. Retaliation Beast Strike / Claw Attack
-                if ap < 0.40:
-                    prog = ap / 0.40
-                    scale_y = 1.0 + 0.35 * prog
-                    scale_x = 1.0 - 0.20 * prog
-                    tilt_angle = -22.0 * prog
-                else:
-                    prog = (ap - 0.40) / 0.60
-                    scale_y = 0.70 + 0.30 * prog
-                    scale_x = 1.30 - 0.30 * prog
-                    tilt_angle = 26.0 * (1.0 - prog)
-                    lunge_dir = -1.0 if facing_left else 1.0
-                    draw_x += lunge_dir * 8.0 * (1.0 - prog)
-            elif getattr(animal, "is_moving", False):
-                # 3. Hop & Squash Walk
-                timer = getattr(animal, "anim_timer", 0.0)
-                bounce_speed = 16.0 if animal.speed > 90 else 11.0
-                hop = math.sin(timer * bounce_speed)
-                if hop > 0:
-                    draw_y -= hop * 5.0
-                    scale_y = 1.0 + 0.12 * hop
-                    scale_x = 1.0 - 0.08 * hop
-                    tilt_angle = hop * 6.0
-                else:
-                    squash = abs(hop)
-                    scale_y = 1.0 - 0.14 * squash
-                    scale_x = 1.0 + 0.14 * squash
-            elif getattr(animal, "is_tamed", False) and not getattr(animal, "is_following", False) and getattr(animal, "idle_target", None) is None:
-                # 4. Settled Idle Hop - gentler and slower than the walk
-                # bounce, just enough to read as "parked here on purpose"
-                # rather than a frozen/stuck sprite once it's done walking
-                # to its spot beside the pen.
-                timer = getattr(animal, "anim_timer", 0.0)
-                hop = max(0.0, math.sin(timer * 3.0))
-                if hop > 0:
-                    draw_y -= hop * 3.0
-                    scale_y = 1.0 + 0.05 * hop
-                    scale_x = 1.0 - 0.03 * hop
+        draw_x = monster.x
+        draw_y = monster.y
+        tilt_angle = 0.0
+        scale_x = 1.0
+        scale_y = 1.0
+        facing_left = getattr(monster, "display_facing_left", False)
+        is_attacking = (getattr(monster, "attack_timer", 0.0) > 0)
+        ap = (1.0 - (monster.attack_timer / 0.35)) if is_attacking else 0.0
 
-            screen_x = int(draw_x - self.camera.x)
-            screen_y = int(draw_y - self.camera.y)
-            sprite = animal_sprite(animal.species)
-            if sprite is not None:
-                if facing_left:
-                    sprite = pygame.transform.flip(sprite, True, False)
-                    tilt_angle = -tilt_angle
-
-                tw = max(1, int(sprite.get_width() * scale_x))
-                th = max(1, int(sprite.get_height() * scale_y))
-                transformed = pygame.transform.smoothscale(sprite, (tw, th))
-                if abs(tilt_angle) > 0.5:
-                    transformed = pygame.transform.rotate(transformed, tilt_angle)
-                self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
-
-                # Beast claw swipe arc on attack
-                if is_attacking and 0.40 <= ap < 0.85:
-                    claw_surf = pygame.Surface((36, 36), pygame.SRCALPHA)
-                    arc_rect = pygame.Rect(4, 4, 28, 28)
-                    if not facing_left:
-                        pygame.draw.arc(claw_surf, (255, 90, 60, 230), arc_rect, 0.2, 2.0, 3)
-                    else:
-                        pygame.draw.arc(claw_surf, (255, 90, 60, 230), arc_rect, 1.2, 3.0, 3)
-                    self.screen.blit(claw_surf, (screen_x - 18, screen_y - 18))
+        if getattr(monster, "hit_timer", 0.0) > 0:
+            # 1. Monster Hurt Squash & Recoil
+            hp = monster.hit_timer / 0.25
+            scale_x = 1.0 + 0.35 * hp
+            scale_y = 1.0 - 0.30 * hp
+            draw_y -= 5.0 * hp
+            tilt_angle = math.sin(hp * 30.0) * 16.0
+        elif is_attacking:
+            # 2. Monster Bite / Claw Attack Strike
+            if ap < 0.35:
+                prog = ap / 0.35
+                scale_y = 1.0 + 0.30 * prog
+                scale_x = 1.0 - 0.20 * prog
+                tilt_angle = -20.0 * prog
             else:
-                color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
-                pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
+                prog = (ap - 0.35) / 0.65
+                scale_y = 0.65 + 0.35 * prog
+                scale_x = 1.35 - 0.35 * prog
+                tilt_angle = 25.0 * (1.0 - prog)
+                lunge_dir = -1.0 if facing_left else 1.0
+                draw_x += lunge_dir * 9.0 * (1.0 - prog)
+        elif getattr(monster, "is_moving", False):
+            # 3. Hop & Squash Walk
+            timer = getattr(monster, "anim_timer", 0.0)
+            hop = math.sin(timer * 13.0)
+            if hop > 0:
+                draw_y -= hop * 4.5
+                scale_y = 1.0 + 0.12 * hop
+                scale_x = 1.0 - 0.08 * hop
+                tilt_angle = hop * 6.0
+            else:
+                squash = abs(hop)
+                scale_y = 1.0 - 0.14 * squash
+                scale_x = 1.0 + 0.14 * squash
+        else:
+            draw_y += math.sin(time.monotonic() * 2.5 + monster.x) * 1.0
+
+        screen_x = int(draw_x - cam_x)
+        screen_y = int(draw_y - cam_y)
+        sprite = monster_sprite(monster.type)
+        if sprite is not None:
+            if facing_left:
+                sprite = pygame.transform.flip(sprite, True, False)
+                tilt_angle = -tilt_angle
+
+            tw = max(1, int(sprite.get_width() * scale_x))
+            th = max(1, int(sprite.get_height() * scale_y))
+            transformed = pygame.transform.smoothscale(sprite, (tw, th))
+            if abs(tilt_angle) > 0.5:
+                transformed = pygame.transform.rotate(transformed, tilt_angle)
+            self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
+
+            # Persistent Burn Status VFX
+            if getattr(monster, "burn_ticks_remaining", 0) > 0:
+                t_burn = time.monotonic() * 12.0
+                burn_surf = pygame.Surface((36, 36), pygame.SRCALPHA)
+                flame_pts = [
+                    (6, 26),
+                    (12, 10 + int(math.sin(t_burn) * 5)),
+                    (18, 16),
+                    (24, 8 + int(math.cos(t_burn) * 5)),
+                    (30, 26),
+                ]
+                pygame.draw.polygon(burn_surf, (255, 70, 20, 210), flame_pts)
+                pygame.draw.polygon(burn_surf, (255, 200, 40, 240), [(p[0], p[1] + 4) for p in flame_pts])
+                self.screen.blit(burn_surf, (screen_x - 18, screen_y - 20))
+
+            # Persistent Freeze Status VFX
+            if getattr(monster, "is_frozen", False):
+                ice_box = pygame.Surface((36, 40), pygame.SRCALPHA)
+                pygame.draw.rect(ice_box, (100, 215, 255, 115), pygame.Rect(2, 2, 32, 36), border_radius=4)
+                pygame.draw.rect(ice_box, (220, 250, 255, 230), pygame.Rect(2, 2, 32, 36), 2, border_radius=4)
+                pygame.draw.line(ice_box, (255, 255, 255, 220), (6, 6), (30, 30), 2)
+                self.screen.blit(ice_box, (screen_x - 18, screen_y - 20))
+
+            # Red/Purple Claw Slash Smear Arc during monster attack
+            if is_attacking and 0.35 <= ap < 0.85:
+                claw_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
+                arc_rect = pygame.Rect(4, 4, 30, 30)
+                if not facing_left:
+                    pygame.draw.arc(claw_surf, (255, 60, 60, 240), arc_rect, 0.2, 2.2, 4)
+                    pygame.draw.arc(claw_surf, (220, 40, 160, 200), arc_rect, 0.4, 1.8, 3)
+                else:
+                    pygame.draw.arc(claw_surf, (255, 60, 60, 240), arc_rect, 1.0, 3.0, 4)
+                    pygame.draw.arc(claw_surf, (220, 40, 160, 200), arc_rect, 1.3, 2.7, 3)
+                self.screen.blit(claw_surf, (screen_x - 19, screen_y - 19))
+        else:
+            pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
 
     def render_monsters(self) -> None:
+        cam_x, cam_y = self.camera.x, self.camera.y
         for monster in self.monsters:
-            base_sx = int(monster.x - self.camera.x)
-            base_sy = int(monster.y - self.camera.y)
+            self._render_single_monster(monster, cam_x, cam_y)
 
-            # Paper Mario Ground Shadow
-            shadow_surf = pygame.Surface((22, 7), pygame.SRCALPHA)
-            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 85), pygame.Rect(0, 0, 22, 7))
-            self.screen.blit(shadow_surf, (base_sx - 11, base_sy + 13))
+    def _render_single_resource(self, col: int, row: int, resource: str, cam_x: float, cam_y: float) -> None:
+        screen_x = int(col * TILE_SIZE - cam_x)
+        screen_y = int(row * TILE_SIZE - cam_y)
+        sprite = map_resource_sprite(resource)
+        if sprite is not None:
+            # 2.5D Soft Ground Shadow for resource nodes
+            sw = max(14, int(sprite.get_width() * 0.65))
+            sh = max(5, int(TILE_SIZE * 0.28))
+            shadow_surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow_surf, (0, 0, 0, 80), (0, 0, sw, sh))
+            self.screen.blit(shadow_surf, (screen_x + TILE_SIZE // 2 - sw // 2, screen_y + TILE_SIZE - sh // 2 - 2))
 
-            draw_x = monster.x
-            draw_y = monster.y
-            tilt_angle = 0.0
-            scale_x = 1.0
-            scale_y = 1.0
-            facing_left = getattr(monster, "display_facing_left", False)
-            is_attacking = (getattr(monster, "attack_timer", 0.0) > 0)
-            ap = (1.0 - (monster.attack_timer / 0.35)) if is_attacking else 0.0
+            # Anchor at midbottom of the tile so tree / rock stands tall in 2.5D
+            r_rect = sprite.get_rect(midbottom=(screen_x + TILE_SIZE // 2, screen_y + TILE_SIZE - 2))
+            self.screen.blit(sprite, r_rect)
+        else:
+            marker_rect = pygame.Rect(screen_x + 8, screen_y + 8, TILE_SIZE - 16, TILE_SIZE - 16)
+            pygame.draw.rect(self.screen, (240, 210, 80), marker_rect, border_radius=6)
+            pygame.draw.rect(self.screen, (100, 80, 20), marker_rect, 1, border_radius=6)
 
-            if getattr(monster, "hit_timer", 0.0) > 0:
-                # 1. Monster Hurt Squash & Recoil
-                hp = monster.hit_timer / 0.25
-                scale_x = 1.0 + 0.35 * hp
-                scale_y = 1.0 - 0.30 * hp
-                draw_y -= 5.0 * hp
-                tilt_angle = math.sin(hp * 30.0) * 16.0
-            elif is_attacking:
-                # 2. Monster Bite / Claw Attack Strike
-                if ap < 0.35:
-                    prog = ap / 0.35
-                    scale_y = 1.0 + 0.30 * prog
-                    scale_x = 1.0 - 0.20 * prog
-                    tilt_angle = -20.0 * prog
-                else:
-                    prog = (ap - 0.35) / 0.65
-                    scale_y = 0.65 + 0.35 * prog
-                    scale_x = 1.35 - 0.35 * prog
-                    tilt_angle = 25.0 * (1.0 - prog)
-                    lunge_dir = -1.0 if facing_left else 1.0
-                    draw_x += lunge_dir * 9.0 * (1.0 - prog)
-            elif getattr(monster, "is_moving", False):
-                # 3. Hop & Squash Walk
-                timer = getattr(monster, "anim_timer", 0.0)
-                hop = math.sin(timer * 13.0)
-                if hop > 0:
-                    draw_y -= hop * 4.5
-                    scale_y = 1.0 + 0.12 * hop
-                    scale_x = 1.0 - 0.08 * hop
-                    tilt_angle = hop * 6.0
-                else:
-                    squash = abs(hop)
-                    scale_y = 1.0 - 0.14 * squash
-                    scale_x = 1.0 + 0.14 * squash
-            else:
-                draw_y += math.sin(time.monotonic() * 2.5 + monster.x) * 1.0
+    def render_world_entities(self) -> None:
+        """Unified 2.5D Y-sorting render pass: Standing Buildings, Resource Nodes,
+        Animals, NPCs, and Monsters are sorted together by their ground footprint Y
+        and rendered from north to south (back-to-front).
 
-            screen_x = int(draw_x - self.camera.x)
-            screen_y = int(draw_y - self.camera.y)
-            sprite = monster_sprite(monster.type)
-            if sprite is not None:
-                if facing_left:
-                    sprite = pygame.transform.flip(sprite, True, False)
-                    tilt_angle = -tilt_angle
+        - If a colonist walks behind a tower/house/tree, they are naturally occluded.
+        - If a colonist walks in front of a tower/house/tree, they naturally overlap its base.
+        """
+        cam_x, cam_y = self.camera.x, self.camera.y
+        grid = self.world.grid
+        draw_list = []
 
-                tw = max(1, int(sprite.get_width() * scale_x))
-                th = max(1, int(sprite.get_height() * scale_y))
-                transformed = pygame.transform.smoothscale(sprite, (tw, th))
-                if abs(tilt_angle) > 0.5:
-                    transformed = pygame.transform.rotate(transformed, tilt_angle)
-                self.screen.blit(transformed, transformed.get_rect(center=(screen_x, screen_y)))
+        start_col = max(0, int(cam_x // TILE_SIZE) - 2)
+        end_col = min(grid.width, int((cam_x + WINDOW_WIDTH) // TILE_SIZE) + 3)
+        start_row = max(0, int(cam_y // TILE_SIZE) - 3)
+        end_row = min(grid.height, int((cam_y + WINDOW_HEIGHT) // TILE_SIZE) + 3)
 
-                # Persistent Burn Status VFX (flame tongues & embers)
-                if getattr(monster, "burn_ticks_remaining", 0) > 0:
-                    t_burn = time.monotonic() * 12.0
-                    burn_surf = pygame.Surface((36, 36), pygame.SRCALPHA)
-                    flame_pts = [
-                        (6, 26),
-                        (12, 10 + int(math.sin(t_burn) * 5)),
-                        (18, 16),
-                        (24, 8 + int(math.cos(t_burn) * 5)),
-                        (30, 26),
-                    ]
-                    pygame.draw.polygon(burn_surf, (255, 70, 20, 210), flame_pts)
-                    pygame.draw.polygon(burn_surf, (255, 200, 40, 240), [(p[0], p[1] + 4) for p in flame_pts])
-                    self.screen.blit(burn_surf, (screen_x - 18, screen_y - 20))
+        # 1. Standing Buildings (House, Tower, Wall, AnimalPen)
+        for building in self.world.buildings:
+            if building.type == "Farmland":
+                continue  # Farmlands are flat ground tiles drawn during render_grid
+            if start_col <= building.x <= end_col and start_row <= building.y <= end_row:
+                sort_y = (building.y + 1) * TILE_SIZE
+                draw_list.append((sort_y, lambda b=building: draw_single_building(self.screen, b, self.camera)))
 
-                # Persistent Freeze Status VFX (translucent origami ice block & frost crystals)
-                if getattr(monster, "is_frozen", False):
-                    ice_box = pygame.Surface((36, 40), pygame.SRCALPHA)
-                    pygame.draw.rect(ice_box, (100, 215, 255, 115), pygame.Rect(2, 2, 32, 36), border_radius=4)
-                    pygame.draw.rect(ice_box, (220, 250, 255, 230), pygame.Rect(2, 2, 32, 36), 2, border_radius=4)
-                    # Diagonal specular gleam line
-                    pygame.draw.line(ice_box, (255, 255, 255, 220), (6, 6), (30, 30), 2)
-                    self.screen.blit(ice_box, (screen_x - 18, screen_y - 20))
+        # 2. Resource Nodes on the map (Trees, Rocks, Crops, Berries, Mushrooms, etc.)
+        for row in range(start_row, end_row):
+            for col in range(start_col, end_col):
+                tile = grid.get(col, row)
+                if tile.revealed and tile.resource and getattr(tile, "terrain", "plain") != "mountain":
+                    sort_y = (row + 1) * TILE_SIZE - 2
+                    draw_list.append((sort_y, lambda c=col, r=row, res=tile.resource: self._render_single_resource(c, r, res, cam_x, cam_y)))
 
-                # Red/Purple Claw Slash Smear Arc during monster attack
-                if is_attacking and 0.35 <= ap < 0.85:
-                    claw_surf = pygame.Surface((38, 38), pygame.SRCALPHA)
-                    arc_rect = pygame.Rect(4, 4, 30, 30)
-                    if not facing_left:
-                        pygame.draw.arc(claw_surf, (255, 60, 60, 240), arc_rect, 0.2, 2.2, 4)
-                        pygame.draw.arc(claw_surf, (220, 40, 160, 200), arc_rect, 0.4, 1.8, 3)
-                    else:
-                        pygame.draw.arc(claw_surf, (255, 60, 60, 240), arc_rect, 1.0, 3.0, 4)
-                        pygame.draw.arc(claw_surf, (220, 40, 160, 200), arc_rect, 1.3, 2.7, 3)
-                    self.screen.blit(claw_surf, (screen_x - 19, screen_y - 19))
-            else:
-                pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
+        # 3. Animals
+        for animal in self.world.animals:
+            tx, ty = tile_at(animal.x, animal.y)
+            if grid.in_bounds(tx, ty) and grid.get(tx, ty).revealed:
+                sort_y = animal.y + 10
+                draw_list.append((sort_y, lambda a=animal: self._render_single_animal(a, cam_x, cam_y)))
 
+        # 4. NPCs
+        for npc in self.world.npcs:
+            if not getattr(npc, "is_resting", False):
+                sort_y = npc.y + 12
+                draw_list.append((sort_y, lambda n=npc: self._render_single_npc(n, cam_x, cam_y)))
 
+        # 5. Monsters
+        for monster in self.monsters:
+            sort_y = monster.y + 10
+            draw_list.append((sort_y, lambda m=monster: self._render_single_monster(m, cam_x, cam_y)))
 
+        # Sort all world entities by their ground base Y (north-to-south)
+        draw_list.sort(key=lambda item: item[0])
+        for _, draw_fn in draw_list:
+            draw_fn()
 
     def render_nests(self) -> None:
         for nest in self.nest_manager.nests:
@@ -1856,25 +1946,6 @@ class Game:
                     else:
                         self.screen.blit(grass(), rect)
 
-
-
-
-
-
-
-
-                # Material indicator for resource blocks (never on mountains)
-                if tile.revealed and tile.resource and getattr(tile, "terrain", "plain") != "mountain":
-                    sprite = map_resource_sprite(tile.resource)
-                    if sprite is not None:
-                        center = (screen_x + TILE_SIZE // 2, screen_y + TILE_SIZE // 2)
-                        self.screen.blit(sprite, sprite.get_rect(center=center))
-
-                    else:
-                        marker_rect = pygame.Rect(screen_x + 8, screen_y + 8, TILE_SIZE - 16, TILE_SIZE - 16)
-                        pygame.draw.rect(self.screen, (240, 210, 80), marker_rect, border_radius=6)
-                        pygame.draw.rect(self.screen, (100, 80, 20), marker_rect, 1, border_radius=6)
-
                 # Queued-task marker: waiting for an NPC vs. already claimed
                 # by one, so a click's effect stays visible instead of just
                 # vanishing into the task queue with no on-screen trace.
@@ -1882,6 +1953,14 @@ class Game:
                 if task is not None:
                     color = COLOR_QUEUED_ASSIGNED if task.assigned_npc is not None else COLOR_QUEUED_WAITING
                     pygame.draw.rect(self.screen, color, rect, 3)
+
+        # Render flat ground buildings (Farmlands)
+        for building in self.world.buildings:
+            if building.type == "Farmland":
+                bx = building.x * TILE_SIZE - cam_x
+                by = building.y * TILE_SIZE - cam_y
+                if -TILE_SIZE <= bx <= WINDOW_WIDTH + TILE_SIZE and -TILE_SIZE <= by <= WINDOW_HEIGHT + TILE_SIZE:
+                    draw_single_building(self.screen, building, self.camera)
 
         if grid.in_bounds(hover_gx, hover_gy):
             self._render_expand_preview(hover_gx, hover_gy)

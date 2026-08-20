@@ -67,9 +67,15 @@ def _load_image(path: Path | str) -> pygame.Surface:
     img = pygame.image.load(str(path))
     if pygame.display.get_surface() is not None:
         try:
-            return img.convert_alpha()
+            img = img.convert_alpha()
         except pygame.error:
             pass
+    try:
+        bbox = img.get_bounding_rect()
+        if 0 < bbox.width < img.get_width() or 0 < bbox.height < img.get_height():
+            return img.subsurface(bbox)
+    except Exception:
+        pass
     return img
 
 
@@ -94,12 +100,33 @@ def resource_sprite(resource: str) -> pygame.Surface | None:
     return _load_scaled(path, TILE_SIZE - 6) if path else None
 
 
+_MAP_RESOURCE_HEIGHTS = {
+    "wood": int(TILE_SIZE * 1.65),
+    "raw_stone": int(TILE_SIZE * 0.65),
+    "bricks": int(TILE_SIZE * 0.70),
+    "marble": int(TILE_SIZE * 1.10),
+    "crop": int(TILE_SIZE * 0.85),
+    "berries": int(TILE_SIZE * 0.65),
+    "mushrooms": int(TILE_SIZE * 0.65),
+    "meat": int(TILE_SIZE * 0.75),
+}
+
+
 def map_resource_sprite(resource: str) -> pygame.Surface | None:
     """Like resource_sprite, but specifically for the tile drawn on the map
     itself - falls back to resource_sprite's own mapping for anything with
     no map-specific override."""
     path = _MAP_RESOURCE_OVERRIDES.get(resource, _RESOURCE_PATHS.get(resource))
-    return _load_scaled(path, TILE_SIZE - 6) if path else None
+    height = _MAP_RESOURCE_HEIGHTS.get(resource, int(TILE_SIZE * 0.75))
+    return _load_scaled(path, height) if path else None
+
+
+_BUILDING_HEIGHTS = {
+    "House": int(TILE_SIZE * 1.95),
+    "Tower": int(TILE_SIZE * 2.45),
+    "Wall": int(TILE_SIZE * 1.25),
+    "AnimalPen": int(TILE_SIZE * 0.90),
+}
 
 
 def building_sprite(building) -> pygame.Surface | None:
@@ -109,7 +136,8 @@ def building_sprite(building) -> pygame.Surface | None:
         path = _FARMLAND_READY_PATH if building.ready else _FARMLAND_GROWING_PATH
         return _load_scaled(path, TILE_SIZE)
     path = _BUILDING_PATHS.get(building.type)
-    return _load_scaled(path, TILE_SIZE) if path else None
+    height = _BUILDING_HEIGHTS.get(building.type, TILE_SIZE)
+    return _load_scaled(path, height) if path else None
 
 
 def building_icon(building_type: str, height: int) -> pygame.Surface | None:
@@ -130,9 +158,20 @@ def nest_sprite() -> pygame.Surface:
     return _load_scaled(_NEST_PATH, TILE_SIZE)
 
 
+_ANIMAL_HEIGHTS = {
+    "FlyingSquirrel": int(TILE_SIZE * 0.60),
+    "Fish": int(TILE_SIZE * 0.55),
+    "WildBoar": int(TILE_SIZE * 0.70),
+    "Wolf": int(TILE_SIZE * 0.72),
+    "Horse": int(TILE_SIZE * 0.85),
+    "Bear": int(TILE_SIZE * 0.88),
+}
+
+
 def animal_sprite(species: str) -> pygame.Surface | None:
     path = _ANIMAL_PATHS.get(species)
-    return _load_scaled(path, int(TILE_SIZE * 1.2)) if path else None
+    height = _ANIMAL_HEIGHTS.get(species, int(TILE_SIZE * 0.75))
+    return _load_scaled(path, height) if path else None
 
 
 _TOOL_CACHE: dict[str, pygame.Surface] = {}
