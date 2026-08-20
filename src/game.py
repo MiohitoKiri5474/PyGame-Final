@@ -1125,19 +1125,21 @@ class Game:
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         if self.state == TITLE:
-            self.title_screen.render(self.screen, self.font, self.save_exists)
+            self.title_screen.render(self.screen, self.font, self.save_exists, big_font=self.big_font)
             pygame.display.flip()
             return
         if self.state == CONFIRM_OVERWRITE:
-            self.confirm_dialog.render(self.screen, self.font)
+            self.confirm_dialog.render(self.screen, self.font, big_font=self.big_font)
             pygame.display.flip()
             return
         if self.state == PAUSE_MENU:
-            self.pause_menu.render(self.screen, self.font)
+            self.pause_menu.render(self.screen, self.font, big_font=self.big_font)
             pygame.display.flip()
             return
         if self.state == SETTINGS:
-            self.settings_screen.render(self.screen, self.font, self.fullscreen, self.sfx_muted)
+            self.settings_screen.render(
+                self.screen, self.font, self.fullscreen, self.sfx_muted, big_font=self.big_font
+            )
             pygame.display.flip()
             return
         self.render_grid()

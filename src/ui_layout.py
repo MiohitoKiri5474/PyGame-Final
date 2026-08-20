@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pygame
 
+import text_wrap
 from constants import COLOR_BG, COLOR_TEXT, WINDOW_HEIGHT, WINDOW_WIDTH
 from sprites import menu_button_sprite
 
@@ -33,6 +34,7 @@ BUTTON_BORDER = (140, 150, 180)
 _SCREEN_TITLE_Y = WINDOW_HEIGHT // 3
 _FRAME_MARGIN = 24
 _TITLE_CLEARANCE = 30  # gap between the screen title text and the first button row
+_TITLE_MAX_WIDTH = WINDOW_WIDTH - 160  # wrap width for render_screen_title, margin each side
 
 # Tallest screen at each level, in rows - keep these equal to the actual
 # max (TitleScreen uses 3, PauseMenu uses 4; SettingsScreen uses 3, only
@@ -88,9 +90,23 @@ def render_button(
 
 
 def render_screen_title(surface: pygame.Surface, font: pygame.font.Font, text: str) -> None:
-    """The heading text every menu-style screen shows above its buttons."""
-    title_surface = font.render(text, True, COLOR_TEXT)
-    surface.blit(title_surface, title_surface.get_rect(center=(WINDOW_WIDTH // 2, _SCREEN_TITLE_Y)))
+    """The heading text every menu-style screen shows above its buttons -
+    bold, and wrapped across multiple centered lines if it doesn't fit on
+    one at `font`'s size. Pass a larger font (e.g. Game.big_font) than the
+    button labels use, for a heading that actually reads as one - bold is
+    toggled on `font` for the duration of this call and restored after,
+    since Font objects are shared/mutable and other code may render with
+    the same instance elsewhere."""
+    font.set_bold(True)
+    try:
+        lines = text_wrap.wrap(text, font, _TITLE_MAX_WIDTH)
+        line_h = font.get_linesize()
+        top = _SCREEN_TITLE_Y - (len(lines) * line_h) // 2
+        for i, line in enumerate(lines):
+            line_surface = font.render(line, True, COLOR_TEXT)
+            surface.blit(line_surface, line_surface.get_rect(centerx=WINDOW_WIDTH // 2, top=top + i * line_h))
+    finally:
+        font.set_bold(False)
 
 
 def render_screen_frame(surface: pygame.Surface) -> None:

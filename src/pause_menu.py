@@ -40,10 +40,12 @@ class PauseMenu:
             ],
         )
 
-    def render(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+    def render(
+        self, surface: pygame.Surface, font: pygame.font.Font, big_font: pygame.font.Font | None = None
+    ) -> None:
         background = other_background_sprite(WINDOW_WIDTH, WINDOW_HEIGHT)
         render_screen_background(surface, background)
-        render_screen_title(surface, font, _TITLE_TEXT)
+        render_screen_title(surface, big_font or font, _TITLE_TEXT)
         render_button(surface, font, self.resume_rect, "Resume")
         save_label = "Saved!" if pygame.time.get_ticks() < self._saved_flash_until_ms else "Save Game"
         render_button(surface, font, self.save_rect, save_label)
