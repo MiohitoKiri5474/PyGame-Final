@@ -150,3 +150,54 @@ def test_nest_manager_new_nest_follows_revealed_frontier_when_grid_given():
     new_nest = manager.nests[0]
     assert not grid.get(new_nest.x, new_nest.y).revealed
     assert new_nest.x not in (0, GRID_WIDTH - 1) and new_nest.y not in (0, GRID_HEIGHT - 1)
+
+
+class _FakeTile:
+    def __init__(self, revealed: bool, resource: str | None = None):
+        self.revealed = revealed
+        self.resource = resource
+
+
+class _FakeGrid:
+    """Minimal duck-typed grid for pinning exact revealed/resource layouts,
+    rather than relying on a real Grid's random terrain/resource rolls."""
+
+    def __init__(self, width: int, height: int, revealed: set[tuple[int, int]], resources: dict[tuple[int, int], str]):
+        self.width = width
+        self.height = height
+        self._tiles = {
+            (x, y): _FakeTile(revealed=(x, y) in revealed, resource=resources.get((x, y)))
+            for x in range(width)
+            for y in range(height)
+        }
+
+    def in_bounds(self, x: int, y: int) -> bool:
+        return 0 <= x < self.width and 0 <= y < self.height
+
+    def get(self, x: int, y: int) -> _FakeTile:
+        return self._tiles[(x, y)]
+
+
+def test_create_initial_nests_avoids_tiles_with_a_resource():
+    # Every frontier tile of a 3x3 revealed square except (1, 4) below it
+    # carries a crop - the nest must land on the one resource-free tile.
+    revealed = {(x, y) for x in range(1, 4) for y in range(1, 4)}
+    frontier = {(0, 1), (0, 2), (0, 3), (4, 1), (4, 2), (4, 3), (1, 0), (2, 0), (3, 0), (1, 4), (2, 4), (3, 4)}
+    resources = {t: "crop" for t in frontier if t != (1, 4)}
+    grid = _FakeGrid(5, 5, revealed=revealed, resources=resources)
+
+    nests = create_initial_nests(5, 5, 1, random.Random(1), grid=grid)
+    assert nests[0].x == 1 and nests[0].y == 4
+
+
+def test_nest_manager_new_nest_avoids_tiles_with_a_resource():
+    revealed = {(x, y) for x in range(1, 4) for y in range(1, 4)}
+    frontier = {(0, 1), (0, 2), (0, 3), (4, 1), (4, 2), (4, 3), (1, 0), (2, 0), (3, 0), (1, 4), (2, 4), (3, 4)}
+    resources = {t: "wood" for t in frontier if t != (2, 4)}
+    grid = _FakeGrid(5, 5, revealed=revealed, resources=resources)
+
+    manager = NestManager(5, 5, nests=[], rng=random.Random(1), grid=grid)
+    manager.update(dt=241.0, round_number=1, phase=DAY)
+
+    assert len(manager.nests) == 1
+    assert (manager.nests[0].x, manager.nests[0].y) == (2, 4)

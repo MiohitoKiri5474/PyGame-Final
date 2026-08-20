@@ -69,13 +69,23 @@ def _frontier_tiles(grid) -> list[Tile]:
     return frontier
 
 
+def _without_resources(tiles: list[Tile], grid) -> list[Tile]:
+    """Drop any tile carrying a resource (crop, wood, ...) - a nest sitting
+    on top of one would block gathering it and look like it belongs there.
+    No-op when there's no grid to check against."""
+    if grid is None:
+        return tiles
+    return [t for t in tiles if grid.get(*t).resource is None]
+
+
 def create_initial_nests(
     width: int, height: int, count: int, rng: random.Random, grid=None
 ) -> list[Nest]:
     """Place nests just outside explored territory (or the map edge if no
     grid is given, or nothing's revealed yet) - away from the center where
     NPCs start."""
-    candidates = (_frontier_tiles(grid) if grid is not None else None) or _edge_tiles(width, height)
+    candidates = _without_resources(_frontier_tiles(grid), grid) if grid is not None else None
+    candidates = candidates or _without_resources(_edge_tiles(width, height), grid)
     chosen = rng.sample(candidates, min(count, len(candidates)))
     return [Nest(x, y) for x, y in chosen]
 
@@ -129,9 +139,10 @@ class NestManager:
         if self.new_nest_timer >= NEW_NEST_INTERVAL and len(self.nests) < NEST_MAX_COUNT:
             self.new_nest_timer = 0.0
             occupied = {(nest.x, nest.y) for nest in self.nests}
-            candidates = (_frontier_tiles(self.grid) if self.grid is not None else None) or _edge_tiles(
-                self.width, self.height
+            candidates = (
+                _without_resources(_frontier_tiles(self.grid), self.grid) if self.grid is not None else None
             )
+            candidates = candidates or _without_resources(_edge_tiles(self.width, self.height), self.grid)
             candidates = [t for t in candidates if t not in occupied]
             if candidates:
                 self.nests.append(Nest(*self.rng.choice(candidates)))
