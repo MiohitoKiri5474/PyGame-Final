@@ -22,9 +22,11 @@ from constants import (
     ANIMAL_PEN_BLOCK,
     ANIMAL_PEN_COST,
     ANIMAL_PEN_WORK_SECONDS,
+    ANIMAL_TAMED_SPEED,
     BASE_TAME_SUCCESS_RATE,
     FARMER_TAME_SUCCESS_MULTIPLIER,
     HORSE_SPEED_BONUS,
+    MOUNTED_SPEED_BONUS,
     PEN_PRODUCTION_INTERVAL,
     ROLE_FARMER,
     TAME_WORK_SECONDS,
@@ -101,6 +103,9 @@ def on_complete_tame(world: "World", task: "Task", rng: random.Random | None = N
     if rng.random() < success_rate:
         animal.is_tamed = True
         animal.tamer_npc_id = getattr(npc, "id", None)
+        # Wild speed is deliberately slow so Hunt/Tame can catch it -
+        # restore its full (faster) pace now that it's caught.
+        animal.speed = ANIMAL_TAMED_SPEED.get(animal.species, animal.speed)
 
         pen = _find_available_pen(world)
         if pen is not None:
@@ -204,10 +209,16 @@ def _tick_pen_production(world: "World", dt: float) -> None:
                     has_penned_horse = True
                     break
 
+    mounted_rider_ids = {
+        a.tamer_npc_id
+        for a in getattr(world, "animals", [])
+        if getattr(a, "is_mounted", False) and a.tamer_npc_id is not None
+    }
     for npc in getattr(world, "npcs", []):
-        if not hasattr(npc, "base_speed"):
-            npc.base_speed = npc.speed
-        npc.speed = npc.base_speed + (HORSE_SPEED_BONUS if has_penned_horse else 0.0)
+        bonus = HORSE_SPEED_BONUS if has_penned_horse else 0.0
+        if npc.id in mounted_rider_ids:
+            bonus += MOUNTED_SPEED_BONUS
+        npc.speed = npc.base_speed + bonus
 
 
 register_tick(_tick_pen_production)

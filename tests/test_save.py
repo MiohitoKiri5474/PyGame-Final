@@ -1,11 +1,14 @@
+from animal import Animal
 from build_task import Building
-from constants import MONSTER_ZOMBIE, ROLE_KNIGHT, SKILL_DEFENSE_ABILITY
+from constants import HORSE_SPEED_BONUS, MONSTER_ZOMBIE, ROLE_KNIGHT, SKILL_DEFENSE_ABILITY
+from coords import tile_center
 from day_night import DayNightCycle, NIGHT
 from game_over import GameOverState
 from monster import Monster
 from nest import Nest, NestManager
 from npc import NPC
 from save import dump_state, load_checkpoint, save_checkpoint
+from tame_task import _tick_pen_production
 from task import Task
 from world import World
 
@@ -189,3 +192,66 @@ def test_load_dangling_assigned_npc_id_leaves_task_reclaimable(tmp_path):
 
     reloaded_ghost_task = next(t for t in loaded_world.tasks.tasks if t.target == (1, 1))
     assert reloaded_ghost_task.assigned_npc is None
+
+
+def test_base_speed_does_not_compound_across_a_save_load_cycle(tmp_path):
+    # Regression test: base_speed used to be re-derived from the
+    # already-buffed npc.speed on first post-load tick (a lazy hasattr
+    # capture), so every save/load cycle while a horse stayed penned baked
+    # in another HORSE_SPEED_BONUS. base_speed is now an explicit field set
+    # once in NPC.__init__ and persisted directly, so it must survive
+    # round-trips unchanged and the bonus must never stack.
+    world = World(npc_count=0, animal_count=0)
+    pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
+    world.buildings.append(pen)
+
+    horse = Animal(*tile_center(5, 5), species="Horse", speed=140.0, dangerous=False, health=40)
+    horse.is_tamed = True
+    horse.pen_tile = (5, 5)
+    pen.assigned_animal_id = horse.id
+    world.animals.append(horse)
+
+    npc = NPC(0.0, 0.0, speed=120.0)
+    world.npcs = [npc]
+
+    _tick_pen_production(world, 0.1)
+    assert npc.speed == 120.0 + HORSE_SPEED_BONUS
+    assert npc.base_speed == 120.0
+
+    cycle = DayNightCycle()
+    nest_manager = NestManager(world.grid.width, world.grid.height, nests=[])
+    game_over_state = GameOverState()
+    path = tmp_path / "save.json"
+    save_checkpoint(world, cycle, nest_manager, [], game_over_state, path=path)
+    loaded_world, *_ = load_checkpoint(path)
+
+    reloaded_npc = loaded_world.npcs[0]
+    assert reloaded_npc.base_speed == 120.0
+
+    _tick_pen_production(loaded_world, 0.1)
+    assert reloaded_npc.speed == 120.0 + HORSE_SPEED_BONUS  # bonus applied once, not stacked
+
+
+def test_mount_state_round_trips_through_save_and_load(tmp_path):
+    world = World(npc_count=0, animal_count=0)
+    npc = NPC(64.0, 64.0)
+    world.npcs = [npc]
+
+    horse = Animal(64.0, 64.0, species="Horse", speed=140.0, dangerous=False, health=40)
+    horse.is_tamed = True
+    horse.is_following = True
+    horse.is_mounted = True
+    horse.tamer_npc_id = npc.id
+    world.animals.append(horse)
+
+    cycle = DayNightCycle()
+    nest_manager = NestManager(world.grid.width, world.grid.height, nests=[])
+    game_over_state = GameOverState()
+    path = tmp_path / "save.json"
+    save_checkpoint(world, cycle, nest_manager, [], game_over_state, path=path)
+    loaded_world, *_ = load_checkpoint(path)
+
+    reloaded_horse = loaded_world.animals[0]
+    assert reloaded_horse.is_mounted is True
+    assert reloaded_horse.is_following is True
+    assert reloaded_horse.tamer_npc_id == npc.id

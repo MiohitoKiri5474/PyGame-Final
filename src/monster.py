@@ -1,7 +1,8 @@
 import math
 
-from blocking import is_wall_blocked
+from blocking import is_mountain_blocked, is_wall_blocked
 from constants import (
+
     FIRE_BURN_TICK_INTERVAL,
     MONSTER_ATTACK,
     MONSTER_DEFENSE,
@@ -46,6 +47,10 @@ class Monster:
         self.hit_timer = 0.0
         self.attack_cooldown = 0.0
         self.combat_target: tuple[float, float] | None = None
+        # Gates how often combat.resolve_combat lets this monster land a
+        # hit - separate from attack_timer above, which is purely the
+        # swing animation's visual duration and never gated combat before.
+        self.attack_cooldown = 0.0
 
     @property
     def has_arrived(self) -> bool:
@@ -152,14 +157,17 @@ def nearest_claimed_tile(grid, from_tile: tuple[int, int]) -> tuple[int, int] | 
 def _path_toward(start: tuple[int, int], target: tuple[int, int], grid, buildings) -> list[tuple[int, int]] | None:
     """Monsters walk in from outside territory, so unlike NPCs they treat
     every in-bounds tile as walkable (fog/unclaimed included) — except Wall
-    tiles, which block like they do for NPCs (ticket 07)."""
+    tiles and Mountain terrain (impassable)."""
     return find_path(
-        lambda x, y: grid.in_bounds(x, y) and not is_wall_blocked(buildings, x, y),
+        lambda x, y: grid.in_bounds(x, y)
+        and not is_wall_blocked(buildings, x, y)
+        and not is_mountain_blocked(grid, x, y),
         grid.width,
         grid.height,
         start,
         target,
     )
+
 
 
 def spawn_monster(tile: tuple[int, int], grid, buildings=(), monster_type: str | None = None) -> Monster:

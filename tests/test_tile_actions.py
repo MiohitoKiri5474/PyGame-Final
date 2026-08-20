@@ -28,6 +28,7 @@ def test_frontier_tile_offers_only_expand():
     world.animals = []
     cx, cy = world.grid.width // 2, world.grid.height // 2
     frontier = (cx + START_CLAIM_RADIUS + 1, cy)  # unclaimed, adjacent to the claimed blob
+    world.grid.get(*frontier).terrain = "plain"
     world.grid.get(*frontier).resource = None
 
     assert applicable_tasks(world, frontier) == ["Expand"]

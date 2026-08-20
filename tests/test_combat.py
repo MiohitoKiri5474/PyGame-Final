@@ -9,6 +9,7 @@ class _Building:
         self.x = x
         self.y = y
         self.attack = attack
+        self.attack_cooldown = 0.0  # ready to fire immediately, same as a fresh real Building
 
 
 class _Entity:
@@ -24,6 +25,7 @@ class _Entity:
         self.combat_range = combat_range  # only read when used as the NPC side of a pair
         self.life_steal = life_steal  # only read when used as the monster side of a pair
         self.max_health = max_health if max_health is not None else health
+        self.attack_cooldown = 0.0  # ready to fire immediately, same as a fresh real NPC/Monster
 
     @property
     def is_dead(self) -> bool:
@@ -153,7 +155,7 @@ def test_tower_attacks_only_single_closest_target():
     m1 = _Entity(mx1, my1, health=40, attack=10, defense=2)
     m2 = _Entity(mx2, my2, health=40, attack=10, defense=2)
 
-    resolve_combat([], [m1, m2], [tower])
+    resolve_combat([], [m1, m2], [tower], dt=0.0)
     # Closer monster took damage, further monster was untouched
     assert m1.health == 40 - (15 - 2)
     assert m2.health == 40
@@ -169,46 +171,60 @@ def test_mage_kites_back_when_monster_is_adjacent():
     # Monster immediately adjacent (30px away)
     monster = _Entity(50.0, 80.0, health=75, attack=14, defense=2)
 
-    resolve_combat([mage], [monster])
+    resolve_combat([mage], [monster], dt=0.0)
     # Mage nudged backward away from monster
     assert mage.y < 50.0
 
 
-def test_npc_and_monster_attack_cooldown_delays_consecutive_hits():
-    class _Fighter(_Entity):
-        def __init__(self, x, y, role=None, mtype=None):
-            super().__init__(x, y, health=100, attack=10, defense=0)
-            self.role = role
-            self.type = mtype
-            self.attack_cooldown = 0.0
+def test_attacker_cannot_land_a_second_hit_before_its_cooldown_elapses():
+    from constants import COMBAT_ATTACK_INTERVAL
 
-    knight = _Fighter(0, 0, role="Knight")
-    zombie = _Fighter(10, 0, mtype="Zombie")
+    npc = _Entity(0, 0, health=100, attack=12, defense=4)
+    monster = _Entity(10, 0, health=40, attack=10, defense=2)
+    resolve_combat([npc], [monster], dt=0.0)
+    after_first_hit = monster.health
+    assert after_first_hit == 40 - (12 - 2)
 
-    # First hit: both are ready, trade 10 damage each
-    resolve_combat([knight], [zombie])
-    assert knight.health == 90
-    assert zombie.health == 90
-    assert knight.attack_cooldown == 0.8
-    assert zombie.attack_cooldown == 1.3
-
-    # Immediate second resolve without cooldown expiring: no new damage dealt
-    resolve_combat([knight], [zombie])
-    assert knight.health == 90
-    assert zombie.health == 90
+    resolve_combat([npc], [monster], dt=COMBAT_ATTACK_INTERVAL - 0.1)  # not quite enough time
+    assert monster.health == after_first_hit  # no second hit yet
 
 
-def test_tower_attack_cooldown_delays_consecutive_shots():
+def test_attacker_lands_a_second_hit_once_its_cooldown_elapses():
+    from constants import COMBAT_ATTACK_INTERVAL
+
+    npc = _Entity(0, 0, health=100, attack=12, defense=4)
+    monster = _Entity(10, 0, health=40, attack=10, defense=2)
+    resolve_combat([npc], [monster], dt=0.0)
+    resolve_combat([npc], [monster], dt=COMBAT_ATTACK_INTERVAL)
+    assert monster.health == 40 - 2 * (12 - 2)
+
+
+def test_npc_and_monster_cooldowns_are_independent():
+    # A one-sided attack pattern (e.g. a Mage that hits harder/rarer) is
+    # possible since each side ticks its own cooldown, not a shared one.
+    npc = _Entity(0, 0, health=100, attack=12, defense=4)
+    monster = _Entity(10, 0, health=40, attack=10, defense=2)
+    resolve_combat([npc], [monster], dt=0.0)
+    npc.attack_cooldown = 999.0  # npc can't act again for a long time
+    resolve_combat([npc], [monster], dt=0.1)
+    resolve_combat([npc], [monster], dt=0.1)
+    # monster's own cooldown reset to COMBAT_ATTACK_INTERVAL after its first
+    # hit, so 0.2s total isn't enough for it to land a second one either -
+    # only the very first exchange happened
+    assert npc.health == 100 - (10 - 4)
+    assert monster.health == 40 - (12 - 2)
+
+
+def test_tower_attack_is_also_cooldown_gated():
+    from constants import COMBAT_ATTACK_INTERVAL
+
     tower = _Building("Tower", x=0, y=0, attack=15)
-    tower.attack_cooldown = 0.0
-    mx, my = tile_center(2, 0)
-    monster = _Entity(mx, my, health=100, attack=0, defense=0)
+    mx, my = tile_center(3, 0)
+    monster = _Entity(mx, my, health=40, attack=10, defense=2)
+    resolve_combat([], [monster], [tower], dt=0.0)
+    after_first_hit = monster.health
+    resolve_combat([], [monster], [tower], dt=0.1)  # far short of the cooldown
+    assert monster.health == after_first_hit
 
-    # First shot hits
-    resolve_combat([], [monster], [tower])
-    assert monster.health == 85
-    assert tower.attack_cooldown == 1.4
-
-    # Second immediate tick while on cooldown does not hit
-    resolve_combat([], [monster], [tower])
-    assert monster.health == 85
+    resolve_combat([], [monster], [tower], dt=COMBAT_ATTACK_INTERVAL)
+    assert monster.health == after_first_hit - (15 - 2)

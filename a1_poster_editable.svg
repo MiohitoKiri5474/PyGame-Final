@@ -1,0 +1,356 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 2480 3508" width="2480" height="3508">
+  <defs>
+    <linearGradient id="dayGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a3d24" />
+      <stop offset="60%" stop-color="#121c16" />
+      <stop offset="100%" stop-color="#080910" />
+    </linearGradient>
+    <linearGradient id="nightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2d1838" />
+      <stop offset="50%" stop-color="#150d22" />
+      <stop offset="100%" stop-color="#080910" />
+    </linearGradient>
+  </defs>
+
+  <rect width="2480" height="3508" fill="#080910" />
+  <rect width="2480" height="1800" fill="url(#dayGrad)" />
+  <polygon points="0,1700 2480,1200 2480,3508 0,3508" fill="url(#nightGrad)" />
+
+  <rect x="50" y="50" width="2380" height="3408" rx="28" fill="none" stroke="#f5c542" stroke-width="6" />
+  <rect x="70" y="70" width="2340" height="3368" rx="20" fill="none" stroke="#f5c542" stroke-width="2" stroke-opacity="0.4" />
+
+  <g id="header" transform="translate(1240, 130)" text-anchor="middle">
+    <rect x="-420" y="0" width="840" height="60" rx="30" fill="#1e1a2d" stroke="#f5c542" stroke-width="2" />
+    <text x="0" y="42" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffe885">✦ 2026 年度暗黑奇幻像素殖民地生存策略 ✦</text>
+    <text x="0" y="160" font-family="serif" font-size="120" font-weight="900" fill="#f5c542">M E D I E V I L</text>
+
+    <g transform="translate(-1080, 190)">
+      <rect x="0" y="0" width="2160" height="160" rx="45" fill="#0e121c" fill-opacity="0.85" stroke="#f5c542" stroke-width="2" />
+      <g transform="translate(70, 20)">
+        <image href="docs/assets/farmer.png" xlink:href="docs/assets/farmer.png" x="25" y="0" width="95" height="95" />
+        <text x="72" y="125" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0">拓荒農夫</text>
+      </g>
+      <g transform="translate(275, 15)">
+        <image href="docs/assets/horse.png" xlink:href="docs/assets/horse.png" x="25" y="0" width="95" height="95" />
+        <text x="72" y="125" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#56ccf2">疾行駿馬</text>
+      </g>
+      <g transform="translate(480, 20)">
+        <image href="docs/assets/boar.png" xlink:href="docs/assets/boar.png" x="25" y="0" width="95" height="95" />
+        <text x="72" y="125" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#68d391">野豬產肉</text>
+      </g>
+      <g transform="translate(695, 8)">
+        <image href="docs/assets/knight.png" xlink:href="docs/assets/knight.png" x="25" y="0" width="115" height="115" />
+        <text x="82" y="135" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffe885">聖殿騎士</text>
+      </g>
+      <g transform="translate(915, 8)">
+        <image href="docs/assets/magician.png" xlink:href="docs/assets/magician.png" x="25" y="0" width="115" height="115" />
+        <text x="82" y="135" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#c084fc">元素法師</text>
+      </g>
+      <g transform="translate(1135, 20)">
+        <image href="docs/assets/flying_squirrel.png" xlink:href="docs/assets/flying_squirrel.png" x="25" y="0" width="95" height="95" />
+        <text x="72" y="125" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0">隨行飛鼠</text>
+      </g>
+      <g transform="translate(1340, 15)">
+        <image href="docs/assets/werewolf.png" xlink:href="docs/assets/werewolf.png" x="25" y="0" width="95" height="95" />
+        <text x="72" y="125" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#e53e3e">狂暴狼人</text>
+      </g>
+      <g transform="translate(1545, 15)">
+        <image href="docs/assets/vampire.png" xlink:href="docs/assets/vampire.png" x="25" y="0" width="95" height="95" />
+        <text x="72" y="125" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#a855f7">暗夜吸血鬼</text>
+      </g>
+      <g transform="translate(1750, 20)">
+        <image href="docs/assets/zombie.png" xlink:href="docs/assets/zombie.png" x="25" y="0" width="95" height="95" />
+        <text x="72" y="125" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#a0aec0">劇毒殭屍</text>
+      </g>
+      <g transform="translate(1955, 15)">
+        <image href="docs/assets/bear.png" xlink:href="docs/assets/bear.png" x="25" y="0" width="95" height="95" />
+        <text x="72" y="125" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#f6ad55">狂暴巨熊</text>
+      </g>
+    </g>
+
+    <rect x="-1050" y="375" width="2100" height="95" rx="14" fill="#0a0c14" fill-opacity="0.85" stroke="#f5c542" stroke-width="2" />
+    <text x="0" y="415" font-family="sans-serif" font-size="28" fill="#cbd5e1">「白晝在未知的迷霧荒野中拓荒建設、採集資源、耕種農田、馴服野獸；</text>
+    <text x="0" y="452" font-family="sans-serif" font-size="28" fill="#ffe885" font-weight="bold">黑夜深淵魔物破曉襲擊之時，詠唱全圖魔法抵禦狂暴狼人、吸血鬼與劇毒殭屍的無盡圍攻。白晝拓荒寸土，黑夜寸步不讓！」</text>
+  </g>
+
+  <g id="fence1" transform="translate(100, 620)">
+    <rect x="20" y="45" width="2240" height="8" rx="4" fill="#a06e3b" />
+    <image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="120" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="210" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="300" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="390" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="480" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="570" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="660" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="750" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="840" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="930" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1020" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1110" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1200" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1290" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1380" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1470" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1560" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1650" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1740" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1830" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1920" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2010" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2100" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2190" y="0" width="98" height="98" />
+  </g>
+
+  <g id="screenshots" transform="translate(0, 725)">
+    <g transform="translate(160, 0)">
+      <rect x="0" y="0" width="1040" height="560" rx="14" fill="#ffffff" stroke="#68d391" stroke-width="5" />
+      <image href="docs/assets/screenshot_day.png" xlink:href="docs/assets/screenshot_day.png" x="20" y="20" width="1000" height="460" preserveAspectRatio="xMidYMid slice" />
+      <text x="520" y="525" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#1a202c">☀️ 白晝營地：農耕建設與生態開拓 (120s)</text>
+    </g>
+    <g transform="translate(1280, 0)">
+      <rect x="0" y="0" width="1040" height="560" rx="14" fill="#ffffff" stroke="#e53e3e" stroke-width="5" />
+      <image href="docs/assets/screenshot_night.png" xlink:href="docs/assets/screenshot_night.png" x="20" y="20" width="1000" height="460" preserveAspectRatio="xMidYMid slice" />
+      <text x="520" y="525" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#1a202c">🌙 暗夜防線：魔物夜襲與全圖魔法交鋒 (60s)</text>
+    </g>
+  </g>
+
+  <g id="fence2" transform="translate(100, 1310)">
+    <rect x="20" y="45" width="2240" height="8" rx="4" fill="#a06e3b" />
+    <image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="120" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="210" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="300" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="390" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="480" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="570" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="660" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="750" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="840" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="930" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1020" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1110" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1200" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1290" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1380" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1470" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1560" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1650" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1740" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1830" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1920" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2010" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2100" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2190" y="0" width="98" height="98" />
+  </g>
+
+  <g id="heroes" transform="translate(0, 1410)">
+    <g transform="translate(160, 0)">
+      <rect width="680" height="165" rx="20" fill="#121624" stroke="#2ec4b6" stroke-width="2.5" />
+      <rect x="20" y="20" width="125" height="125" rx="16" fill="#1e2538" stroke="#f5c542" stroke-width="1.5" />
+      <image href="docs/assets/farmer.png" xlink:href="docs/assets/farmer.png" x="33" y="33" width="100" height="100" />
+      <text x="165" y="60" font-family="serif" font-size="32" font-weight="bold" fill="#ffffff">拓荒農夫 (Farmer)</text>
+      <text x="165" y="95" font-family="sans-serif" font-size="23" font-weight="bold" fill="#2ec4b6">經濟核心 · 0.6x 工作神速 · 1.5x 馴服</text>
+      <text x="165" y="130" font-family="sans-serif" font-size="20" fill="#cbd5e1">負責小麥耕作與生態馴化，殖民地擴張的基石！</text>
+    </g>
+    <g transform="translate(900, 0)">
+      <rect width="680" height="165" rx="20" fill="#121624" stroke="#f5c542" stroke-width="2.5" />
+      <rect x="20" y="20" width="125" height="125" rx="16" fill="#1e2538" stroke="#f5c542" stroke-width="1.5" />
+      <image href="docs/assets/knight.png" xlink:href="docs/assets/knight.png" x="33" y="33" width="100" height="100" />
+      <text x="165" y="60" font-family="serif" font-size="32" font-weight="bold" fill="#ffffff">聖殿騎士 (Knight)</text>
+      <text x="165" y="95" font-family="sans-serif" font-size="23" font-weight="bold" fill="#f5c542">前線堅守 · 狩獵 50% 爆擊 · 銅牆鐵壁</text>
+      <text x="165" y="130" font-family="sans-serif" font-size="20" fill="#cbd5e1">身披堅甲在前線格擋，阻擋夜間狼人與吸血鬼推進！</text>
+    </g>
+    <g transform="translate(1640, 0)">
+      <rect width="680" height="165" rx="20" fill="#121624" stroke="#a855f7" stroke-width="2.5" />
+      <rect x="20" y="20" width="125" height="125" rx="16" fill="#1e2538" stroke="#f5c542" stroke-width="1.5" />
+      <image href="docs/assets/magician.png" xlink:href="docs/assets/magician.png" x="33" y="33" width="100" height="100" />
+      <text x="165" y="60" font-family="serif" font-size="32" font-weight="bold" fill="#ffffff">元素法師 (Magician)</text>
+      <text x="165" y="95" font-family="sans-serif" font-size="23" font-weight="bold" fill="#a855f7">戰略砲台 · 火焰 / 閃電 / 冰凍三大法術</text>
+      <text x="165" y="130" font-family="sans-serif" font-size="20" fill="#cbd5e1">詠唱火焰範圍爆破與冰凍霜結，夜間群攻核心！</text>
+    </g>
+  </g>
+
+  <g id="fence3" transform="translate(100, 1600)">
+    <rect x="20" y="45" width="2240" height="8" rx="4" fill="#a06e3b" />
+    <image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="120" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="210" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="300" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="390" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="480" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="570" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="660" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="750" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="840" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="930" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1020" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1110" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1200" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1290" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1380" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1470" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1560" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1650" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1740" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1830" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1920" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2010" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2100" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2190" y="0" width="98" height="98" />
+  </g>
+
+  <g id="task_priority" transform="translate(160, 1700)">
+    <rect width="2160" height="175" rx="20" fill="#102520" stroke="#2ec4b6" stroke-width="2.5" />
+    <text x="40" y="45" font-family="serif" font-size="30" font-weight="bold" fill="#a7f3d0">📋⚡【高度自由的任務安排優先順序，由你決定！！】</text>
+    <rect x="1600" y="16" width="510" height="40" rx="20" fill="#1b3d35" stroke="#2ec4b6" stroke-width="1.5" />
+    <text x="1855" y="43" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#a7f3d0">✦ 智慧排程佇列 · 隨心調度全殖民地 ✦</text>
+
+    <g transform="translate(40, 65)">
+      <rect width="680" height="90" rx="12" fill="#0d1416" stroke="#2ec4b6" stroke-width="1.5" />
+      <image href="docs/assets/crop.png" xlink:href="docs/assets/crop.png" x="20" y="15" width="60" height="60" />
+      <text x="95" y="40" font-family="serif" font-size="22" font-weight="bold" fill="#ffffff">🌾 農耕優先 vs 🪵 伐木採石</text>
+      <text x="95" y="68" font-family="sans-serif" font-size="17" fill="#94a3b8">自由分配居民作業優先級，掌控糧食與建材！</text>
+    </g>
+    <g transform="translate(740, 65)">
+      <rect width="680" height="90" rx="12" fill="#0d1416" stroke="#2ec4b6" stroke-width="1.5" />
+      <image href="docs/assets/meat.png" xlink:href="docs/assets/meat.png" x="20" y="15" width="60" height="60" />
+      <text x="95" y="40" font-family="serif" font-size="22" font-weight="bold" fill="#ffffff">🐗 野外狩獵 vs 🐎 馴化畜牧</text>
+      <text x="95" y="68" font-family="sans-serif" font-size="17" fill="#94a3b8">優先獵肉充飢或圈養駿馬全域加速？策略由你抉擇！</text>
+    </g>
+    <g transform="translate(1440, 65)">
+      <rect width="680" height="90" rx="12" fill="#0d1416" stroke="#2ec4b6" stroke-width="1.5" />
+      <image href="docs/assets/tower.png" xlink:href="docs/assets/tower.png" x="20" y="15" width="60" height="60" />
+      <text x="95" y="40" font-family="serif" font-size="22" font-weight="bold" fill="#ffffff">🏰 要塞修築 vs 🛡️ 前線巡邏</text>
+      <text x="95" y="68" font-family="sans-serif" font-size="17" fill="#94a3b8">白晝全力搶修城牆箭塔，入夜重裝騎士阻擊夜襲！</text>
+    </g>
+  </g>
+
+  <g id="fence4" transform="translate(100, 1895)">
+    <rect x="20" y="45" width="2240" height="8" rx="4" fill="#a06e3b" />
+    <image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="120" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="210" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="300" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="390" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="480" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="570" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="660" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="750" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="840" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="930" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1020" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1110" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1200" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1290" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1380" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1470" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1560" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1650" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1740" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1830" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1920" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2010" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2100" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2190" y="0" width="98" height="98" />
+  </g>
+
+  <g id="magic_and_skills" transform="translate(160, 1995)">
+    <rect width="2160" height="300" rx="20" fill="#1a1128" stroke="#a855f7" stroke-width="2.5" />
+    <text x="40" y="40" font-family="serif" font-size="28" font-weight="bold" fill="#f3e8ff">⚡🔥❄️ 全圖三大元素法術天罰打擊 (Global Magic Strike)</text>
+    <rect x="1580" y="14" width="530" height="36" rx="18" fill="#301c48" stroke="#f5c542" stroke-width="1.5" />
+    <text x="1845" y="38" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffe885">✦ 即時詠唱 · 全圖無死角精準轟炸 ✦</text>
+
+    <g transform="translate(40, 58)">
+      <rect width="680" height="95" rx="12" fill="#0d0e15" stroke="#f97316" stroke-width="1.5" />
+      <image href="docs/assets/scorched.png" xlink:href="docs/assets/scorched.png" x="18" y="15" width="65" height="65" />
+      <text x="95" y="42" font-family="serif" font-size="23" font-weight="bold" fill="#ffffff">火焰天罰 (Meteor Fire)</text>
+      <text x="95" y="72" font-family="sans-serif" font-size="17" fill="#94a3b8">指定區域天降隕石爆破，高額範圍灼燒！</text>
+    </g>
+    <g transform="translate(740, 58)">
+      <rect width="680" height="95" rx="12" fill="#0d0e15" stroke="#eab308" stroke-width="1.5" />
+      <image href="docs/assets/magician.png" xlink:href="docs/assets/magician.png" x="18" y="15" width="65" height="65" />
+      <text x="95" y="42" font-family="serif" font-size="23" font-weight="bold" fill="#ffffff">連鎖閃電 (Lightning)</text>
+      <text x="95" y="72" font-family="sans-serif" font-size="17" fill="#94a3b8">九天神雷貫穿魔物群，多重彈射瞬秒夜行者！</text>
+    </g>
+    <g transform="translate(1440, 58)">
+      <rect width="680" height="95" rx="12" fill="#0d0e15" stroke="#38bdf8" stroke-width="1.5" />
+      <image href="docs/assets/swamp.png" xlink:href="docs/assets/swamp.png" x="18" y="15" width="65" height="65" />
+      <text x="95" y="42" font-family="serif" font-size="23" font-weight="bold" fill="#ffffff">極地冰凍 (Freeze)</text>
+      <text x="95" y="72" font-family="sans-serif" font-size="17" fill="#94a3b8">3x3 暴風雪大範圍霜結，強制冰封所有魔物！</text>
+    </g>
+
+    <line x1="40" y1="170" x2="2120" y2="170" stroke="#f5c542" stroke-width="1" stroke-dasharray="6,6" stroke-opacity="0.4" />
+    <text x="40" y="200" font-family="serif" font-size="25" font-weight="bold" fill="#ffe885">🌟 獨特技能點天賦升級系統 (Skill Tree Progression)</text>
+    <text x="1560" y="200" font-family="sans-serif" font-size="18" font-weight="bold" fill="#56ccf2">✦ [K] 鍵開啟天賦樹 · 每夜黎明結算 2 SP ✦</text>
+
+    <g transform="translate(40, 215)">
+      <rect width="680" height="70" rx="10" fill="#0d0e15" stroke="#68d391" stroke-width="1.5" />
+      <image href="docs/assets/farmer.png" xlink:href="docs/assets/farmer.png" x="12" y="10" width="50" height="50" />
+      <text x="70" y="35" font-family="serif" font-size="20" font-weight="bold" fill="#a7f3d0">🌾 生產天賦 · 馴獸大師</text>
+      <text x="70" y="56" font-family="sans-serif" font-size="15" fill="#cbd5e1">作物速度 +25% · 採集雙倍產出 · 馴化大增</text>
+    </g>
+    <g transform="translate(740, 215)">
+      <rect width="680" height="70" rx="10" fill="#0d0e15" stroke="#f5c542" stroke-width="1.5" />
+      <image href="docs/assets/knight.png" xlink:href="docs/assets/knight.png" x="12" y="10" width="50" height="50" />
+      <text x="70" y="35" font-family="serif" font-size="20" font-weight="bold" fill="#fef08a">🛡️ 防禦天賦 · 堅甲要塞</text>
+      <text x="70" y="56" font-family="sans-serif" font-size="15" fill="#cbd5e1">箭塔射程攻速 +30% · 城牆耐久 · 全員生命</text>
+    </g>
+    <g transform="translate(1440, 215)">
+      <rect width="680" height="70" rx="10" fill="#0d0e15" stroke="#c084fc" stroke-width="1.5" />
+      <image href="docs/assets/raw_stone.png" xlink:href="docs/assets/raw_stone.png" x="12" y="10" width="50" height="50" />
+      <text x="70" y="35" font-family="serif" font-size="20" font-weight="bold" fill="#f3e8ff">🔮 魔法天賦 · 元素超載</text>
+      <text x="70" y="56" font-family="sans-serif" font-size="15" fill="#cbd5e1">全圖冷卻 -25% · 火焰範圍 +50% · 冰凍延長</text>
+    </g>
+  </g>
+
+  <g id="fence5" transform="translate(100, 2315)">
+    <rect x="20" y="45" width="2240" height="8" rx="4" fill="#a06e3b" />
+    <image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="120" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="210" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="300" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="390" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="480" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="570" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="660" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="750" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="840" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="930" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1020" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1110" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1200" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1290" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1380" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1470" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1560" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1650" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1740" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1830" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1920" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2010" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2100" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2190" y="0" width="98" height="98" />
+  </g>
+
+  <g id="features" transform="translate(0, 2415)">
+    <g transform="translate(160, 0)">
+      <rect width="1050" height="400" rx="20" fill="#0f111a" stroke="#e63946" stroke-width="2.5" />
+      <text x="35" y="48" font-family="serif" font-size="30" font-weight="bold" fill="#ffffff">🌙 暗夜深淵魔物潮與防禦箭塔</text>
+      <text x="35" y="85" font-family="sans-serif" font-size="20" fill="#cbd5e1">黑夜降臨巢穴湧出魔物！防禦箭塔全自動遠程齊射，配合全圖元素法術殲滅敵軍！</text>
+      <g transform="translate(35, 110)">
+        <rect width="225" height="260" rx="14" fill="#181c2b" stroke="#e63946" stroke-width="1.5" />
+        <image href="docs/assets/werewolf.png" xlink:href="docs/assets/werewolf.png" x="55" y="20" width="115" height="115" />
+        <text x="112" y="175" text-anchor="middle" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">狂暴狼人</text>
+        <text x="112" y="210" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#e63946">高速突襲</text>
+      </g>
+      <g transform="translate(285, 110)">
+        <rect width="225" height="260" rx="14" fill="#181c2b" stroke="#a855f7" stroke-width="1.5" />
+        <image href="docs/assets/vampire.png" xlink:href="docs/assets/vampire.png" x="55" y="20" width="115" height="115" />
+        <text x="112" y="175" text-anchor="middle" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">暗夜吸血鬼</text>
+        <text x="112" y="210" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#a855f7">生命偷取</text>
+      </g>
+      <g transform="translate(535, 110)">
+        <rect width="225" height="260" rx="14" fill="#181c2b" stroke="#888888" stroke-width="1.5" />
+        <image href="docs/assets/zombie.png" xlink:href="docs/assets/zombie.png" x="55" y="20" width="115" height="115" />
+        <text x="112" y="175" text-anchor="middle" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">劇毒殭屍</text>
+        <text x="112" y="210" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#888888">攻城肉盾</text>
+      </g>
+      <g transform="translate(785, 110)">
+        <rect width="225" height="260" rx="14" fill="#181c2b" stroke="#f5c542" stroke-width="1.5" />
+        <image href="docs/assets/tower.png" xlink:href="docs/assets/tower.png" x="55" y="20" width="115" height="115" />
+        <text x="112" y="175" text-anchor="middle" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">防禦箭塔</text>
+        <text x="112" y="210" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#f5c542">自動齊射</text>
+      </g>
+    </g>
+
+    <g transform="translate(1270, 0)">
+      <rect width="1050" height="400" rx="20" fill="#0f111a" stroke="#2ec4b6" stroke-width="2.5" />
+      <text x="35" y="48" font-family="serif" font-size="30" font-weight="bold" fill="#ffffff">🌱 白晝荒野馴化與畜欄經濟</text>
+      <text x="35" y="85" font-family="sans-serif" font-size="20" fill="#cbd5e1">探索邊境並馴服野生動物！圈養動物為營地持續產肉，駿馬賦予全體居民 +37.5% 移動加速！</text>
+      <g transform="translate(35, 110)">
+        <rect width="225" height="260" rx="14" fill="#181c2b" stroke="#2ec4b6" stroke-width="1.5" />
+        <image href="docs/assets/boar.png" xlink:href="docs/assets/boar.png" x="55" y="20" width="115" height="115" />
+        <text x="112" y="175" text-anchor="middle" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">野豬 (Boar)</text>
+        <text x="112" y="210" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#2ec4b6">被動產肉</text>
+      </g>
+      <g transform="translate(285, 110)">
+        <rect width="225" height="260" rx="14" fill="#181c2b" stroke="#f5c542" stroke-width="1.5" />
+        <image href="docs/assets/horse.png" xlink:href="docs/assets/horse.png" x="55" y="20" width="115" height="115" />
+        <text x="112" y="175" text-anchor="middle" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">駿馬 (Horse)</text>
+        <text x="112" y="210" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#f5c542">全域加速</text>
+      </g>
+      <g transform="translate(535, 110)">
+        <rect width="225" height="260" rx="14" fill="#181c2b" stroke="#56ccf2" stroke-width="1.5" />
+        <image href="docs/assets/flying_squirrel.png" xlink:href="docs/assets/flying_squirrel.png" x="55" y="20" width="115" height="115" />
+        <text x="112" y="175" text-anchor="middle" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">飛鼠 (Squirrel)</text>
+        <text x="112" y="210" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#56ccf2">寵物隨行</text>
+      </g>
+      <g transform="translate(785, 110)">
+        <rect width="225" height="260" rx="14" fill="#181c2b" stroke="#e63946" stroke-width="1.5" />
+        <image href="docs/assets/bear.png" xlink:href="docs/assets/bear.png" x="55" y="20" width="115" height="115" />
+        <text x="112" y="175" text-anchor="middle" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">巨熊 (Bear)</text>
+        <text x="112" y="210" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="bold" fill="#e63946">深山霸主</text>
+      </g>
+    </g>
+  </g>
+
+  <g id="fence6" transform="translate(100, 2835)">
+    <rect x="20" y="45" width="2240" height="8" rx="4" fill="#a06e3b" />
+    <image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="120" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="210" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="300" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="390" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="480" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="570" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="660" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="750" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="840" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="930" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1020" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1110" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1200" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1290" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1380" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1470" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1560" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1650" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1740" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1830" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="1920" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2010" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2100" y="0" width="98" height="98" /><image href="docs/assets/animal_pen.png" xlink:href="docs/assets/animal_pen.png" x="2190" y="0" width="98" height="98" />
+  </g>
+
+  <g id="biomes" transform="translate(160, 2935)">
+    <rect width="2160" height="420" rx="20" fill="#0f111a" stroke="#f5c542" stroke-width="2" />
+    <text x="40" y="45" font-family="serif" font-size="30" font-weight="bold" fill="#ffffff">🗺️ 16-Tile 四大多元地貌與五大核心建築</text>
+    <g transform="translate(40, 70)">
+      <g transform="translate(0, 0)">
+        <rect width="495" height="150" rx="14" fill="#181c2b" stroke="#56ccf2" stroke-width="1.5" />
+        <image href="docs/assets/river.png" xlink:href="docs/assets/river.png" x="25" y="20" width="60" height="60" />
+        <text x="105" y="55" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">水彩河流</text>
+        <text x="105" y="85" font-family="sans-serif" font-size="18" font-weight="bold" fill="#56ccf2">自然緩速 50%</text>
+        <text x="25" y="125" font-family="sans-serif" font-size="16" fill="#cbd5e1">16-Tile 無縫水彩拼接，阻礙敵軍！</text>
+      </g>
+      <g transform="translate(535, 0)">
+        <rect width="495" height="150" rx="14" fill="#181c2b" stroke="#b8860b" stroke-width="1.5" />
+        <image href="docs/assets/mountain.png" xlink:href="docs/assets/mountain.png" x="25" y="20" width="60" height="60" />
+        <text x="105" y="55" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">連綿山脈</text>
+        <text x="105" y="85" font-family="sans-serif" font-size="18" font-weight="bold" fill="#b8860b">泛洪全揭露障礙</text>
+        <text x="25" y="125" font-family="sans-serif" font-size="16" fill="#cbd5e1">山腳探索全揭露，山體純淨壯闊！</text>
+      </g>
+      <g transform="translate(1070, 0)">
+        <rect width="495" height="150" rx="14" fill="#181c2b" stroke="#2ec4b6" stroke-width="1.5" />
+        <image href="docs/assets/swamp.png" xlink:href="docs/assets/swamp.png" x="25" y="20" width="60" height="60" />
+        <text x="105" y="55" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">幽暗泥沼</text>
+        <text x="105" y="85" font-family="sans-serif" font-size="18" font-weight="bold" fill="#2ec4b6">5.0s 受困倒數</text>
+        <text x="25" y="125" font-family="sans-serif" font-size="16" fill="#cbd5e1">泥濘陷阱限制機動，降低調度！</text>
+      </g>
+      <g transform="translate(1605, 0)">
+        <rect width="495" height="150" rx="14" fill="#181c2b" stroke="#ff7b00" stroke-width="1.5" />
+        <image href="docs/assets/scorched.png" xlink:href="docs/assets/scorched.png" x="25" y="20" width="60" height="60" />
+        <text x="105" y="55" font-family="serif" font-size="25" font-weight="bold" fill="#ffffff">熔岩焦土</text>
+        <text x="105" y="85" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ff7b00">高溫燃燒灼燒</text>
+        <text x="25" y="125" font-family="sans-serif" font-size="16" fill="#cbd5e1">地熱熔岩持續扣血，高溫餘燼！</text>
+      </g>
+    </g>
+
+    <g transform="translate(40, 240)">
+      <rect width="2080" height="155" rx="14" fill="#141824" stroke="#f5c542" stroke-width="1.5" />
+      <g transform="translate(30, 15)">
+        <g transform="translate(0, 0)">
+          <rect width="480" height="125" rx="10" fill="#1e2336" stroke="#a0a6b8" stroke-width="1" />
+          <image href="docs/assets/wall.png" xlink:href="docs/assets/wall.png" x="15" y="15" width="45" height="45" />
+          <text x="75" y="42" font-family="serif" font-size="22" font-weight="bold" fill="#ffffff">城牆 (Wall)</text>
+          <text x="75" y="68" font-family="sans-serif" font-size="15" fill="#f5c542">🪵 4 木材 · 阻擋路線</text>
+          <text x="15" y="105" font-family="sans-serif" font-size="15" fill="#cbd5e1">保護核心設施，引導魔物！</text>
+        </g>
+        <g transform="translate(515, 0)">
+          <rect width="480" height="125" rx="10" fill="#1e2336" stroke="#f5c542" stroke-width="1" />
+          <image href="docs/assets/tower.png" xlink:href="docs/assets/tower.png" x="15" y="15" width="45" height="45" />
+          <text x="75" y="42" font-family="serif" font-size="22" font-weight="bold" fill="#ffffff">防禦塔 (Tower)</text>
+          <text x="75" y="68" font-family="sans-serif" font-size="15" fill="#f5c542">🪵 2 木 + 🧱 3 磚</text>
+          <text x="15" y="105" font-family="sans-serif" font-size="15" fill="#cbd5e1">全自動遠程齊射，夜間支柱！</text>
+        </g>
+        <g transform="translate(1030, 0)">
+          <rect width="480" height="125" rx="10" fill="#1e2336" stroke="#56ccf2" stroke-width="1" />
+          <image href="docs/assets/house.png" xlink:href="docs/assets/house.png" x="15" y="15" width="45" height="45" />
+          <text x="75" y="42" font-family="serif" font-size="22" font-weight="bold" fill="#ffffff">民房 (House)</text>
+          <text x="75" y="68" font-family="sans-serif" font-size="15" fill="#f5c542">🪵 4 木 + 🧱 2 磚</text>
+          <text x="15" y="105" font-family="sans-serif" font-size="15" fill="#cbd5e1">+1 人口，黎明誕生拓荒者！</text>
+        </g>
+        <g transform="translate(1545, 0)">
+          <rect width="480" height="125" rx="10" fill="#1e2336" stroke="#2ec4b6" stroke-width="1" />
+          <image href="docs/assets/farmland.png" xlink:href="docs/assets/farmland.png" x="15" y="15" width="45" height="45" />
+          <text x="75" y="42" font-family="serif" font-size="22" font-weight="bold" fill="#ffffff">農田 (Farmland)</text>
+          <text x="75" y="68" font-family="sans-serif" font-size="15" fill="#f5c542">🪵 2 木 + 🌾 1 作物</text>
+          <text x="15" y="105" font-family="sans-serif" font-size="15" fill="#cbd5e1">成熟收割，永續糧食命脈！</text>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <g id="footer" transform="translate(1240, 3420)" text-anchor="middle">
+    <rect x="-600" y="-30" width="1200" height="60" rx="16" fill="#101320" stroke="#f5c542" stroke-width="1" />
+    <text x="0" y="10" font-family="serif" font-size="30" font-weight="bold" fill="#f5c542">第二組 出品 · 《MEDIEVIL》</text>
+  </g>
+</svg>

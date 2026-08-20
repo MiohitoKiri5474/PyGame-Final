@@ -56,6 +56,8 @@ MONSTER_DEFENSE = 2
 
 COMBAT_RANGE = TILE_SIZE * 1.1  # "adjacent" threshold for auto-engage
 COMBAT_MIN_DAMAGE = 1  # damage floor so attack <= defense still chips away
+ATTACK_SWING_DURATION = 0.35  # seconds the strike/hurt squash-and-stretch animation plays for (not a cooldown - see COMBAT_ATTACK_INTERVAL)
+COMBAT_ATTACK_INTERVAL = ATTACK_SWING_DURATION * 3  # seconds between landed hits per attacker - previously unthrottled (a full hit every single frame, ~60/sec), which killed things faster than a player could react
 
 NEST_INITIAL_COUNT = 3
 NEST_MAX_COUNT = 8
@@ -64,6 +66,12 @@ NEST_BASE_SPAWN_INTERVAL = 25.0  # seconds between spawns at round 1
 NEST_SPAWN_RAMP_PER_ROUND = 2.0  # interval shrinks by this much per round
 NEST_MIN_SPAWN_INTERVAL = 4.0  # floor so late rounds don't spawn every tick
 NEW_NEST_INTERVAL = 240.0  # seconds between chances for a new nest to appear
+
+NEST_SPAWN_COUNT_BASE = 1  # monsters produced per nest firing at round 1
+NEST_SPAWN_COUNT_ROUNDS_PER_STEP = 3  # +1 monster per firing every N rounds
+NEST_SPAWN_COUNT_MAX = 4  # cap so late rounds don't overwhelm in one burst
+
+NEST_FIRST_SPAWN_DELAY = 5.0  # a monster appears this soon after night falls, regardless of any nest's own interval - otherwise round 1's 40s interval leaves night feeling empty for a long stretch
 
 COLOR_MONSTER = (200, 60, 60)
 COLOR_NEST = (120, 20, 20)
@@ -120,7 +128,7 @@ ROLE_STATS = {
         "combat_range": COMBAT_RANGE, "work_multiplier": 0.6,
     },
     ROLE_KNIGHT: {
-        "attack": 18, "defense": 8, "max_health": 140,
+        "attack": 18, "defense": 5, "max_health": 140,
         "combat_range": COMBAT_RANGE, "work_multiplier": 1.0,
     },
     ROLE_MAGE: {
@@ -214,15 +222,30 @@ ANIMAL_INITIAL_COUNT = 10
 ANIMAL_MAX_COUNT = 20
 ANIMAL_SPAWN_INTERVAL = 30.0  # seconds between top-up spawn attempts while under cap
 
-# species -> (speed px/s, dangerous, health) - speeds scaled with the
-# TILE_SIZE 32->40 zoom bump, same tiles/sec pacing
+# species -> (wild speed px/s, dangerous, health) - a wild/untamed animal
+# uses this slower speed so Hunt/Tame can actually close the distance (all
+# values here sit below NPC DEFAULT_SPEED 150); ANIMAL_TAMED_SPEED below is
+# what it's bumped back up to once taming succeeds. Speeds scaled with the
+# TILE_SIZE 32->40 zoom bump, same tiles/sec pacing as everything else.
 ANIMAL_SPECIES = {
-    "FlyingSquirrel": (125.0, False, 10),
-    "Fish": (75.0, False, 10),
-    "WildBoar": (87.5, False, 30),
-    "Horse": (175.0, False, 40),
-    "Wolf": (112.5, True, 35),
-    "Bear": (62.5, True, 60),
+    "FlyingSquirrel": (40.0, False, 10),
+    "Fish": (45.0, False, 10),
+    "WildBoar": (52.5, False, 30),
+    "Horse": (60.0, False, 40),
+    "Wolf": (67.5, True, 35),
+    "Bear": (37.5, True, 60),
+}
+
+# species -> tamed speed px/s - restored (Horse: exceeded) once an animal is
+# successfully tamed, since a tamed pet no longer needs to be catchable and
+# following/mount feel benefits from its old, faster pace.
+ANIMAL_TAMED_SPEED = {
+    "FlyingSquirrel": 125.0,
+    "Fish": 75.0,
+    "WildBoar": 87.5,
+    "Horse": 175.0,
+    "Wolf": 112.5,
+    "Bear": 62.5,
 }
 
 COLOR_ANIMAL = (150, 190, 90)
@@ -232,6 +255,7 @@ COLOR_ANIMAL_DANGEROUS = (200, 140, 60)
 HUNT_WORK_SECONDS = 2.0
 KNIGHT_CRIT_CHANCE = 0.50
 KNIGHT_CRIT_MULTIPLIER = 2.0
+HUNT_SCATTER_LEAD_SECONDS = 10.0  # unassigned Hunt tasks get cancelled and their target flees this many seconds before night, so night doesn't show a queued-Hunt marker alongside real monsters
 
 # --- Post-Hunt & Taming (ticket 26) ---
 ANIMAL_MEAT_YIELD = {
@@ -260,6 +284,9 @@ COLOR_ANIMAL_PEN = (160, 130, 90)
 PEN_PRODUCTION_INTERVAL = 30.0  # seconds between food production ticks
 HORSE_SPEED_BONUS = 37.5  # travel speed buff for colony NPCs when horse is penned (scaled with the TILE_SIZE 32->40 zoom bump)
 PET_FOLLOW_MIN_DISTANCE = TILE_SIZE * 0.9  # a following animal won't close in past this - keeps it from sitting on top of an idle tamer
+MOUNTED_SPEED_BONUS = 75.0  # speed bonus for the tamer riding a mount, deliberately double the colony-wide HORSE_SPEED_BONUS
+MOUNTABLE_SPECIES = {"Horse"}  # only Horse fits the game's "mobility" role for now
+HUNT_TARGET_LEASH_RADIUS_TILES = 2  # an animal bound to a Hunt/Tame task can still wander this many tiles from where it was when selected, rather than freezing in place
 
 # --- Food Spoilage (ticket 27) ---
 DAY_NIGHT_CYCLE_SECONDS = DAY_SECONDS + NIGHT_SECONDS  # 180s per game day
@@ -295,5 +322,25 @@ AOE_RADIUS_BONUS_PER_LEVEL = 1  # +1 tile to Freeze's 3x3 box radius, per level
 
 # --- NPC Drag-to-Heal Sanctuary System ---
 SANCTUARY_HEAL_RATE = 1.25  # High-stakes healing rate (1.25 HP/s: recovery takes ~1-2 game phases)
+
+# --- Terrain Taxonomy & Environmental Hazards ---
+TERRAIN_PLAIN = "plain"
+TERRAIN_RIVER = "river"
+TERRAIN_MOUNTAIN = "mountain"
+TERRAIN_MUD = "mud"
+TERRAIN_SCORCHED = "scorched"
+
+ALL_TERRAINS = (
+    TERRAIN_PLAIN,
+    TERRAIN_RIVER,
+    TERRAIN_MOUNTAIN,
+    TERRAIN_MUD,
+    TERRAIN_SCORCHED,
+)
+
+RIVER_SPEED_MULTIPLIER = 0.50       # 50% movement speed in rivers (slowdown)
+MUD_IMMOBILIZE_DURATION = 5.0      # 5.0s stuck in mud upon entering
+SCORCHED_BURN_DPS = 4.0            # 4.0 HP/s burn damage on scorched earth
+
 
 

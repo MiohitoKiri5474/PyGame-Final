@@ -10,7 +10,9 @@ from build_task import Building
 from constants import (
     BASE_TAME_SUCCESS_RATE,
     FARMER_TAME_SUCCESS_MULTIPLIER,
+    ANIMAL_TAMED_SPEED,
     HORSE_SPEED_BONUS,
+    MOUNTED_SPEED_BONUS,
     PEN_PRODUCTION_INTERVAL,
     ROLE_FARMER,
     ROLE_KNIGHT,
@@ -125,6 +127,23 @@ class TestTameTask:
         # Walks over to idle beside the pen rather than teleporting into it
         assert not animal.is_following
         assert animal.idle_target == idle_spot_near_pen(world, 5, 5)
+
+    def test_successful_tame_restores_the_species_tamed_speed(self):
+        # Wild spawn speed is deliberately slow so Hunt/Tame can catch it;
+        # a successful tame should bump it back up to its full pace.
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
+        animal = Animal(*tile_center(10, 10), species="Horse", speed=105.0, dangerous=False, health=40)
+        world.animals.append(animal)
+
+        npc = NPC(*tile_center(10, 10))
+        task = Task(type="Tame", target=(10, 10), assigned_npc=npc, target_animal_id=animal.id)
+
+        class AlwaysSuccessRNG:
+            def random(self):
+                return 0.0
+
+        on_complete_tame(world, task, rng=AlwaysSuccessRNG())
+        assert animal.speed == ANIMAL_TAMED_SPEED["Horse"]
 
     def test_tamed_animal_waits_if_no_pen_available(self):
         world = World(animal_count=0)  # No pens; animal_count=0 avoids random-wildlife collisions too
@@ -326,3 +345,46 @@ class TestAnimalPenProductionAndHorseBuff:
 
         _tick_pen_production(world, 0.1)
         assert npc.speed == 120.0
+
+    def test_mounted_rider_gets_mounted_speed_bonus(self):
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
+        npc = NPC(0, 0, speed=120.0)
+        other = NPC(0, 0, speed=150.0)
+        world.npcs = [npc, other]
+
+        horse = Animal(0, 0, species="Horse", speed=140.0, dangerous=False, health=40)
+        horse.is_tamed = True
+        horse.is_following = True
+        horse.is_mounted = True
+        horse.tamer_npc_id = npc.id
+        world.animals.append(horse)
+
+        _tick_pen_production(world, 0.1)
+
+        assert npc.speed == 120.0 + MOUNTED_SPEED_BONUS
+        assert other.speed == 150.0  # not the rider - unaffected
+
+    def test_mounted_horse_does_not_also_grant_the_colony_wide_pen_buff(self):
+        # A mounted horse is necessarily is_following, and has_penned_horse
+        # already excludes following horses - the two bonuses should be
+        # mutually exclusive automatically, with no double-stacking.
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
+        pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
+        world.buildings.append(pen)
+
+        rider = NPC(0, 0, speed=120.0)
+        bystander = NPC(0, 0, speed=120.0)
+        world.npcs = [rider, bystander]
+
+        horse = Animal(*tile_center(5, 5), species="Horse", speed=140.0, dangerous=False, health=40)
+        horse.is_tamed = True
+        horse.pen_tile = (5, 5)
+        horse.is_following = True
+        horse.is_mounted = True
+        horse.tamer_npc_id = rider.id
+        pen.assigned_animal_id = horse.id
+        world.animals.append(horse)
+
+        _tick_pen_production(world, 0.1)
+        assert rider.speed == 120.0 + MOUNTED_SPEED_BONUS  # rider gets the personal mount bonus
+        assert bystander.speed == 120.0  # everyone else gets neither bonus - no colony buff while mounted

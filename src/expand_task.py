@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from blocking import is_mountain_blocked
 from constants import EXPAND_WORK_SECONDS, EXPAND_CLAIM_RADIUS, EXPAND_REVEAL_RADIUS
 from task import Task, TaskType, register_task_type
 
@@ -14,9 +15,12 @@ def _can_queue(world: "World", tile: "Tile") -> bool:
     x, y = tile
     if not world.grid.in_bounds(x, y):
         return False
+    if is_mountain_blocked(world.grid, x, y):
+        return False
     t = world.grid.get(x, y)
     if t.claimed:
         return False
+
     if any(task.type == "Expand" and task.target == tile for task in world.tasks.tasks):
         return False
     # Must be reachable from claimed territory (4-adjacent to a claimed

@@ -1,13 +1,16 @@
 """In-game pause menu, opened with Esc while playing: Resume / Save Game /
-Settings / Quit. Primitive shapes/text only (no new art assets)."""
+Settings / Quit. Painted backdrop (assets/ui/other_background.png), falling
+back to the old primitive shapes/text if that art isn't available."""
 
 import pygame
 
+from constants import WINDOW_HEIGHT, WINDOW_WIDTH
+from sprites import other_background_sprite
 from ui_layout import (
     FIRST_LEVEL_TOP,
     hit_test,
     render_button,
-    render_screen_frame,
+    render_screen_background,
     render_screen_title,
     stack_rect,
 )
@@ -38,7 +41,8 @@ class PauseMenu:
         )
 
     def render(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
-        render_screen_frame(surface)
+        background = other_background_sprite(WINDOW_WIDTH, WINDOW_HEIGHT)
+        render_screen_background(surface, background)
         render_screen_title(surface, font, _TITLE_TEXT)
         render_button(surface, font, self.resume_rect, "Resume")
         save_label = "Saved!" if pygame.time.get_ticks() < self._saved_flash_until_ms else "Save Game"
