@@ -80,3 +80,26 @@ def test_tick_wildlife_never_exceeds_max_count():
     _tick_wildlife(world, ANIMAL_SPAWN_INTERVAL)
 
     assert len(world.animals) == ANIMAL_MAX_COUNT
+
+
+def test_tick_wildlife_holds_animal_bound_to_a_queued_hunt_task_in_place():
+    # Bug repro: a wild animal keeps wandering even after Hunt/Tame is
+    # queued on it, and since target_animal_id used to only get bound once
+    # an NPC actually claimed the task, it could wander off its original
+    # tile before that ever happened - _purge_dead_tasks would then see no
+    # animal left at task.target and silently drop the still-valid task.
+    # Binding the id at queue time (task.py's TaskQueue.add) plus this
+    # freeze together close that gap.
+    world = World(npc_count=0)
+    world.animals = []
+
+    bound = Animal(100.0, 100.0, species="Fish", speed=60.0, dangerous=False, health=10)
+    free = Animal(200.0, 200.0, species="Fish", speed=60.0, dangerous=False, health=10)
+    world.animals = [bound, free]
+    world.tasks.add("Hunt", (2, 2), target_animal_id=bound.id)
+
+    _tick_wildlife(world, 1.0)
+
+    assert (bound.x, bound.y) == (100.0, 100.0)
+    assert bound.path == []
+    assert (free.x, free.y) != (200.0, 200.0) or free.path  # unbound animal is free to wander

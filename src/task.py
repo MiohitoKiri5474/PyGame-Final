@@ -69,8 +69,24 @@ class TaskQueue:
     def __init__(self):
         self.tasks: list[Task] = []
 
-    def add(self, task_type: str, target: Tile, target_animal_id: int | None = None) -> Task:
+    def add(
+        self,
+        task_type: str,
+        target: Tile,
+        target_animal_id: int | None = None,
+        world: "World | None" = None,
+    ) -> Task:
         task = Task(type=task_type, target=target, target_animal_id=target_animal_id)
+        # Bind Hunt/Tame to the specific animal right away, not just once an
+        # NPC gets around to claiming it - a wild animal wanders off its
+        # original tile every second or two regardless of whether anyone's
+        # working the task yet, and without an id bound, _purge_dead_tasks
+        # would see "no animal left on task.target" and silently drop a
+        # still-perfectly-valid queued task before anyone ever attempts it.
+        if world is not None and task.target_animal_id is None and task_type in ANIMAL_TASK_TYPES:
+            animal = resolve_task_animal(world, task)
+            if animal is not None:
+                task.target_animal_id = animal.id
         self.tasks.append(task)
         return task
 

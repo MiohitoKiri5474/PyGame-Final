@@ -35,11 +35,22 @@ def create_initial_animals(grid: "Grid", count: int, rng: random.Random | None =
 
 
 def _tick_wildlife(world: "World", dt: float) -> None:
+    # Any animal a queued or in-progress Hunt/Tame task is bound to (not
+    # just one an NPC is actively chasing right now - task.py binds the id
+    # at queue time, well before any NPC gets around to claiming it) holds
+    # its ground instead of wandering off - otherwise a busy colony could
+    # let it wander arbitrarily far away while nobody's even started
+    # walking toward it yet, turning "queue Hunt" into a long/impractical chase.
+    bound_animal_ids = {t.target_animal_id for t in world.tasks.tasks if t.target_animal_id is not None}
+
     for animal in world.animals:
+        if animal.id in bound_animal_ids:
+            animal.is_targeted = True
         animal.update(dt, world.grid.width, world.grid.height, world.npcs)
-        # task.py sets is_targeted earlier this same tick for anything being
-        # actively hunted/tamed right now; clear it so next tick starts from
-        # "not targeted" and task.py has to re-affirm it if still true.
+        # task.py also sets is_targeted earlier this same tick for anything
+        # actively worked by an assigned NPC; clear it so next tick starts
+        # from "not targeted" and it (or the bound-id check above) has to
+        # re-affirm it if still true.
         animal.is_targeted = False
 
     world.animal_spawn_timer += dt

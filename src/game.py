@@ -501,7 +501,7 @@ class Game:
             tile = self.action_menu.tile  # handle_click() closes the menu (clears .tile) before returning
             choice = self.action_menu.handle_click(screen_pos)
             if choice is not None and tile is not None:
-                self.world.tasks.add(choice, tile)
+                self.world.tasks.add(choice, tile, world=self.world)
             return
 
         # Same click-consuming precedence as the tile action menu above, for
@@ -568,7 +568,7 @@ class Game:
                 # Open action menu so a single stray click doesn't accidentally demolish it!
                 self.action_menu.open(options, (gx, gy), screen_pos)
             else:
-                self.world.tasks.add(options[0], (gx, gy))
+                self.world.tasks.add(options[0], (gx, gy), world=self.world)
         elif len(options) > 1:
             self.action_menu.open(options, (gx, gy), screen_pos)
 

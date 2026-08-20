@@ -406,3 +406,45 @@ def test_idle_npc_does_not_reclaim_a_task_already_in_progress():
 
     assigned = [n for n in (npc_a, npc_b) if n.task is not None]
     assert len(assigned) == 1
+
+
+def test_add_binds_target_animal_id_immediately_for_animal_task_types_when_world_given():
+    from animal import Animal
+    from coords import tile_center
+
+    world = World(npc_count=0, animal_count=0)
+    animal = Animal(*tile_center(5, 5), species="Fish", speed=60.0, dangerous=False, health=10)
+    world.animals.append(animal)
+
+    task = world.tasks.add("Hunt", (5, 5), world=world)
+    assert task.target_animal_id == animal.id
+
+
+def test_add_does_not_bind_animal_id_for_non_animal_task_types():
+    world = World(npc_count=0, animal_count=0)
+    task = world.tasks.add("BuildWall", (5, 5), world=world)
+    assert task.target_animal_id is None
+
+
+def test_queued_hunt_task_survives_the_animal_wandering_off_its_original_tile():
+    # Regression: without binding target_animal_id at queue time, a Hunt
+    # task with nobody free to claim it yet would get silently purged the
+    # moment the target animal wandered off task.target, even though the
+    # animal is still alive and the task is still perfectly valid.
+    from animal import Animal
+    from coords import tile_center
+
+    world = World(npc_count=0, animal_count=0)  # no NPCs available to claim it
+    animal = Animal(*tile_center(10, 10), species="Horse", speed=105.0, dangerous=False, health=40)
+    world.animals.append(animal)
+
+    task = world.tasks.add("Hunt", (10, 10), world=world)
+    assert task.target_animal_id == animal.id
+
+    update_npc_tasks(world, 0.1)
+    assert task in world.tasks.tasks
+
+    animal.x, animal.y = tile_center(11, 10)  # wanders off its original tile
+    update_npc_tasks(world, 0.1)
+
+    assert task in world.tasks.tasks  # still queued, not silently dropped
