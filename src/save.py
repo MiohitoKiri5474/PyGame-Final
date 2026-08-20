@@ -90,6 +90,9 @@ def dump_state(
                 "is_tamed": getattr(a, "is_tamed", False),
                 "pen_tile": list(a.pen_tile) if getattr(a, "pen_tile", None) else None,
                 "path": [list(p) for p in a.path],
+                "tamer_npc_id": getattr(a, "tamer_npc_id", None),
+                "is_following": getattr(a, "is_following", False),
+                "is_mounted": getattr(a, "is_mounted", False),
             }
             for a in world.animals
         ],
@@ -110,6 +113,7 @@ def dump_state(
                 "x": npc.x,
                 "y": npc.y,
                 "speed": npc.speed,
+                "base_speed": npc.base_speed,
                 "path": [list(p) for p in npc.path],
                 "health": npc.health,
                 "max_health": npc.max_health,
@@ -197,6 +201,9 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         animal.is_tamed = ad.get("is_tamed", False)
         animal.pen_tile = tuple(ad["pen_tile"]) if ad.get("pen_tile") else None
         animal.path = [tuple(p) for p in ad.get("path", [])]
+        animal.tamer_npc_id = ad.get("tamer_npc_id")
+        animal.is_following = ad.get("is_following", False)
+        animal.is_mounted = ad.get("is_mounted", False)
         world.animals.append(animal)
         if animal.id is not None:
             max_animal_id = max(max_animal_id, animal.id)
@@ -229,6 +236,11 @@ def load_checkpoint(path: Path = SAVE_PATH) -> Checkpoint | None:
         # bonus must survive a reload. Falls back to the role-derived
         # default for saves predating this field.
         npc.max_health = nd.get("max_health", npc.max_health)
+        # Fallback to the already-buffed speed for saves predating this
+        # field - correct for a never-mounted/never-penned NPC, and the
+        # worst case for others is a one-time bonus, not a compounding one
+        # (tame_task._tick_pen_production now always recomputes from this).
+        npc.base_speed = nd.get("base_speed", nd["speed"])
         npc.hunger = nd["hunger"]
         npc.alive = nd["alive"]
         npc.attack = nd["attack"]

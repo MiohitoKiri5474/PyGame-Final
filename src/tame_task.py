@@ -25,6 +25,7 @@ from constants import (
     BASE_TAME_SUCCESS_RATE,
     FARMER_TAME_SUCCESS_MULTIPLIER,
     HORSE_SPEED_BONUS,
+    MOUNTED_SPEED_BONUS,
     PEN_PRODUCTION_INTERVAL,
     ROLE_FARMER,
     TAME_WORK_SECONDS,
@@ -204,10 +205,16 @@ def _tick_pen_production(world: "World", dt: float) -> None:
                     has_penned_horse = True
                     break
 
+    mounted_rider_ids = {
+        a.tamer_npc_id
+        for a in getattr(world, "animals", [])
+        if getattr(a, "is_mounted", False) and a.tamer_npc_id is not None
+    }
     for npc in getattr(world, "npcs", []):
-        if not hasattr(npc, "base_speed"):
-            npc.base_speed = npc.speed
-        npc.speed = npc.base_speed + (HORSE_SPEED_BONUS if has_penned_horse else 0.0)
+        bonus = HORSE_SPEED_BONUS if has_penned_horse else 0.0
+        if npc.id in mounted_rider_ids:
+            bonus += MOUNTED_SPEED_BONUS
+        npc.speed = npc.base_speed + bonus
 
 
 register_tick(_tick_pen_production)

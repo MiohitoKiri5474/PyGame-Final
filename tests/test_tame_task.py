@@ -11,6 +11,7 @@ from constants import (
     BASE_TAME_SUCCESS_RATE,
     FARMER_TAME_SUCCESS_MULTIPLIER,
     HORSE_SPEED_BONUS,
+    MOUNTED_SPEED_BONUS,
     PEN_PRODUCTION_INTERVAL,
     ROLE_FARMER,
     ROLE_KNIGHT,
@@ -326,3 +327,46 @@ class TestAnimalPenProductionAndHorseBuff:
 
         _tick_pen_production(world, 0.1)
         assert npc.speed == 120.0
+
+    def test_mounted_rider_gets_mounted_speed_bonus(self):
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
+        npc = NPC(0, 0, speed=120.0)
+        other = NPC(0, 0, speed=150.0)
+        world.npcs = [npc, other]
+
+        horse = Animal(0, 0, species="Horse", speed=140.0, dangerous=False, health=40)
+        horse.is_tamed = True
+        horse.is_following = True
+        horse.is_mounted = True
+        horse.tamer_npc_id = npc.id
+        world.animals.append(horse)
+
+        _tick_pen_production(world, 0.1)
+
+        assert npc.speed == 120.0 + MOUNTED_SPEED_BONUS
+        assert other.speed == 150.0  # not the rider - unaffected
+
+    def test_mounted_horse_does_not_also_grant_the_colony_wide_pen_buff(self):
+        # A mounted horse is necessarily is_following, and has_penned_horse
+        # already excludes following horses - the two bonuses should be
+        # mutually exclusive automatically, with no double-stacking.
+        world = World(animal_count=0)  # World() also seeds random wildlife - keep only this test's own animal(s)
+        pen = Building(type="AnimalPen", x=5, y=5, block=20, attack=0)
+        world.buildings.append(pen)
+
+        rider = NPC(0, 0, speed=120.0)
+        bystander = NPC(0, 0, speed=120.0)
+        world.npcs = [rider, bystander]
+
+        horse = Animal(*tile_center(5, 5), species="Horse", speed=140.0, dangerous=False, health=40)
+        horse.is_tamed = True
+        horse.pen_tile = (5, 5)
+        horse.is_following = True
+        horse.is_mounted = True
+        horse.tamer_npc_id = rider.id
+        pen.assigned_animal_id = horse.id
+        world.animals.append(horse)
+
+        _tick_pen_production(world, 0.1)
+        assert rider.speed == 120.0 + MOUNTED_SPEED_BONUS  # rider gets the personal mount bonus
+        assert bystander.speed == 120.0  # everyone else gets neither bonus - no colony buff while mounted

@@ -47,6 +47,10 @@ class NPC:
         self.prev_x = x
         self.prev_y = y
         self.speed = speed
+        # Unbuffed speed - tame_task._tick_pen_production recomputes self.speed
+        # from this every tick, so anything that grants a temporary bonus
+        # (pen buff, mount) must add on top of base_speed, never overwrite it.
+        self.base_speed = speed
         self.path: list[tuple[int, int]] = []
         self.role = role
 
