@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import pygame
 
-from constants import COLOR_TEXT, WINDOW_HEIGHT, WINDOW_WIDTH
+from constants import COLOR_BG, COLOR_TEXT, WINDOW_HEIGHT, WINDOW_WIDTH
+from sprites import menu_button_sprite
 
 BUTTON_WIDTH = 320  # wide enough to read as deliberate, not a leftover default-sized control
 BUTTON_HEIGHT = 56
@@ -66,10 +67,21 @@ def hit_test(pos: tuple[int, int], rect_labels: list[tuple[pygame.Rect, str]]) -
 
 
 def render_button(
-    surface: pygame.Surface, font: pygame.font.Font, rect: pygame.Rect, label: str
+    surface: pygame.Surface, font: pygame.font.Font, rect: pygame.Rect, label: str, slot: int = 2
 ) -> None:
-    pygame.draw.rect(surface, BUTTON_BG, rect)
-    pygame.draw.rect(surface, BUTTON_BORDER, rect, 2)
+    """`slot` (1/2/3) picks which of the 3 painted button-bar crops to draw
+    - an ordered set of buttons (title screen's Start/Continue/Settings)
+    uses 1/2/3 in order; any other, standalone button just uses 2 (the
+    plain symmetric one). The art is drawn a little larger than `rect` for
+    breathing room around its ornate border, but `rect` itself - and so the
+    actual click hit-box - is unchanged. Falls back to the old flat
+    rect+border look if the art isn't available."""
+    art = menu_button_sprite(slot, rect.width + 32, rect.height + 24)
+    if art is not None:
+        surface.blit(art, art.get_rect(center=rect.center))
+    else:
+        pygame.draw.rect(surface, BUTTON_BG, rect)
+        pygame.draw.rect(surface, BUTTON_BORDER, rect, 2)
     label_surface = font.render(label, True, COLOR_TEXT)
     surface.blit(label_surface, label_surface.get_rect(center=rect.center))
 
@@ -83,8 +95,20 @@ def render_screen_title(surface: pygame.Surface, font: pygame.font.Font, text: s
 def render_screen_frame(surface: pygame.Surface) -> None:
     """A simple border a fixed margin in from the screen edges, so a menu
     screen reads as one deliberately-framed composition instead of a few
-    small buttons floating in an otherwise-empty window."""
+    small buttons floating in an otherwise-empty window. Fallback look for
+    render_screen_background() when its painted art isn't available."""
     frame = pygame.Rect(
         _FRAME_MARGIN, _FRAME_MARGIN, WINDOW_WIDTH - 2 * _FRAME_MARGIN, WINDOW_HEIGHT - 2 * _FRAME_MARGIN
     )
     pygame.draw.rect(surface, BUTTON_BORDER, frame, 2)
+
+
+def render_screen_background(surface: pygame.Surface, image: pygame.Surface | None) -> None:
+    """Full-window painted backdrop for a menu-style screen, or the old
+    flat-color-plus-border look if `image` (from sprites.py) isn't
+    available - screens call this in place of render_screen_frame()."""
+    if image is not None:
+        surface.blit(image, (0, 0))
+    else:
+        surface.fill(COLOR_BG)
+        render_screen_frame(surface)
