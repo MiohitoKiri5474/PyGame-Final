@@ -1,9 +1,19 @@
 import random
 from collections import Counter
 
-from constants import MONSTER_SPAWN_WEIGHTS, MONSTER_WEREWOLF, NEST_MAX_COUNT
+from constants import (
+    GRID_HEIGHT,
+    GRID_WIDTH,
+    MONSTER_SPAWN_WEIGHTS,
+    MONSTER_WEREWOLF,
+    NEST_MAX_COUNT,
+    NEST_SPAWN_COUNT_BASE,
+    NEST_SPAWN_COUNT_MAX,
+    NEST_SPAWN_COUNT_ROUNDS_PER_STEP,
+)
 from day_night import DAY, NIGHT
-from nest import Nest, NestManager, create_initial_nests
+from grid import Grid
+from nest import Nest, NestManager, create_initial_nests, monsters_per_spawn
 
 
 def test_spawn_interval_shrinks_with_round_and_floors_at_minimum():
@@ -63,3 +73,43 @@ def test_pick_monster_type_distribution_favors_higher_weight():
     picks = Counter(manager.pick_monster_type() for _ in range(500))
     assert set(picks) == set(MONSTER_SPAWN_WEIGHTS)  # every type appears
     assert picks[MONSTER_WEREWOLF] == max(picks.values())  # highest weight (4 vs 3/3)
+
+
+def test_monsters_per_spawn_ramps_with_round_and_caps():
+    assert monsters_per_spawn(1) == NEST_SPAWN_COUNT_BASE
+    assert monsters_per_spawn(NEST_SPAWN_COUNT_ROUNDS_PER_STEP + 1) == NEST_SPAWN_COUNT_BASE + 1
+    assert monsters_per_spawn(1000) == NEST_SPAWN_COUNT_MAX  # capped, not unbounded
+
+
+def test_nest_manager_spawns_multiple_monsters_per_firing_on_later_rounds():
+    manager = NestManager(width=10, height=10, nests=[Nest(0, 0)])
+    round_number = NEST_SPAWN_COUNT_ROUNDS_PER_STEP + 1  # bumps monsters_per_spawn to BASE + 1
+    spawned = manager.update(dt=1000.0, round_number=round_number, phase=NIGHT)
+    assert spawned == [(0, 0)] * (NEST_SPAWN_COUNT_BASE + 1)
+
+
+def test_create_initial_nests_uses_revealed_frontier_when_grid_given():
+    grid = Grid(seed=1)
+    nests = create_initial_nests(GRID_WIDTH, GRID_HEIGHT, 3, random.Random(1), grid=grid)
+    assert len(nests) == 3
+    for nest in nests:
+        assert not grid.get(nest.x, nest.y).revealed
+        # sits right beside the revealed area, not out at the map's outer edge
+        assert 0 < nest.x < GRID_WIDTH - 1 or 0 < nest.y < GRID_HEIGHT - 1
+
+
+def test_create_initial_nests_falls_back_to_map_edge_without_a_grid():
+    nests = create_initial_nests(10, 10, 3, random.Random(1))
+    assert len(nests) == 3
+    for nest in nests:
+        assert nest.x in (0, 9) or nest.y in (0, 9)
+
+
+def test_nest_manager_new_nest_follows_revealed_frontier_when_grid_given():
+    grid = Grid(seed=1)
+    manager = NestManager(GRID_WIDTH, GRID_HEIGHT, nests=[], rng=random.Random(1), grid=grid)
+    manager.update(dt=241.0, round_number=1, phase=DAY)
+    assert len(manager.nests) == 1
+    new_nest = manager.nests[0]
+    assert not grid.get(new_nest.x, new_nest.y).revealed
+    assert new_nest.x not in (0, GRID_WIDTH - 1) and new_nest.y not in (0, GRID_HEIGHT - 1)
