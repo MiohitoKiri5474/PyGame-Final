@@ -228,7 +228,7 @@ ANIMAL_SPAWN_INTERVAL = 30.0  # seconds between top-up spawn attempts while unde
 # what it's bumped back up to once taming succeeds. Speeds scaled with the
 # TILE_SIZE 32->40 zoom bump, same tiles/sec pacing as everything else.
 ANIMAL_SPECIES = {
-    "FlyingSquirrel": (75.0, False, 10),
+    "FlyingSquirrel": (40.0, False, 10),
     "Fish": (45.0, False, 10),
     "WildBoar": (52.5, False, 30),
     "Horse": (105.0, False, 40),
