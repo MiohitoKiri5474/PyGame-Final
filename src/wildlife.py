@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import math
 import random
 from typing import TYPE_CHECKING
 
 from animal import Animal
-from constants import ANIMAL_MAX_COUNT, ANIMAL_SPAWN_INTERVAL, ANIMAL_SPECIES
-from coords import tile_center
+from constants import ANIMAL_MAX_COUNT, ANIMAL_SPAWN_INTERVAL, ANIMAL_SPECIES, HUNT_SCATTER_LEAD_SECONDS
+from coords import tile_at, tile_center
+from day_night import DAY
 from extensions import register_tick
 
 if TYPE_CHECKING:
+    from day_night import DayNightCycle
     from grid import Grid
     from world import World
 
@@ -64,3 +67,36 @@ def _tick_wildlife(world: "World", dt: float) -> None:
 
 
 register_tick(_tick_wildlife)
+
+
+def _flee_point(animal, grid: "Grid") -> tuple[float, float]:
+    """A point further out from the map center, along the direction the
+    animal already sits relative to it - "fleeing outward" away from the
+    player's territory, which always starts at the map center."""
+    cx, cy = grid.width / 2.0, grid.height / 2.0
+    ax, ay = tile_at(animal.x, animal.y)
+    dx, dy = ax - cx, ay - cy
+    dist = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / dist, dy / dist
+    flee_tiles = 10
+    tx = max(0, min(grid.width - 1, round(ax + ux * flee_tiles)))
+    ty = max(0, min(grid.height - 1, round(ay + uy * flee_tiles)))
+    return tile_center(tx, ty)
+
+
+def scatter_unselected_wildlife(world: "World", cycle: "DayNightCycle") -> None:
+    """In the last HUNT_SCATTER_LEAD_SECONDS of the day, any wild animal
+    that has never been selected for Hunt/Tame (no current task - queued
+    or in-progress - references it) starts fleeing outward, away from the
+    player's claimable area. Otherwise night could show ordinary wildlife
+    wandering around right alongside real monsters, easy to mistake for
+    one. An animal already bound to a Hunt/Tame task, or already tamed,
+    is left alone - it's a deliberate target/pet, not ambient wildlife."""
+    if cycle.phase != DAY or cycle.remaining() > HUNT_SCATTER_LEAD_SECONDS:
+        return
+    bound_ids = {t.target_animal_id for t in world.tasks.tasks if t.target_animal_id is not None}
+    for animal in world.animals:
+        if animal.id in bound_ids or getattr(animal, "is_tamed", False):
+            continue
+        if animal.idle_target is None:  # already fleeing - let it finish this leg
+            animal.idle_target = _flee_point(animal, world.grid)

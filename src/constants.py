@@ -229,6 +229,7 @@ ANIMAL_SPECIES = {
 
 COLOR_ANIMAL = (150, 190, 90)
 COLOR_ANIMAL_DANGEROUS = (200, 140, 60)
+COLOR_HUNT_TARGET = (255, 220, 60)  # frame around an animal a Hunt/Tame task is bound to, follows it as it moves
 
 # --- Hunt Task (ticket 25) ---
 HUNT_WORK_SECONDS = 2.0

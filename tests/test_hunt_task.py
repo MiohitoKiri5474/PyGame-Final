@@ -10,12 +10,10 @@ from constants import (
     ROLE_KNIGHT,
     ROLE_FARMER,
     KNIGHT_CRIT_MULTIPLIER,
-    HUNT_SCATTER_LEAD_SECONDS,
     HUNT_WORK_SECONDS,
 )
 from coords import tile_center
-from day_night import DAY, DayNightCycle, NIGHT
-from hunt_task import can_queue_hunt, can_perform_hunt, on_complete_hunt, scatter_unclaimed_hunt_targets
+from hunt_task import can_queue_hunt, can_perform_hunt, on_complete_hunt
 from npc import NPC
 from task import Task, TaskQueue, update_npc_tasks
 from world import World
@@ -177,61 +175,3 @@ class TestHuntCompletion:
         assert finished
         assert animal not in world.animals
         assert animal.is_dead
-
-
-class TestScatterUnclaimedHuntTargets:
-    def _cycle_with_remaining(self, phase: str, remaining: float) -> DayNightCycle:
-        cycle = DayNightCycle()
-        cycle.phase = phase
-        cycle.timer = cycle.duration() - remaining
-        return cycle
-
-    def test_cancels_unassigned_hunt_within_scatter_window_and_sends_animal_fleeing(self):
-        world = World(npc_count=0, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
-        world.animals.append(animal)
-        task = world.tasks.add("Hunt", (10, 10), target_animal_id=animal.id)
-        cycle = self._cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
-
-        scatter_unclaimed_hunt_targets(world, cycle)
-
-        assert task not in world.tasks.tasks
-        assert animal.idle_target is not None
-        assert animal.idle_target != (animal.x, animal.y)
-
-    def test_leaves_an_already_assigned_hunt_alone(self):
-        world = World(npc_count=1, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
-        world.animals.append(animal)
-        task = world.tasks.add("Hunt", (10, 10), target_animal_id=animal.id)
-        task.assigned_npc = world.npcs[0]
-        cycle = self._cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
-
-        scatter_unclaimed_hunt_targets(world, cycle)
-
-        assert task in world.tasks.tasks
-        assert animal.idle_target is None
-
-    def test_does_nothing_outside_the_scatter_window(self):
-        world = World(npc_count=0, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
-        world.animals.append(animal)
-        task = world.tasks.add("Hunt", (10, 10), target_animal_id=animal.id)
-        cycle = self._cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS + 30)
-
-        scatter_unclaimed_hunt_targets(world, cycle)
-
-        assert task in world.tasks.tasks
-        assert animal.idle_target is None
-
-    def test_does_nothing_during_night(self):
-        world = World(npc_count=0, animal_count=0)
-        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
-        world.animals.append(animal)
-        task = world.tasks.add("Hunt", (10, 10), target_animal_id=animal.id)
-        cycle = self._cycle_with_remaining(NIGHT, 1.0)
-
-        scatter_unclaimed_hunt_targets(world, cycle)
-
-        assert task in world.tasks.tasks
-        assert animal.idle_target is None

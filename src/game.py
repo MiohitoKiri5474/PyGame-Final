@@ -31,6 +31,7 @@ from constants import (
 
     COLOR_ANIMAL,
     COLOR_ANIMAL_DANGEROUS,
+    COLOR_HUNT_TARGET,
     COLOR_QUEUED_WAITING,
     COLOR_QUEUED_ASSIGNED,
     COLOR_PROGRESS_BAR,
@@ -57,10 +58,10 @@ from monster import retarget_monster, spawn_monster
 from pathfinding import find_path
 from settlement import evaluate_wave
 from population import maybe_spawn_npc
-from hunt_task import scatter_unclaimed_hunt_targets
 from task import ANIMAL_TASK_TYPES, TASK_TYPES, animal_at_tile, task_can_perform, update_npc_tasks
 from extensions import hud_lines, render_fx_overlays, render_overlays, run_ticks
 from tile_actions import applicable_tasks
+from wildlife import scatter_unselected_wildlife
 from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
@@ -680,7 +681,7 @@ class Game:
                 play_sfx("night_howl")
                 play_bgm("night")
 
-            scatter_unclaimed_hunt_targets(self.world, self.cycle)
+            scatter_unselected_wildlife(self.world, self.cycle)
             update_npc_tasks(self.world, dt)
             run_ticks(self.world, dt)
 
@@ -1718,6 +1719,14 @@ class Game:
         else:
             color = COLOR_ANIMAL_DANGEROUS if animal.dangerous else COLOR_ANIMAL
             pygame.draw.circle(self.screen, color, (screen_x, screen_y), NPC_RADIUS)
+
+        # A Hunt/Tame task is currently bound to this animal (queued or in
+        # progress) - frame it so the player can see, at a glance, which
+        # animal they actually selected and follow it as it moves.
+        if any(t.target_animal_id == animal.id for t in self.world.tasks.tasks):
+            half = TILE_SIZE // 2 + 4
+            frame_rect = pygame.Rect(screen_x - half, screen_y - half, half * 2, half * 2)
+            pygame.draw.rect(self.screen, COLOR_HUNT_TARGET, frame_rect, 2, border_radius=4)
 
 
     def render_animals(self) -> None:

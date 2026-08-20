@@ -1,9 +1,11 @@
 import random
 
 from animal import Animal
-from constants import ANIMAL_MAX_COUNT, ANIMAL_SPAWN_INTERVAL, ANIMAL_SPECIES
+from constants import ANIMAL_MAX_COUNT, ANIMAL_SPAWN_INTERVAL, ANIMAL_SPECIES, HUNT_SCATTER_LEAD_SECONDS
+from coords import tile_center
+from day_night import DAY, DayNightCycle, NIGHT
 from grid import Grid
-from wildlife import _tick_wildlife, _unclaimed_tiles, create_initial_animals
+from wildlife import _tick_wildlife, _unclaimed_tiles, create_initial_animals, scatter_unselected_wildlife
 from world import World
 
 
@@ -103,3 +105,64 @@ def test_tick_wildlife_holds_animal_bound_to_a_queued_hunt_task_in_place():
     assert (bound.x, bound.y) == (100.0, 100.0)
     assert bound.path == []
     assert (free.x, free.y) != (200.0, 200.0) or free.path  # unbound animal is free to wander
+
+
+def _cycle_with_remaining(phase: str, remaining: float) -> DayNightCycle:
+    cycle = DayNightCycle()
+    cycle.phase = phase
+    cycle.timer = cycle.duration() - remaining
+    return cycle
+
+
+class TestScatterUnselectedWildlife:
+    def test_never_selected_animal_flees_within_the_scatter_window(self):
+        world = World(npc_count=0, animal_count=0)
+        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        world.animals.append(animal)
+        cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
+
+        scatter_unselected_wildlife(world, cycle)
+
+        assert animal.idle_target is not None
+
+    def test_leaves_an_animal_bound_to_a_queued_or_in_progress_task_alone(self):
+        world = World(npc_count=0, animal_count=0)
+        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        world.animals.append(animal)
+        world.tasks.add("Hunt", (10, 10), target_animal_id=animal.id)  # queued, not yet assigned
+        cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
+
+        scatter_unselected_wildlife(world, cycle)
+
+        assert animal.idle_target is None
+
+    def test_leaves_an_already_tamed_animal_alone(self):
+        world = World(npc_count=0, animal_count=0)
+        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        animal.is_tamed = True
+        world.animals.append(animal)
+        cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS - 1)
+
+        scatter_unselected_wildlife(world, cycle)
+
+        assert animal.idle_target is None
+
+    def test_does_nothing_outside_the_scatter_window(self):
+        world = World(npc_count=0, animal_count=0)
+        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        world.animals.append(animal)
+        cycle = _cycle_with_remaining(DAY, HUNT_SCATTER_LEAD_SECONDS + 30)
+
+        scatter_unselected_wildlife(world, cycle)
+
+        assert animal.idle_target is None
+
+    def test_does_nothing_during_night(self):
+        world = World(npc_count=0, animal_count=0)
+        animal = Animal(*tile_center(10, 10), species="WildBoar", speed=52.5, dangerous=False, health=30)
+        world.animals.append(animal)
+        cycle = _cycle_with_remaining(NIGHT, 1.0)
+
+        scatter_unselected_wildlife(world, cycle)
+
+        assert animal.idle_target is None
