@@ -53,24 +53,52 @@ def register_task_type(name: str, task_type: TaskType) -> None:
     TASK_TYPES[name] = task_type
 
 
-def resolve_task_animal(world: "World", task: "Task"):
-    """Shared lookup for Hunt/Tame targets: by the id bound at claim time if
-    there is one, else by whichever animal currently sits on task.target.
-    Duck-typed (id/x/y/is_dead) so task.py doesn't need to import animal.py."""
+def animal_at_tile(world: "World", tile: Tile):
+    """Living animal currently on `tile`, or None. Duck-typed (id/x/y/
+    is_dead) so task.py doesn't need to import animal.py. Used both by
+    resolve_task_animal's tile fallback and by callers that need to
+    identify a target before any Task exists yet (e.g. the instant a tile
+    menu opens, so a Hunt/Tame choice can bind the id it saw then rather
+    than whatever's on the tile once the player actually clicks a row)."""
     animals = getattr(world, "animals", None)
     if not animals:
         return None
+    return next((a for a in animals if tile_at(a.x, a.y) == tile and not a.is_dead), None)
+
+
+def resolve_task_animal(world: "World", task: "Task"):
+    """Shared lookup for Hunt/Tame targets: by the id bound at claim time if
+    there is one, else by whichever animal currently sits on task.target."""
     if task.target_animal_id is not None:
+        animals = getattr(world, "animals", None)
+        if not animals:
+            return None
         return next((a for a in animals if a.id == task.target_animal_id and not a.is_dead), None)
-    return next((a for a in animals if tile_at(a.x, a.y) == task.target and not a.is_dead), None)
+    return animal_at_tile(world, task.target)
 
 
 class TaskQueue:
     def __init__(self):
         self.tasks: list[Task] = []
 
-    def add(self, task_type: str, target: Tile, target_animal_id: int | None = None) -> Task:
+    def add(
+        self,
+        task_type: str,
+        target: Tile,
+        target_animal_id: int | None = None,
+        world: "World | None" = None,
+    ) -> Task:
         task = Task(type=task_type, target=target, target_animal_id=target_animal_id)
+        # Bind Hunt/Tame to the specific animal right away, not just once an
+        # NPC gets around to claiming it - a wild animal wanders off its
+        # original tile every second or two regardless of whether anyone's
+        # working the task yet, and without an id bound, _purge_dead_tasks
+        # would see "no animal left on task.target" and silently drop a
+        # still-perfectly-valid queued task before anyone ever attempts it.
+        if world is not None and task.target_animal_id is None and task_type in ANIMAL_TASK_TYPES:
+            animal = resolve_task_animal(world, task)
+            if animal is not None:
+                task.target_animal_id = animal.id
         self.tasks.append(task)
         return task
 

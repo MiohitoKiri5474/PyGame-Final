@@ -25,6 +25,12 @@ class ActionMenu:
         self.tile: tuple[int, int] | None = None
         self.screen_pos: tuple[int, int] = (0, 0)
         self.disabled: set[str] = set()
+        # Animal id resolved at open() time (when the target is guaranteed
+        # to still be on `tile`) for a Hunt/Tame choice - the animal can
+        # wander off `tile` in the time it takes the player to actually
+        # click a row, so callers shouldn't re-resolve "whatever's on this
+        # tile now" once the choice comes back.
+        self.animal_id: int | None = None
 
     @property
     def visible(self) -> bool:
@@ -36,16 +42,19 @@ class ActionMenu:
         tile: tuple[int, int] | None,
         screen_pos: tuple[int, int],
         disabled: set[str] | None = None,
+        animal_id: int | None = None,
     ) -> None:
         self.options = options
         self.tile = tile
         self.screen_pos = screen_pos
         self.disabled = disabled or set()
+        self.animal_id = animal_id
 
     def close(self) -> None:
         self.options = []
         self.tile = None
         self.disabled = set()
+        self.animal_id = None
 
     def _rows(self) -> list[tuple[str, pygame.Rect]]:
         x, y = self.screen_pos

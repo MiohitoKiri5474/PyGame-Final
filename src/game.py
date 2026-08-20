@@ -57,9 +57,10 @@ from monster import retarget_monster, spawn_monster
 from pathfinding import find_path
 from settlement import evaluate_wave
 from population import maybe_spawn_npc
-from task import TASK_TYPES, task_can_perform, update_npc_tasks
+from task import ANIMAL_TASK_TYPES, TASK_TYPES, animal_at_tile, task_can_perform, update_npc_tasks
 from extensions import hud_lines, render_fx_overlays, render_overlays, run_ticks
 from tile_actions import applicable_tasks
+from wildlife import scatter_unselected_wildlife
 from world import World
 from priority_ui import PriorityTableUI
 from skill_ui import SkillUI
@@ -351,15 +352,26 @@ class Game:
                                 "gravity": 30.0,
                             })
                     elif not self.sanctuary_ui.is_hovering(event.pos):
-                        world_x = event.pos[0] + self.camera.x
-                        world_y = event.pos[1] + self.camera.y
-                        clicked_npc = self._npc_at_world_pos(world_x, world_y)
-                        if clicked_npc is not None and not getattr(clicked_npc, "is_resting", False):
-                            self.dragging_npc = clicked_npc
-                            self.drag_start_pos = event.pos
-                            self.is_dragging = False
-                        else:
+                        # A tile/animal popup menu takes every click while
+                        # open (handle_click's own top-of-function check
+                        # consumes it) - this NPC-drag hit-test must not run
+                        # first, or a click meant for a menu row that happens
+                        # to land on wherever some unrelated NPC is standing
+                        # would get hijacked into starting/"selecting" that
+                        # NPC instead, leaving the menu open with nothing
+                        # chosen (and the NPC oddly shown as selected).
+                        if self.action_menu.visible or self.animal_menu.visible:
                             self.handle_click(event.pos)
+                        else:
+                            world_x = event.pos[0] + self.camera.x
+                            world_y = event.pos[1] + self.camera.y
+                            clicked_npc = self._npc_at_world_pos(world_x, world_y)
+                            if clicked_npc is not None and not getattr(clicked_npc, "is_resting", False):
+                                self.dragging_npc = clicked_npc
+                                self.drag_start_pos = event.pos
+                                self.is_dragging = False
+                            else:
+                                self.handle_click(event.pos)
             elif event.type == pygame.MOUSEMOTION:
                 if self.dragging_npc is not None and self.drag_start_pos is not None:
                     if math.hypot(event.pos[0] - self.drag_start_pos[0], event.pos[1] - self.drag_start_pos[1]) > 6:
@@ -502,9 +514,11 @@ class Game:
         # a map click underneath.
         if self.action_menu.visible:
             tile = self.action_menu.tile  # handle_click() closes the menu (clears .tile) before returning
+            animal_id = self.action_menu.animal_id  # resolved back when the menu opened, not now
             choice = self.action_menu.handle_click(screen_pos)
             if choice is not None and tile is not None:
-                self.world.tasks.add(choice, tile)
+                bound_id = animal_id if choice in ANIMAL_TASK_TYPES else None
+                self.world.tasks.add(choice, tile, target_animal_id=bound_id, world=self.world)
             return
 
         # Same click-consuming precedence as the tile action menu above, for
@@ -571,9 +585,18 @@ class Game:
                 # Open action menu so a single stray click doesn't accidentally demolish it!
                 self.action_menu.open(options, (gx, gy), screen_pos)
             else:
-                self.world.tasks.add(options[0], (gx, gy))
+                self.world.tasks.add(options[0], (gx, gy), world=self.world)
         elif len(options) > 1:
-            self.action_menu.open(options, (gx, gy), screen_pos)
+            # Resolve the animal now, while it's still guaranteed to be on
+            # this tile (applicable_tasks just confirmed it) - by the time
+            # the player actually picks a row in the menu it may have
+            # already wandered off, so the choice-handling above uses this
+            # captured id rather than re-resolving by tile at that point.
+            animal_id = None
+            if any(o in ANIMAL_TASK_TYPES for o in options):
+                animal = animal_at_tile(self.world, (gx, gy))
+                animal_id = animal.id if animal is not None else None
+            self.action_menu.open(options, (gx, gy), screen_pos, animal_id=animal_id)
 
 
     def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
@@ -671,6 +694,7 @@ class Game:
                 play_sfx("night_howl")
                 play_bgm("night")
 
+            scatter_unselected_wildlife(self.world, self.cycle)
             update_npc_tasks(self.world, dt)
             run_ticks(self.world, dt)
 

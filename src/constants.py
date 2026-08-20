@@ -255,6 +255,7 @@ COLOR_ANIMAL_DANGEROUS = (200, 140, 60)
 HUNT_WORK_SECONDS = 2.0
 KNIGHT_CRIT_CHANCE = 0.50
 KNIGHT_CRIT_MULTIPLIER = 2.0
+HUNT_SCATTER_LEAD_SECONDS = 10.0  # unassigned Hunt tasks get cancelled and their target flees this many seconds before night, so night doesn't show a queued-Hunt marker alongside real monsters
 
 # --- Post-Hunt & Taming (ticket 26) ---
 ANIMAL_MEAT_YIELD = {
@@ -285,6 +286,7 @@ HORSE_SPEED_BONUS = 37.5  # travel speed buff for colony NPCs when horse is penn
 PET_FOLLOW_MIN_DISTANCE = TILE_SIZE * 0.9  # a following animal won't close in past this - keeps it from sitting on top of an idle tamer
 MOUNTED_SPEED_BONUS = 75.0  # speed bonus for the tamer riding a mount, deliberately double the colony-wide HORSE_SPEED_BONUS
 MOUNTABLE_SPECIES = {"Horse"}  # only Horse fits the game's "mobility" role for now
+HUNT_TARGET_LEASH_RADIUS_TILES = 2  # an animal bound to a Hunt/Tame task can still wander this many tiles from where it was when selected, rather than freezing in place
 
 # --- Food Spoilage (ticket 27) ---
 DAY_NIGHT_CYCLE_SECONDS = DAY_SECONDS + NIGHT_SECONDS  # 180s per game day
