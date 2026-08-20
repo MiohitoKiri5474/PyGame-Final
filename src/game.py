@@ -941,7 +941,7 @@ class Game:
                         else:
                             self._spawn_monster_death_fx(target.x, target.y)
 
-            resolve_combat(self.world.npcs, self.monsters, self.world.buildings, on_damage=_on_damage)
+            resolve_combat(self.world.npcs, self.monsters, self.world.buildings, on_damage=_on_damage, dt=dt)
             self._monsters_killed_this_night += monster_count_before_combat - len(self.monsters)
 
             # Trigger Death VFX for any colonist that died (hunger or combat)
