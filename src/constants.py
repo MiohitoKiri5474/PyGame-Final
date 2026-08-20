@@ -56,6 +56,8 @@ MONSTER_DEFENSE = 2
 
 COMBAT_RANGE = TILE_SIZE * 1.1  # "adjacent" threshold for auto-engage
 COMBAT_MIN_DAMAGE = 1  # damage floor so attack <= defense still chips away
+ATTACK_SWING_DURATION = 0.35  # seconds the strike/hurt squash-and-stretch animation plays for (not a cooldown - see COMBAT_ATTACK_INTERVAL)
+COMBAT_ATTACK_INTERVAL = ATTACK_SWING_DURATION * 3  # seconds between landed hits per attacker - previously unthrottled (a full hit every single frame, ~60/sec), which killed things faster than a player could react
 
 NEST_INITIAL_COUNT = 3
 NEST_MAX_COUNT = 8

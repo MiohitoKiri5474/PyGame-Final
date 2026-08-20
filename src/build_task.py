@@ -37,6 +37,7 @@ class Building:
     attack: int
     growth_timer: float = 0.0  # Farmland only; no-op default for every other type
     ready: bool = False  # Farmland only; no-op default for every other type
+    attack_cooldown: float = 0.0  # Tower only; gates how often combat.resolve_combat lets it land a hit
 
 
 def building_size(b_type: str) -> tuple[int, int]:

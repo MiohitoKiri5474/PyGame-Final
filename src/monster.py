@@ -46,6 +46,10 @@ class Monster:
         self.attack_timer = 0.0
         self.hit_timer = 0.0
         self.combat_target: tuple[float, float] | None = None
+        # Gates how often combat.resolve_combat lets this monster land a
+        # hit - separate from attack_timer above, which is purely the
+        # swing animation's visual duration and never gated combat before.
+        self.attack_cooldown = 0.0
 
     @property
     def has_arrived(self) -> bool:
