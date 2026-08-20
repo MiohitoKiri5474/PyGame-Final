@@ -10,6 +10,7 @@ from constants import (
     TILE_SIZE,
     VIEWPORT_TILES_X,
     VIEWPORT_TILES_Y,
+    MOUNTABLE_SPECIES,
     NPC_RADIUS,
     NPC_MAX_HUNGER,
     NEST_INITIAL_COUNT,
@@ -492,8 +493,13 @@ class Game:
             animal_id = self._follow_menu_animal_id
             choice = self.animal_menu.handle_click(screen_pos)
             self._follow_menu_animal_id = None
+            animal = next((a for a in self.world.animals if a.id == animal_id), None) if animal_id is not None else None
             if choice == "Back to Pen" and animal_id is not None:
                 self._send_animal_back_to_pen(animal_id)
+            elif choice == "Ride" and animal is not None:
+                animal.is_mounted = True
+            elif choice == "Dismount" and animal is not None:
+                animal.is_mounted = False
             return
 
         if self.build_bar.handle_click(screen_pos):
@@ -509,9 +515,15 @@ class Game:
 
         clicked_animal = self._tamed_animal_at_world_pos(world_x, world_y)
         if clicked_animal is not None:
-            if clicked_animal.is_following:
+            if clicked_animal.is_mounted:
                 disabled = set() if clicked_animal.pen_tile is not None else {"Back to Pen"}
-                self.animal_menu.open(["Keep Following", "Back to Pen"], None, screen_pos, disabled=disabled)
+                self.animal_menu.open(["Dismount", "Back to Pen"], None, screen_pos, disabled=disabled)
+                self._follow_menu_animal_id = clicked_animal.id
+            elif clicked_animal.is_following:
+                disabled = set() if clicked_animal.pen_tile is not None else {"Back to Pen"}
+                if clicked_animal.species not in MOUNTABLE_SPECIES:
+                    disabled = disabled | {"Ride"}
+                self.animal_menu.open(["Keep Following", "Ride", "Back to Pen"], None, screen_pos, disabled=disabled)
                 self._follow_menu_animal_id = clicked_animal.id
             else:
                 clicked_animal.is_following = True
@@ -545,7 +557,16 @@ class Game:
 
 
     def _npc_at_world_pos(self, wx: float, wy: float) -> NPC | None:
+        # Skips an NPC currently riding a mount - it sits exactly on top of
+        # its mount, and without this a click there could never reach the
+        # animal underneath (drag-to-Sanctuary, selection, or the Dismount
+        # menu) since NPCs would always win the hit-test first.
+        mounted_rider_ids = {
+            a.tamer_npc_id for a in self.world.animals if a.is_mounted and a.tamer_npc_id is not None
+        }
         for npc in self.world.npcs:
+            if npc.id in mounted_rider_ids:
+                continue
             if math.hypot(npc.x - wx, npc.y - wy) <= NPC_RADIUS * 1.5:
                 return npc
         return None
@@ -564,6 +585,7 @@ class Game:
         if animal is None or animal.pen_tile is None:
             return
         animal.is_following = False
+        animal.is_mounted = False
         animal.idle_target = idle_spot_near_pen(self.world, *animal.pen_tile)
 
     def _update_cursor(self) -> None:

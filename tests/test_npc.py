@@ -277,6 +277,14 @@ class TestNPCInit:
         npc = _fresh_npc()
         assert npc.alive is True
 
+    def test_base_speed_matches_initial_speed(self):
+        # base_speed must be set explicitly here, not lazily re-derived
+        # later from a possibly-already-buffed npc.speed (that was the
+        # source of a save/load speed-compounding bug).
+        npc = NPC(0.0, 0.0, speed=123.0)
+        assert npc.base_speed == 123.0
+        assert npc.speed == 123.0
+
     def test_unique_ids(self):
         NPC._next_id = 0
         a = NPC(0, 0)

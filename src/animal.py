@@ -52,6 +52,11 @@ class Animal:
         self.is_following: bool = False
         self.idle_target: tuple[float, float] | None = None
 
+        # Riding: reuses tamer_npc_id as the rider's identity (no reverse
+        # pointer on NPC, so there's only one source of truth for who's
+        # riding). Only ever True while is_following is also True.
+        self.is_mounted: bool = False
+
         # Set by task.py each tick a Hunt/Tame task is actively working this
         # animal, cleared right after wildlife's own tick consumes it - lets
         # a hunted/tamed animal stop initiating new wander hops so it isn't
@@ -119,7 +124,24 @@ class Animal:
 
         old_x, old_y = self.x, self.y
 
-        if self.is_following and self.tamer_npc_id is not None:
+        if self.is_mounted and self.tamer_npc_id is not None:
+            rider = next(
+                (n for n in (npcs or []) if n.id == self.tamer_npc_id and not getattr(n, "is_dead", False)), None
+            )
+            if rider is not None:
+                # Snap to the rider directly - deliberately bypasses
+                # PET_FOLLOW_MIN_DISTANCE, which exists specifically to keep
+                # a *following* pet from sitting on top of its tamer; a mount
+                # is supposed to overlap its rider.
+                self.x, self.y = rider.x, rider.y
+            else:
+                # Rider died mid-ride - auto-dismount and fall back to the
+                # same tamer-died handling a following (unmounted) pet gets.
+                self.is_mounted = False
+                self.is_following = False
+                if self.pen_tile is not None:
+                    self.idle_target = tile_center(*self.pen_tile)
+        elif self.is_following and self.tamer_npc_id is not None:
             tamer = next(
                 (n for n in (npcs or []) if n.id == self.tamer_npc_id and not getattr(n, "is_dead", False)), None
             )

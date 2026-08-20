@@ -150,3 +150,34 @@ def test_idle_target_walk_clears_on_arrival():
     animal.update(1.0, grid_width=50, grid_height=50)  # one full second easily covers 32px at speed 1000
     assert animal.idle_target is None
     assert (animal.x, animal.y) == (32.0, 0.0)
+
+
+def test_mounted_animal_snaps_to_rider_ignoring_follow_min_distance():
+    # Mounting must overlap the rider exactly - the opposite of the
+    # PET_FOLLOW_MIN_DISTANCE gate a merely-following pet respects.
+    npc = NPC(500.0, 200.0)
+    animal = Animal(16.0, 16.0, species="Horse", speed=140.0, dangerous=False, health=40)
+    animal.is_tamed = True
+    animal.is_following = True
+    animal.is_mounted = True
+    animal.tamer_npc_id = npc.id
+
+    animal.update(1 / 60, grid_width=50, grid_height=50, npcs=[npc])
+    assert (animal.x, animal.y) == (npc.x, npc.y)
+
+
+def test_mounted_animal_auto_dismounts_when_rider_dies():
+    npc = NPC(16.0, 16.0)
+    animal = Animal(16.0, 16.0, species="Horse", speed=140.0, dangerous=False, health=40)
+    animal.is_tamed = True
+    animal.is_following = True
+    animal.is_mounted = True
+    animal.tamer_npc_id = npc.id
+    animal.pen_tile = (5, 5)
+
+    npc.kill()
+    animal.update(1 / 60, grid_width=50, grid_height=50, npcs=[npc])
+
+    assert animal.is_mounted is False
+    assert animal.is_following is False
+    assert animal.idle_target is not None
