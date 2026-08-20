@@ -106,22 +106,19 @@ def render_button(
 
 def render_screen_title(surface: pygame.Surface, font: pygame.font.Font, text: str) -> None:
     """The heading text every menu-style screen shows above its buttons -
-    bold, and wrapped across multiple centered lines if it doesn't fit on
-    one at `font`'s size. Pass a larger font (e.g. Game.big_font) than the
-    button labels use, for a heading that actually reads as one - bold is
-    toggled on `font` for the duration of this call and restored after,
-    since Font objects are shared/mutable and other code may render with
-    the same instance elsewhere."""
-    font.set_bold(True)
-    try:
-        lines = text_wrap.wrap(text, font, _TITLE_MAX_WIDTH)
-        line_h = font.get_linesize()
-        top = _SCREEN_TITLE_Y - (len(lines) * line_h) // 2
-        for i, line in enumerate(lines):
-            line_surface = font.render(line, True, COLOR_TEXT)
-            surface.blit(line_surface, line_surface.get_rect(centerx=WINDOW_WIDTH // 2, top=top + i * line_h))
-    finally:
-        font.set_bold(False)
+    wrapped across multiple centered lines if it doesn't fit on one at
+    `font`'s size. Pass a larger font (Game.menu_big_font) than the button
+    labels use, for a heading that actually reads as one. Doesn't apply
+    algorithmic bold: `font` is expected to already be a bold-weight face
+    (the bundled LoRes9OTWide-Bold) - stacking pygame's synthetic bold on
+    top of an already-bold pixel font visibly mushes its edges together
+    (confirmed by rendering both ways and comparing)."""
+    lines = text_wrap.wrap(text, font, _TITLE_MAX_WIDTH)
+    line_h = font.get_linesize()
+    top = _SCREEN_TITLE_Y - (len(lines) * line_h) // 2
+    for i, line in enumerate(lines):
+        line_surface = font.render(line, True, COLOR_TEXT)
+        surface.blit(line_surface, line_surface.get_rect(centerx=WINDOW_WIDTH // 2, top=top + i * line_h))
 
 
 def render_screen_frame(surface: pygame.Surface) -> None:

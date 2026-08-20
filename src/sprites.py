@@ -484,6 +484,38 @@ def menu_button_sprite(slot: int, width: int, height: int) -> pygame.Surface | N
     return _cache[key]
 
 
+# --- Bundled fonts (assets/fonts) -----------------------------------------
+# SDL's built-in default font (pygame.font.Font(None, size), used before
+# these were bundled) has real kerning gaps for some letter pairs at some
+# sizes - e.g. "start" was rendering as "sta rt". Both fall back to the
+# default font if their file is missing, same graceful-degradation pattern
+# as every image loader above.
+
+_FONTS_DIR = _ASSETS_DIR / "fonts"
+_font_cache: dict[tuple[str, int], pygame.font.Font] = {}
+
+
+def _load_font(filename: str, size: int) -> pygame.font.Font:
+    key = (filename, size)
+    if key not in _font_cache:
+        path = _FONTS_DIR / filename
+        _font_cache[key] = pygame.font.Font(str(path) if path.exists() else None, size)
+    return _font_cache[key]
+
+
+def body_font(size: int) -> pygame.font.Font:
+    """LiberationSans.ttf - general HUD/gameplay text (numbers, tooltips,
+    inventory, ...) where readability matters more than flavor."""
+    return _load_font("LiberationSans.ttf", size)
+
+
+def menu_font(size: int) -> pygame.font.Font:
+    """LoRes9OTWide-Bold.ttf - the fantasy pixel-styled font for the title/
+    pause/settings/overwrite-confirm screens' headings and buttons, to
+    match their painted backdrop/logo/button art."""
+    return _load_font("LoRes9OTWide-Bold.ttf", size)
+
+
 
 
 

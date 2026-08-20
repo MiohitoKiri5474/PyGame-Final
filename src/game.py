@@ -79,6 +79,7 @@ from sprites import (
     get_magic_orb_sprite,
     get_tool_sprite,
     map_resource_sprite,
+    menu_font,
     monster_sprite,
     nest_sprite,
     npc_sprite,
@@ -110,7 +111,6 @@ CONFIRM_OVERWRITE = "confirm_overwrite"
 PAUSE_MENU = "pause_menu"
 SETTINGS = "settings"
 
-
 class Game:
     def __init__(self):
         pygame.init()
@@ -118,7 +118,9 @@ class Game:
         self.screen = self._create_display(pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
-        self.big_font = pygame.font.Font(None, 40)  # top bar's countdown number
+        self.big_font = pygame.font.Font(None, 40)
+        self.menu_font = menu_font(24)  # title/pause/settings/overwrite-confirm buttons
+        self.menu_big_font = menu_font(40)  # ...and their heading text
 
         self.camera = Camera()
         self.paused = False
@@ -1125,20 +1127,22 @@ class Game:
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         if self.state == TITLE:
-            self.title_screen.render(self.screen, self.font, self.save_exists, big_font=self.big_font)
+            self.title_screen.render(
+                self.screen, self.menu_font, self.save_exists, big_font=self.menu_big_font
+            )
             pygame.display.flip()
             return
         if self.state == CONFIRM_OVERWRITE:
-            self.confirm_dialog.render(self.screen, self.font, big_font=self.big_font)
+            self.confirm_dialog.render(self.screen, self.menu_font, big_font=self.menu_big_font)
             pygame.display.flip()
             return
         if self.state == PAUSE_MENU:
-            self.pause_menu.render(self.screen, self.font, big_font=self.big_font)
+            self.pause_menu.render(self.screen, self.menu_font, big_font=self.menu_big_font)
             pygame.display.flip()
             return
         if self.state == SETTINGS:
             self.settings_screen.render(
-                self.screen, self.font, self.fullscreen, self.sfx_muted, big_font=self.big_font
+                self.screen, self.menu_font, self.fullscreen, self.sfx_muted, big_font=self.menu_big_font
             )
             pygame.display.flip()
             return
