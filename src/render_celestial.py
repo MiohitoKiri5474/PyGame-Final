@@ -67,13 +67,9 @@ def render_celestial_dial(
     round_number: int,
     timer: float,
     duration: float,
-    draw_outline: bool = True,
 ) -> None:
     """Draws the Paper Mario style Celestial Skybox with Sun/Moon rising arc,
-    daytime drifting clouds, twinkling night stars, and countdown timer.
-    draw_outline=False skips the flat dark box frame - the caller's own
-    painted panel art (day_panel.png) already provides one, and the flat
-    one would show up as a redundant second border nested inside it."""
+    daytime drifting clouds, twinkling night stars, and countdown timer."""
     p = max(0.0, min(1.0, timer / max(1.0, duration)))
     remaining = max(0.0, duration - timer)
     time_s = time.monotonic()
@@ -210,8 +206,7 @@ def render_celestial_dial(
 
 
     # 6. Box Outline (Paper Mario Dark Frame)
-    if draw_outline:
-        pygame.draw.rect(surface, (70, 74, 86), rect, 2, border_radius=8)
+    pygame.draw.rect(surface, (70, 74, 86), rect, 2, border_radius=8)
 
     # 7. Badges & Digital Countdown Text
     # Top Day Pill Badge

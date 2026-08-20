@@ -464,16 +464,6 @@ def _ui_panel_sprite(filename: str, width: int, height: int) -> pygame.Surface |
     return _cache[key]
 
 
-def day_panel_sprite(width: int, height: int) -> pygame.Surface | None:
-    """assets/ui/day_panel.png - the round/phase/countdown box's backing card."""
-    return _ui_panel_sprite("day_panel.png", width, height)
-
-
-def magic_panel_sprite(width: int, height: int) -> pygame.Surface | None:
-    """assets/ui/magic_panel.png - the magic spell panel's backing card."""
-    return _ui_panel_sprite("magic_panel.png", width, height)
-
-
 def gameover_panel_sprite(width: int, height: int) -> pygame.Surface | None:
     """assets/ui/gameover_panel.png - the game-over overlay's backing card."""
     return _ui_panel_sprite("gameover_panel.png", width, height)
@@ -540,9 +530,12 @@ def _load_font(filename: str, size: int) -> pygame.font.Font:
 
 
 def body_font(size: int) -> pygame.font.Font:
-    """LiberationSans.ttf - general HUD/gameplay text (numbers, tooltips,
-    inventory, ...) where readability matters more than flavor."""
-    return _load_font("LiberationSans.ttf", size)
+    """Micro5-Regular.ttf - general in-game HUD/gameplay text (buttons,
+    inventory, tooltips, countdown, ...). Metrics-checked against SDL's
+    default font before adoption: within ~0-5% width at every real HUD
+    string tested (a handful of single-digit-percent outliers either way),
+    so existing box layouts sized for the default font don't need retuning."""
+    return _load_font("Micro5-Regular.ttf", size)
 
 
 def menu_font(size: int) -> pygame.font.Font:

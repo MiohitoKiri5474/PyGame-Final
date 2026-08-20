@@ -22,13 +22,12 @@ import pygame
 
 import text_wrap
 from constants import WINDOW_WIDTH
-from sprites import day_panel_sprite, resource_sprite
+from sprites import resource_sprite
 
 _MARGIN = 10
 _PAD = 10
 LEFT_W = 170  # public: magic_panel matches its outer box to this exactly
 _LEFT_MIN_H = 150  # tall enough for the left box's round/phase/ring stack
-_DAY_PANEL_INSET = 18  # keeps the celestial dial's own sky fill off day_panel.png's painted border
 _MIDDLE_GAP = 8
 _RIGHT_COL_W = 150  # matches top_buttons._BUTTON_W / SanctuaryUI's width
 _MAX_HINT_ROWS = 5  # keeps the side hint box's height bounded - see render_side_info
@@ -120,21 +119,14 @@ def render(
     inventory box's bottom, since it shares the left box's x-range but not
     the middle column's."""
     left_rect = pygame.Rect(_MARGIN, _MARGIN, LEFT_W, _LEFT_MIN_H)
-    day_panel = day_panel_sprite(left_rect.width, left_rect.height)
-    if day_panel is not None:
-        surface.blit(day_panel, left_rect)
-        dial_rect = left_rect.inflate(-_DAY_PANEL_INSET * 2, -_DAY_PANEL_INSET * 2)
-    else:
-        dial_rect = left_rect
     if timer is None:
         timer = max(0.0, duration_seconds - remaining_seconds)
     if big_font is None:
         big_font = font
     render_celestial_dial(
-        surface, dial_rect, font, big_font,
+        surface, left_rect, font, big_font,
         phase=phase_label, round_number=round_number,
         timer=timer, duration=duration_seconds,
-        draw_outline=(day_panel is None),
     )
 
     middle_x = left_rect.right + _MARGIN

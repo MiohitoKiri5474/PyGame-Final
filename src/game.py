@@ -75,6 +75,7 @@ from render_buildings import draw_single_building
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
     animal_sprite,
+    body_font,
     gameover_panel_sprite,
     get_arrow_sprite,
     get_magic_orb_sprite,
@@ -119,8 +120,8 @@ class Game:
         pygame.display.set_caption("Colony Defense (WIP)")
         self.screen = self._create_display(pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font(None, 24)
-        self.big_font = pygame.font.Font(None, 40)
+        self.font = body_font(24)
+        self.big_font = body_font(40)
         self.menu_font = menu_font(24)  # title/pause/settings/overwrite-confirm buttons
         self.menu_big_font = menu_font(40)  # ...and their heading text
 
