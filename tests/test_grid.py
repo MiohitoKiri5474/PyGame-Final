@@ -45,6 +45,7 @@ def test_resource_weights_table_covers_wild_resource_and_five_materials():
         "marble",
         "bricks",
         "berries",
+        "mushrooms",
         "raw_stone",
     }
     assert sum(RESOURCE_WEIGHTS.values()) == pytest.approx(1.0)
@@ -67,7 +68,7 @@ def test_weighted_generation_still_leaves_empty_tiles():
     assert any(tile.resource is None for row in grid.tiles for tile in row)
 
 
-@pytest.mark.parametrize("resource", ["crop", "wood", "marble", "bricks", "berries", "raw_stone"])
+@pytest.mark.parametrize("resource", ["crop", "wood", "marble", "bricks", "berries", "mushrooms", "raw_stone"])
 def test_gather_credits_inventory_for_each_material_with_no_gather_task_changes(resource):
     # gather_task.py's on_complete is already generic (world.inventory.add(tile.resource, ...));
     # this proves every new material flows through it correctly with zero edits to that file.

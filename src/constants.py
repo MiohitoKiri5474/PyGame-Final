@@ -147,12 +147,13 @@ COLOR_ROLE_MAGE = (160, 90, 220)
 # (121 tiles at START_CLAIM_RADIUS=5) clears WALL_COST/TOWER_COST with
 # comfortable margin (~2x), matching the old design's affordability margin.
 RESOURCE_WEIGHTS = {
-    None: 0.70,
+    None: 0.68,
     "crop": 0.12,
     "wood": 0.07,
     "bricks": 0.05,
     "marble": 0.02,
     "berries": 0.02,
+    "mushrooms": 0.02,
     "raw_stone": 0.02,
 }
 
