@@ -349,15 +349,26 @@ class Game:
                                 "gravity": 30.0,
                             })
                     elif not self.sanctuary_ui.is_hovering(event.pos):
-                        world_x = event.pos[0] + self.camera.x
-                        world_y = event.pos[1] + self.camera.y
-                        clicked_npc = self._npc_at_world_pos(world_x, world_y)
-                        if clicked_npc is not None and not getattr(clicked_npc, "is_resting", False):
-                            self.dragging_npc = clicked_npc
-                            self.drag_start_pos = event.pos
-                            self.is_dragging = False
-                        else:
+                        # A tile/animal popup menu takes every click while
+                        # open (handle_click's own top-of-function check
+                        # consumes it) - this NPC-drag hit-test must not run
+                        # first, or a click meant for a menu row that happens
+                        # to land on wherever some unrelated NPC is standing
+                        # would get hijacked into starting/"selecting" that
+                        # NPC instead, leaving the menu open with nothing
+                        # chosen (and the NPC oddly shown as selected).
+                        if self.action_menu.visible or self.animal_menu.visible:
                             self.handle_click(event.pos)
+                        else:
+                            world_x = event.pos[0] + self.camera.x
+                            world_y = event.pos[1] + self.camera.y
+                            clicked_npc = self._npc_at_world_pos(world_x, world_y)
+                            if clicked_npc is not None and not getattr(clicked_npc, "is_resting", False):
+                                self.dragging_npc = clicked_npc
+                                self.drag_start_pos = event.pos
+                                self.is_dragging = False
+                            else:
+                                self.handle_click(event.pos)
             elif event.type == pygame.MOUSEMOTION:
                 if self.dragging_npc is not None and self.drag_start_pos is not None:
                     if math.hypot(event.pos[0] - self.drag_start_pos[0], event.pos[1] - self.drag_start_pos[1]) > 6:
