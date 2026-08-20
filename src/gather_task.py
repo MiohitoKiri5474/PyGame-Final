@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from audio import play_sfx
+from blocking import is_mountain_blocked
 from constants import GATHER_WORK_SECONDS, GATHER_YIELD
 from task import Task, TaskType, register_task_type
 
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
 
 def _can_queue(world: "World", tile: "Tile") -> bool:
     x, y = tile
+    if is_mountain_blocked(world.grid, x, y):
+        return False
     t = world.grid.get(x, y)
     if not t.claimed or t.resource is None:
         return False
@@ -21,7 +24,10 @@ def _can_queue(world: "World", tile: "Tile") -> bool:
 
 def _can_perform(world: "World", task: Task) -> bool:
     x, y = task.target
+    if is_mountain_blocked(world.grid, x, y):
+        return False
     return world.grid.in_bounds(x, y) and world.grid.get(x, y).resource is not None
+
 
 
 def _on_complete(world: "World", task: Task) -> bool:
