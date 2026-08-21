@@ -909,7 +909,7 @@
       </ul>
       <div class="nav-actions">
         <button id="bgm-toggle" class="btn-toggle" style="border-color: rgba(245, 197, 66, 0.45); background: rgba(245, 197, 66, 0.12);" title="播放/暫停白天背景音樂">
-          <span id="bgm-icon">🎵</span> <span id="bgm-status">日間配樂 播放</span>
+          <span id="bgm-icon">🎵</span> <span id="bgm-status">日間配樂 已暫停</span>
         </button>
         <button id="sfx-toggle" class="btn-toggle" title="切換遊戲音效">
           <span>🔊</span> <span id="sfx-status">音效 ON</span>
@@ -940,7 +940,7 @@
       </div>
     </div>
     <div class="hero-preview-wrapper">
-      <img id="hero-banner-img" src="assets/hero_banner.jpg" alt="Medievil Hero Banner" class="hero-preview-img" />
+      <img id="hero-banner-img" src="assets/cover.jpg" alt="Medievil Hero Banner" class="hero-preview-img" />
       <div class="hero-stats-badge">
         <div>
           <div class="hero-stat-val">27/27</div>
@@ -993,7 +993,7 @@
       </div>
 
       <div class="cycle-visual">
-        <img id="cycle-visual-img" src="assets/hero_banner.jpg" alt="Cycle Visual" class="cycle-img" />
+        <img id="cycle-visual-img" src="assets/night-gameplay.png" alt="Cycle Visual" class="cycle-img" />
       </div>
     </div>
   </section>
@@ -1502,14 +1502,14 @@
         bgmAudio.play().then(() => {
           bgmPlaying = true;
           document.getElementById('bgm-icon').textContent = '⏸️';
-          document.getElementById('bgm-status').textContent = '日間配樂 暫停';
+          document.getElementById('bgm-status').textContent = '日間配樂 播放中';
           bgmToggle.style.background = 'rgba(245, 197, 66, 0.35)';
         }).catch(e => {
           bgmAudio.src = '../assets/sfx/day_bgm.wav';
           bgmAudio.play().then(() => {
             bgmPlaying = true;
             document.getElementById('bgm-icon').textContent = '⏸️';
-            document.getElementById('bgm-status').textContent = '日間配樂 暫停';
+            document.getElementById('bgm-status').textContent = '日間配樂 播放中';
             bgmToggle.style.background = 'rgba(245, 197, 66, 0.35)';
           });
         });
@@ -1517,7 +1517,7 @@
         bgmAudio.pause();
         bgmPlaying = false;
         document.getElementById('bgm-icon').textContent = '🎵';
-        document.getElementById('bgm-status').textContent = '日間配樂 播放';
+        document.getElementById('bgm-status').textContent = '日間配樂 已暫停';
         bgmToggle.style.background = 'rgba(245, 197, 66, 0.12)';
       }
     });
@@ -1641,7 +1641,6 @@
     // ── Day / Night Mode Toggle ──────────────────────────────────
     let isDay = false;
     const themeBtn = document.getElementById('theme-toggle');
-    const heroBannerImg = document.getElementById('hero-banner-img');
     const cycleVisualImg = document.getElementById('cycle-visual-img');
 
     function setCycleMode(day) {
@@ -1652,8 +1651,7 @@
         document.getElementById('theme-text').textContent = '日間模式';
         document.getElementById('btn-day-cycle').classList.add('active');
         document.getElementById('btn-night-cycle').classList.remove('active');
-        heroBannerImg.src = 'assets/colony_day.jpg';
-        cycleVisualImg.src = 'assets/colony_day.jpg';
+        cycleVisualImg.src = 'assets/day-gameplay.png';
 
         document.getElementById('cycle-info-title').textContent = '☀️ 白天拓荒：繁榮與擴張領地';
         document.getElementById('cycle-info-desc').textContent = '陽光驅散暗夜迷霧。指派農夫在農田栽種小麥、拓荒者擴張邊境、伐木工儲備建材、建造堅固石牆與民房擴充人口上限，並馴服荒野靈駒！';
@@ -1664,8 +1662,7 @@
         document.getElementById('theme-text').textContent = '夜間模式';
         document.getElementById('btn-day-cycle').classList.remove('active');
         document.getElementById('btn-night-cycle').classList.add('active');
-        heroBannerImg.src = 'assets/hero_banner.jpg';
-        cycleVisualImg.src = 'assets/hero_banner.jpg';
+        cycleVisualImg.src = 'assets/night-gameplay.png';
 
         document.getElementById('cycle-info-title').textContent = '🌙 黑夜守城：抵禦血月侵襲';
         document.getElementById('cycle-info-desc').textContent = '地圖邊緣的巢穴將隨時間加速湧出狼人、吸血鬼與巨型殭屍。防禦塔將自動進行遠程齊射，法師可施放殖民地天罰法術，全殲當晚所有怪物可獲得 2 點全域技能天賦點數！';
