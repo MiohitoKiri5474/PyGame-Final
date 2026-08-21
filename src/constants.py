@@ -11,6 +11,23 @@ VIEWPORT_TILES_Y = WINDOW_HEIGHT // TILE_SIZE
 
 CAMERA_PAN_SPEED = 500  # pixels/sec (scaled with the TILE_SIZE 32->40 zoom bump, same tiles/sec pan speed)
 
+# The viewport is exactly WINDOW_WIDTH x WINDOW_HEIGHT (VIEWPORT_TILES_X/Y *
+# TILE_SIZE == WINDOW_WIDTH/HEIGHT), so panning the camera all the way to a
+# map edge used to put that edge's tiles directly behind the fixed HUD
+# chrome (top_bar's left day/magic-panel column, top_buttons/SanctuaryUI's
+# right column, the top inventory bar, build_bar) - unreachable to click on
+# and impossible to see. These let the camera pan a bit past each map edge
+# instead, so the true edge tiles land in the HUD-free area of the screen
+# rather than pinned under it. Each margin is sized to the widest/tallest
+# HUD element touching that edge, rounded up for headroom (e.g. the
+# inventory bar can wrap to more than one row, the magic panel's hint text
+# can wrap too) - values are duplicated here rather than imported from the
+# HUD modules themselves to keep camera.py on the pygame-free test seam.
+CAMERA_MARGIN_LEFT = 190    # top_bar.LEFT_W (170) + its 10px margin, +10 headroom
+CAMERA_MARGIN_RIGHT = 190   # top_buttons/SanctuaryUI column (150 + 10px margin), +30 headroom
+CAMERA_MARGIN_TOP = 100     # top inventory bar, generous enough for 2+ wrapped rows
+CAMERA_MARGIN_BOTTOM = 150  # build_bar, generous over its ~124px measured height
+
 DAY_SECONDS = 120
 NIGHT_SECONDS = 60
 

@@ -2014,8 +2014,14 @@ class Game:
     def render_grid(self) -> None:
 
         cam_x, cam_y = self.camera.x, self.camera.y
-        start_col = cam_x // TILE_SIZE
-        start_row = cam_y // TILE_SIZE
+        # max(0, ...): the camera can now pan a bit past the map edge (see
+        # CAMERA_MARGIN_* in constants.py) so edge tiles clear the HUD, which
+        # means cam_x/cam_y can go negative - clamp so this never indexes
+        # grid.get() with a negative column/row (silent wraparound to the
+        # opposite edge via Python list indexing, not a crash, so it'd
+        # otherwise go unnoticed and draw the wrong tiles).
+        start_col = max(0, cam_x // TILE_SIZE)
+        start_row = max(0, cam_y // TILE_SIZE)
         grid = self.world.grid
 
         mouse_x, mouse_y = pygame.mouse.get_pos()
