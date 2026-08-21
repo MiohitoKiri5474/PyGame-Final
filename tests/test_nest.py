@@ -163,20 +163,30 @@ def test_nest_manager_new_nest_follows_revealed_frontier_when_grid_given():
 
 
 class _FakeTile:
-    def __init__(self, revealed: bool, resource: str | None = None):
+    def __init__(self, revealed: bool, resource: str | None = None, terrain: str | None = None):
         self.revealed = revealed
         self.resource = resource
+        self.terrain = terrain
 
 
 class _FakeGrid:
-    """Minimal duck-typed grid for pinning exact revealed/resource layouts,
-    rather than relying on a real Grid's random terrain/resource rolls."""
+    """Minimal duck-typed grid for pinning exact revealed/resource/terrain
+    layouts, rather than relying on a real Grid's random terrain/resource
+    rolls."""
 
-    def __init__(self, width: int, height: int, revealed: set[tuple[int, int]], resources: dict[tuple[int, int], str]):
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        revealed: set[tuple[int, int]],
+        resources: dict[tuple[int, int], str],
+        terrains: dict[tuple[int, int], str] | None = None,
+    ):
         self.width = width
         self.height = height
+        terrains = terrains or {}
         self._tiles = {
-            (x, y): _FakeTile(revealed=(x, y) in revealed, resource=resources.get((x, y)))
+            (x, y): _FakeTile(revealed=(x, y) in revealed, resource=resources.get((x, y)), terrain=terrains.get((x, y)))
             for x in range(width)
             for y in range(height)
         }
@@ -205,6 +215,32 @@ def test_nest_manager_new_nest_avoids_tiles_with_a_resource():
     frontier = {(0, 1), (0, 2), (0, 3), (4, 1), (4, 2), (4, 3), (1, 0), (2, 0), (3, 0), (1, 4), (2, 4), (3, 4)}
     resources = {t: "wood" for t in frontier if t != (2, 4)}
     grid = _FakeGrid(5, 5, revealed=revealed, resources=resources)
+
+    manager = NestManager(5, 5, nests=[], rng=random.Random(1), grid=grid)
+    manager.update(dt=241.0, round_number=1, phase=DAY)
+
+    assert len(manager.nests) == 1
+    assert (manager.nests[0].x, manager.nests[0].y) == (2, 4)
+
+
+def test_create_initial_nests_avoids_mountain_tiles():
+    # A nest placed on a mountain tile would spawn monsters onto impassable
+    # ground, permanently stuck unable to path anywhere - every frontier
+    # tile except (1, 4) is mountain, so the nest must land there.
+    revealed = {(x, y) for x in range(1, 4) for y in range(1, 4)}
+    frontier = {(0, 1), (0, 2), (0, 3), (4, 1), (4, 2), (4, 3), (1, 0), (2, 0), (3, 0), (1, 4), (2, 4), (3, 4)}
+    terrains = {t: "mountain" for t in frontier if t != (1, 4)}
+    grid = _FakeGrid(5, 5, revealed=revealed, resources={}, terrains=terrains)
+
+    nests = create_initial_nests(5, 5, 1, random.Random(1), grid=grid)
+    assert nests[0].x == 1 and nests[0].y == 4
+
+
+def test_nest_manager_new_nest_avoids_mountain_tiles():
+    revealed = {(x, y) for x in range(1, 4) for y in range(1, 4)}
+    frontier = {(0, 1), (0, 2), (0, 3), (4, 1), (4, 2), (4, 3), (1, 0), (2, 0), (3, 0), (1, 4), (2, 4), (3, 4)}
+    terrains = {t: "mountain" for t in frontier if t != (2, 4)}
+    grid = _FakeGrid(5, 5, revealed=revealed, resources={}, terrains=terrains)
 
     manager = NestManager(5, 5, nests=[], rng=random.Random(1), grid=grid)
     manager.update(dt=241.0, round_number=1, phase=DAY)
