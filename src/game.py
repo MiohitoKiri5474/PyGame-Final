@@ -25,6 +25,7 @@ from constants import (
     COLOR_NIGHT_OVERLAY,
     DAY_NIGHT_FADE_SECONDS,
     COLOR_MONSTER,
+    COLOR_HEALTH_BAR,
     COLOR_HUNGER_BAR,
     COLOR_BAR_BG,
     COLOR_GAME_OVER,
@@ -657,7 +658,10 @@ class Game:
         to - the keyboard-only overlays (priority/skill/NPC-status) block
         every mouse action while open, so cursor just stays default there."""
         if self.priority_ui.visible or self.skill_ui.visible or self.npc_status_ui.visible:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            try:
+                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            except pygame.error:
+                pass
             return
 
         if self.game_over_state.is_over:
@@ -712,12 +716,16 @@ class Game:
             transitioned = self.cycle.update(dt)
             if transitioned and self.cycle.phase == NIGHT:
                 self._monsters_killed_this_night = 0
+                self.nest_manager.on_night_start(self.cycle.round_number)
                 play_sfx("night_howl")
                 play_bgm("night")
 
             scatter_unselected_wildlife(self.world, self.cycle)
             update_npc_tasks(self.world, dt)
             run_ticks(self.world, dt)
+            for b in self.world.buildings:
+                if hasattr(b, "attack_cooldown") and b.attack_cooldown > 0:
+                    b.attack_cooldown = max(0.0, b.attack_cooldown - dt)
 
             for p in self.particles:
                 p["x"] += p["vx"] * dt
@@ -892,8 +900,10 @@ class Game:
                 is_npc_target = hasattr(target, "role")
                 is_mage = hasattr(src, "role") and src.role == ROLE_MAGE
                 is_tower = hasattr(src, "type") and src.type == "Tower"
+                is_knight = hasattr(src, "role") and src.role == ROLE_KNIGHT
 
                 if is_mage:
+                    play_sfx("staff_swing")
                     # Spawn Mage Arcane Magic Orb projectile
                     self.projectiles.append({
                         "type": "magic_orb",
@@ -907,6 +917,7 @@ class Game:
                         "target_is_npc": is_npc_target,
                     })
                 elif is_tower:
+                    play_sfx("arrow_shoot")
                     # Spawn Defense Tower Arrow projectile
                     bx, by = tile_center(src.x, src.y)
                     self.projectiles.append({
@@ -921,19 +932,28 @@ class Game:
                         "target_is_npc": is_npc_target,
                     })
                 else:
+                    if is_knight:
+                        play_sfx("sword_slash")
+
                     # Melee attack: Immediate damage popup & hit confetti
-                    col = (255, 80, 80) if is_npc_target else (255, 220, 60)
+                    is_crit = is_knight and dmg >= 25
+                    popup_text = f"💥CRIT -{int(dmg)}" if is_crit else f"-{int(dmg)}"
+                    if is_crit:
+                        col = (255, 235, 60)
+                    else:
+                        col = (255, 80, 80) if is_npc_target else (255, 220, 60)
+
                     self.particles.append({
                         "type": "damage_num",
-                        "text": f"-{int(dmg)}",
+                        "text": popup_text,
                         "x": target.x + random.uniform(-4, 4),
-                        "y": target.y - 12,
+                        "y": target.y - (16 if is_crit else 12),
                         "vx": random.uniform(-15, 15),
-                        "vy": -55.0,
+                        "vy": -65.0 if is_crit else -55.0,
                         "color": col,
-                        "life": 0.65,
-                        "max_life": 0.65,
-                        "gravity": 40.0,
+                        "life": 0.85 if is_crit else 0.65,
+                        "max_life": 0.85 if is_crit else 0.65,
+                        "gravity": 35.0 if is_crit else 40.0,
                     })
                     confetti_colors = [
                         (255, 220, 50),
@@ -962,7 +982,7 @@ class Game:
                         else:
                             self._spawn_monster_death_fx(target.x, target.y)
 
-            resolve_combat(self.world.npcs, self.monsters, self.world.buildings, on_damage=_on_damage)
+            resolve_combat(self.world.npcs, self.monsters, self.world.buildings, on_damage=_on_damage, dt=dt)
             self._monsters_killed_this_night += monster_count_before_combat - len(self.monsters)
 
             # Trigger Death VFX for any colonist that died (hunger or combat)
@@ -1643,14 +1663,25 @@ class Game:
                 pygame.draw.circle(sweat_surf, (255, 255, 255, 240), (4, 5), 1)
                 self.screen.blit(sweat_surf, (int(sweat_x) - 5, int(sweat_y)))
 
-        # Hunger Bar (above the NPC)
+        # Health & Hunger Bars (above the NPC)
         bar_x = base_sx - bar_w // 2
-        bar_y = base_sy - TILE_SIZE // 2 - bar_h - 4
+        hunger_bar_y = base_sy - TILE_SIZE // 2 - bar_h - 4
+        health_bar_y = hunger_bar_y - bar_h - 2
+
+        # 1. Health Bar (Above Hunger Bar - Green / Red when low)
+        health_ratio = max(0.0, min(1.0, npc.health / npc.max_health))
+        pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, health_bar_y, bar_w, bar_h))
+        h_fill_w = max(0, int(bar_w * health_ratio))
+        if h_fill_w > 0:
+            h_col = (80, 220, 90) if health_ratio > 0.35 else (230, 60, 60)
+            pygame.draw.rect(self.screen, h_col, pygame.Rect(bar_x, health_bar_y, h_fill_w, bar_h))
+
+        # 2. Hunger Bar (Below Health Bar, above NPC head - Amber)
         hunger_ratio = max(0.0, min(1.0, npc.hunger / NPC_MAX_HUNGER))
-        pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, bar_y, bar_w, bar_h))
+        pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(bar_x, hunger_bar_y, bar_w, bar_h))
         fill_w = max(0, int(bar_w * hunger_ratio))
         if fill_w > 0:
-            pygame.draw.rect(self.screen, COLOR_HUNGER_BAR, pygame.Rect(bar_x, bar_y, fill_w, bar_h))
+            pygame.draw.rect(self.screen, COLOR_HUNGER_BAR, pygame.Rect(bar_x, hunger_bar_y, fill_w, bar_h))
 
         # Work-in-progress bar (below the NPC)
         if npc.task is not None and npc.has_arrived:
@@ -1873,6 +1904,17 @@ class Game:
                 self.screen.blit(claw_surf, (screen_x - 19, screen_y - 19))
         else:
             pygame.draw.circle(self.screen, COLOR_MONSTER, (screen_x, screen_y), NPC_RADIUS)
+
+        # Monster Health Bar (above monster head)
+        bar_w = TILE_SIZE - 4
+        bar_h = 4
+        mbar_x = screen_x - bar_w // 2
+        mbar_y = screen_y - TILE_SIZE // 2 - bar_h - 4
+        m_ratio = max(0.0, min(1.0, monster.health / monster.max_health))
+        pygame.draw.rect(self.screen, COLOR_BAR_BG, pygame.Rect(mbar_x, mbar_y, bar_w, bar_h))
+        m_fill_w = max(0, int(bar_w * m_ratio))
+        if m_fill_w > 0:
+            pygame.draw.rect(self.screen, COLOR_HEALTH_BAR, pygame.Rect(mbar_x, mbar_y, m_fill_w, bar_h))
 
     def render_monsters(self) -> None:
         cam_x, cam_y = self.camera.x, self.camera.y

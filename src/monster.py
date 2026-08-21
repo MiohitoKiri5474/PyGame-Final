@@ -45,7 +45,12 @@ class Monster:
         self.is_moving = False
         self.attack_timer = 0.0
         self.hit_timer = 0.0
+        self.attack_cooldown = 0.0
         self.combat_target: tuple[float, float] | None = None
+        # Gates how often combat.resolve_combat lets this monster land a
+        # hit - separate from attack_timer above, which is purely the
+        # swing animation's visual duration and never gated combat before.
+        self.attack_cooldown = 0.0
 
     @property
     def has_arrived(self) -> bool:
@@ -107,6 +112,7 @@ class Monster:
         self._tick_freeze(dt)
         self.attack_timer = max(0.0, self.attack_timer - dt)
         self.hit_timer = max(0.0, self.hit_timer - dt)
+        self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
 
         if self.is_frozen:
             self.is_moving = False
@@ -189,8 +195,16 @@ def retarget_monster(monster: Monster, world) -> None:
     start = tile_at(monster.x, monster.y)
 
     target = None
-    if world.npcs:
-        nearest_npc = min(world.npcs, key=lambda npc: math.hypot(npc.x - monster.x, npc.y - monster.y))
+    living_npcs = [npc for npc in world.npcs if not getattr(npc, "is_dead", False)]
+    if living_npcs:
+        def _threat_dist(npc):
+            d = math.hypot(npc.x - monster.x, npc.y - monster.y)
+            # Knights draw monster aggro / act as front-line defenders
+            if getattr(npc, "role", None) == "Knight":
+                return max(0.0, d - 60.0)
+            return d
+
+        nearest_npc = min(living_npcs, key=_threat_dist)
         target = tile_at(nearest_npc.x, nearest_npc.y)
     if target is None:
         target = nearest_claimed_tile(world.grid, start)

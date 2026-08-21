@@ -94,7 +94,12 @@ class NPC:
         self.display_facing_left = False
         self.attack_timer = 0.0
         self.hit_timer = 0.0
+        self.attack_cooldown = 0.0
         self.combat_target: tuple[float, float] | None = None
+        # Gates how often combat.resolve_combat lets this NPC land a hit -
+        # separate from attack_timer above, which is purely the swing
+        # animation's visual duration and never gated combat before.
+        self.attack_cooldown = 0.0
 
     @property
     def has_arrived(self) -> bool:
@@ -151,10 +156,12 @@ class NPC:
             self.path = []
             self.attack_timer = 0.0
             self.hit_timer = 0.0
+            self.attack_cooldown = 0.0
             return
 
         self.attack_timer = max(0.0, self.attack_timer - dt)
         self.hit_timer = max(0.0, self.hit_timer - dt)
+        self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
 
         # Environmental Terrain Hazards & Status Effects
         cur_terrain = "plain"

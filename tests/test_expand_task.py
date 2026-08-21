@@ -18,6 +18,7 @@ def test_can_queue_accepts_unclaimed_frontier_tile():
     world = World(npc_count=0)
     cx, cy = world.grid.width // 2, world.grid.height // 2
     frontier = (cx + START_CLAIM_RADIUS + 1, cy)
+    world.grid.get(*frontier).terrain = "plain"
     assert not world.grid.get(*frontier).claimed
 
     assert TASK_TYPES["Expand"].can_queue(world, frontier)
