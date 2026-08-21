@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import pygame
 
+import text_wrap
 from constants import COLOR_BG, COLOR_TEXT, WINDOW_HEIGHT, WINDOW_WIDTH
 from sprites import menu_button_sprite
 
 BUTTON_WIDTH = 320  # wide enough to read as deliberate, not a leftover default-sized control
 BUTTON_HEIGHT = 56
-BUTTON_GAP = 8
+BUTTON_GAP = 12  # vertical gap between stacked rows - capped by the WINDOW_HEIGHT budget below (see the assert)
+BUTTON_GAP_HORIZONTAL = 24  # gap between side-by-side buttons (ConfirmOverwriteDialog's Yes/No) - not height-budget-limited, so free to be wider
 ROW_HEIGHT = BUTTON_HEIGHT + BUTTON_GAP
 
 BUTTON_BG = (60, 64, 80)
@@ -31,7 +33,8 @@ BUTTON_BORDER = (140, 150, 180)
 
 _SCREEN_TITLE_Y = WINDOW_HEIGHT // 3
 _FRAME_MARGIN = 24
-_TITLE_CLEARANCE = 40  # gap between the screen title text and the first button row
+_TITLE_CLEARANCE = 30  # gap between the screen title text and the first button row
+_TITLE_MAX_WIDTH = WINDOW_WIDTH - 160  # wrap width for render_screen_title, margin each side
 
 # Tallest screen at each level, in rows - keep these equal to the actual
 # max (TitleScreen uses 3, PauseMenu uses 4; SettingsScreen uses 3, only
@@ -66,6 +69,16 @@ def hit_test(pos: tuple[int, int], rect_labels: list[tuple[pygame.Rect, str]]) -
     return None
 
 
+# The 3 button-bar crops aren't vertically symmetric within their own
+# bounding box - slot 1's banner flourish hangs down-left, slot 3's hangs
+# down-right, pulling each crop's *geometric* center below the plain bar's
+# own center (slot 2 is nearly symmetric, just a small vine-corner
+# imbalance). Measured directly from the asset: how far below the crop's
+# geometric center the bar's own center actually sits, as a fraction of
+# the crop's height. Centering the raw crop on `rect` (as if this were 0
+# for every slot) left slot 1's label rendering visibly high above the
+# bar's middle - this corrects for it so the label always lands on the
+# bar's true center regardless of which slot's flourish is heavier.
 _BUTTON_SLOT_OFFSETS = {
     1: 28.5 / 331,   # top row: banner flourish on top-left
     2: 11.0 / 298,   # middle row: symmetric plain stone
@@ -95,9 +108,20 @@ def render_button(
 
 
 def render_screen_title(surface: pygame.Surface, font: pygame.font.Font, text: str) -> None:
-    """The heading text every menu-style screen shows above its buttons."""
-    title_surface = font.render(text, True, COLOR_TEXT)
-    surface.blit(title_surface, title_surface.get_rect(center=(WINDOW_WIDTH // 2, _SCREEN_TITLE_Y)))
+    """The heading text every menu-style screen shows above its buttons -
+    wrapped across multiple centered lines if it doesn't fit on one at
+    `font`'s size. Pass a larger font (Game.menu_big_font) than the button
+    labels use, for a heading that actually reads as one. Doesn't apply
+    algorithmic bold: `font` is expected to already be a bold-weight face
+    (the bundled LoRes9OTWide-Bold) - stacking pygame's synthetic bold on
+    top of an already-bold pixel font visibly mushes its edges together
+    (confirmed by rendering both ways and comparing)."""
+    lines = text_wrap.wrap(text, font, _TITLE_MAX_WIDTH)
+    line_h = font.get_linesize()
+    top = _SCREEN_TITLE_Y - (len(lines) * line_h) // 2
+    for i, line in enumerate(lines):
+        line_surface = font.render(line, True, COLOR_TEXT)
+        surface.blit(line_surface, line_surface.get_rect(centerx=WINDOW_WIDTH // 2, top=top + i * line_h))
 
 
 def render_screen_frame(surface: pygame.Surface) -> None:

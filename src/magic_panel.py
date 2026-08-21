@@ -34,6 +34,7 @@ _GAP = 8
 _OUTER_PAD = 10
 _HEADER_H = 22
 _DESC_LINE_H = 16
+_DESC_GAP = 10  # breathing room between the description text and the Fire button below it
 _WIDTH = top_bar.LEFT_W - _OUTER_PAD * 2  # button content width, box matches top_bar's left box exactly
 
 _BG = (24, 26, 32)
@@ -68,7 +69,7 @@ def _desc_lines(font: pygame.font.Font) -> list[str]:
 
 def _outer_rect(y: int, font: pygame.font.Font) -> pygame.Rect:
     desc_h = len(_desc_lines(font)) * _DESC_LINE_H
-    height = _OUTER_PAD * 2 + _HEADER_H + desc_h + len(_ORDER) * _BUTTON_H + (len(_ORDER) - 1) * _GAP
+    height = _OUTER_PAD * 2 + _HEADER_H + desc_h + _DESC_GAP + len(_ORDER) * _BUTTON_H + (len(_ORDER) - 1) * _GAP
     return pygame.Rect(_MARGIN, y + _MARGIN, top_bar.LEFT_W, height)
 
 
@@ -76,7 +77,7 @@ def _rects(y: int, font: pygame.font.Font) -> dict[str, pygame.Rect]:
     outer = _outer_rect(y, font)
     desc_h = len(_desc_lines(font)) * _DESC_LINE_H
     rects = {}
-    top = outer.y + _OUTER_PAD + _HEADER_H + desc_h
+    top = outer.y + _OUTER_PAD + _HEADER_H + desc_h + _DESC_GAP
     for spell in _ORDER:
         rects[spell] = pygame.Rect(outer.x + _OUTER_PAD, top, _WIDTH, _BUTTON_H)
         top += _BUTTON_H + _GAP

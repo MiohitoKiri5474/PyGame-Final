@@ -145,9 +145,10 @@ class BuildBar:
         pygame.draw.rect(surface, _OUTER_BG, outer, border_radius=8)
         pygame.draw.rect(surface, _OUTER_BORDER, outer, 2, border_radius=8)
 
-        font.set_bold(True)
+        # Micro5 is a pixel-styled font - SDL's synthetic bold (set_bold)
+        # smears its pixel edges together instead of thickening them
+        # cleanly, so this header renders at the font's own regular weight.
         header_surf = font.render(_HEADER_TEXT, True, _HEADER_COLOR)
-        font.set_bold(False)
         surface.blit(header_surf, (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD - 2))
         desc_surf = font.render(_DESC_TEXT, True, _DESC_COLOR)
         surface.blit(desc_surf, (outer.x + _OUTER_PAD, outer.y + _OUTER_PAD + _HEADER_H - 4))
@@ -169,7 +170,18 @@ class BuildBar:
             label = building_label(task_type)
             icon = building_icon(label, _ICON)
             if icon is not None:
-                surface.blit(icon, icon.get_rect(topleft=(rect.x + 10, rect.y + 6)))
+                # building_icon scales by height only, so a building whose art
+                # is wider than tall (Wall, AnimalPen) can come back wider
+                # than _ICON and run into the label text drawn right after it
+                # at a fixed offset - re-cap to a max width here too ("contain"
+                # fit) rather than widening every button's text offset for it.
+                if icon.get_width() > _ICON:
+                    scale = _ICON / icon.get_width()
+                    icon = pygame.transform.smoothscale(
+                        icon, (_ICON, max(1, round(icon.get_height() * scale)))
+                    )
+                icon_rect = icon.get_rect(midleft=(rect.x + 10, rect.y + 6 + _ICON // 2))
+                surface.blit(icon, icon_rect)
 
             surface.blit(font.render(label, True, _LABEL), (rect.x + 10 + _ICON + 10, rect.y + 9))
             surface.blit(font.render(f"[{i}]", True, _KEY_HINT), (rect.right - 30, rect.y + 9))

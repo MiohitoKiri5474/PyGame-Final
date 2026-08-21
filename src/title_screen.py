@@ -7,7 +7,7 @@ import pygame
 from constants import WINDOW_HEIGHT, WINDOW_WIDTH
 from sprites import other_background_sprite, title_background_sprite, title_logo_sprite
 from ui_layout import (
-    BUTTON_GAP,
+    BUTTON_GAP_HORIZONTAL,
     BUTTON_HEIGHT,
     BUTTON_WIDTH,
     FIRST_LEVEL_TOP,
@@ -37,7 +37,10 @@ class TitleScreen:
             rect_labels.append((self.continue_rect, "continue"))
         return hit_test(pos, rect_labels)
 
-    def render(self, surface: pygame.Surface, font: pygame.font.Font, save_exists: bool) -> None:
+    def render(
+        self, surface: pygame.Surface, font: pygame.font.Font, save_exists: bool,
+        big_font: pygame.font.Font | None = None,
+    ) -> None:
         background = title_background_sprite(WINDOW_WIDTH, WINDOW_HEIGHT)
         render_screen_background(surface, background)
 
@@ -48,7 +51,7 @@ class TitleScreen:
             )
             surface.blit(logo, logo_rect)
         else:
-            render_screen_title(surface, font, _TITLE_TEXT)
+            render_screen_title(surface, big_font or font, _TITLE_TEXT)
 
         # Fixed identity->slot mapping (Start=1, Continue=2, Settings=3) so
         # each button's flourish stays the same regardless of whether
@@ -66,16 +69,20 @@ class ConfirmOverwriteDialog:
         # at FIRST_LEVEL_TOP - see ui_layout.py for why these must differ.
         y = SECOND_LEVEL_TOP
         self.yes_rect = pygame.Rect(
-            WINDOW_WIDTH // 2 - BUTTON_WIDTH - BUTTON_GAP // 2, y, BUTTON_WIDTH, BUTTON_HEIGHT
+            WINDOW_WIDTH // 2 - BUTTON_WIDTH - BUTTON_GAP_HORIZONTAL // 2, y, BUTTON_WIDTH, BUTTON_HEIGHT
         )
-        self.no_rect = pygame.Rect(WINDOW_WIDTH // 2 + BUTTON_GAP // 2, y, BUTTON_WIDTH, BUTTON_HEIGHT)
+        self.no_rect = pygame.Rect(
+            WINDOW_WIDTH // 2 + BUTTON_GAP_HORIZONTAL // 2, y, BUTTON_WIDTH, BUTTON_HEIGHT
+        )
 
     def handle_click(self, pos: tuple[int, int]) -> str | None:
         return hit_test(pos, [(self.yes_rect, "yes"), (self.no_rect, "no")])
 
-    def render(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+    def render(
+        self, surface: pygame.Surface, font: pygame.font.Font, big_font: pygame.font.Font | None = None
+    ) -> None:
         background = other_background_sprite(WINDOW_WIDTH, WINDOW_HEIGHT)
         render_screen_background(surface, background)
-        render_screen_title(surface, font, _WARNING_TEXT)
+        render_screen_title(surface, big_font or font, _WARNING_TEXT)
         render_button(surface, font, self.yes_rect, "Yes, start new")
         render_button(surface, font, self.no_rect, "No, go back")

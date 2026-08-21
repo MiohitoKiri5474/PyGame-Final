@@ -7,7 +7,7 @@ import pygame
 from constants import DAY_SECONDS, NIGHT_SECONDS
 
 
-from sprites import cloud_sprite, moon_sprite, sun_sprite
+from sprites import body_font, cloud_sprite, moon_sprite, sun_sprite
 
 
 
@@ -53,7 +53,7 @@ def _get_timer_font() -> pygame.font.Font:
     except (pygame.error, Exception):
         _TIMER_FONT = None
     if _TIMER_FONT is None:
-        _TIMER_FONT = pygame.font.Font(None, 50)
+        _TIMER_FONT = body_font(50)
     return _TIMER_FONT
 
 

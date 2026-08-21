@@ -448,6 +448,32 @@ def other_background_sprite(width: int, height: int) -> pygame.Surface | None:
     return _cache[key]
 
 
+def _ui_panel_sprite(filename: str, width: int, height: int) -> pygame.Surface | None:
+    """A single opaque HUD-panel card (day_panel.png/magic_panel.png/
+    gameover_panel.png/restart_button.png) stretched to exactly (width,
+    height) - each was drawn close to its target box's own aspect ratio,
+    so the stretch is minor. Unlike the full-screen backgrounds this isn't
+    cropped, since these need their whole design (corner flourishes etc.)
+    to stay intact within the box, not overflow and get cut off."""
+    path = _ASSETS_DIR / "ui" / filename
+    key = (f"ui/{filename}", width, height)
+    if key not in _cache:
+        if not path.exists():
+            return None
+        _cache[key] = pygame.transform.smoothscale(_load_image(path), (width, height))
+    return _cache[key]
+
+
+def gameover_panel_sprite(width: int, height: int) -> pygame.Surface | None:
+    """assets/ui/gameover_panel.png - the game-over overlay's backing card."""
+    return _ui_panel_sprite("gameover_panel.png", width, height)
+
+
+def restart_button_sprite(width: int, height: int) -> pygame.Surface | None:
+    """assets/ui/restart_button.png - the game-over screen's Restart button."""
+    return _ui_panel_sprite("restart_button.png", width, height)
+
+
 def title_logo_sprite(max_width: int) -> pygame.Surface | None:
     """assets/ui/logo.png, scaled to max_width wide (aspect preserved)."""
     path = _ASSETS_DIR / "ui" / "logo.png"
@@ -482,6 +508,41 @@ def menu_button_sprite(slot: int, width: int, height: int) -> pygame.Surface | N
         crop = sheet.subsurface(_BUTTON_SLOT_RECTS[slot]).copy()
         _cache[key] = pygame.transform.smoothscale(crop, (width, height))
     return _cache[key]
+
+
+# --- Bundled fonts (assets/fonts) -----------------------------------------
+# SDL's built-in default font (pygame.font.Font(None, size), used before
+# these were bundled) has real kerning gaps for some letter pairs at some
+# sizes - e.g. "start" was rendering as "sta rt". Both fall back to the
+# default font if their file is missing, same graceful-degradation pattern
+# as every image loader above.
+
+_FONTS_DIR = _ASSETS_DIR / "fonts"
+_font_cache: dict[tuple[str, int], pygame.font.Font] = {}
+
+
+def _load_font(filename: str, size: int) -> pygame.font.Font:
+    key = (filename, size)
+    if key not in _font_cache:
+        path = _FONTS_DIR / filename
+        _font_cache[key] = pygame.font.Font(str(path) if path.exists() else None, size)
+    return _font_cache[key]
+
+
+def body_font(size: int) -> pygame.font.Font:
+    """Micro5-Regular.ttf - general in-game HUD/gameplay text (buttons,
+    inventory, tooltips, countdown, ...). Metrics-checked against SDL's
+    default font before adoption: within ~0-5% width at every real HUD
+    string tested (a handful of single-digit-percent outliers either way),
+    so existing box layouts sized for the default font don't need retuning."""
+    return _load_font("Micro5-Regular.ttf", size)
+
+
+def menu_font(size: int) -> pygame.font.Font:
+    """LoRes9OTWide-Bold.ttf - the fantasy pixel-styled font for the title/
+    pause/settings/overwrite-confirm screens' headings and buttons, to
+    match their painted backdrop/logo/button art."""
+    return _load_font("LoRes9OTWide-Bold.ttf", size)
 
 
 

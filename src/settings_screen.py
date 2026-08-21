@@ -40,11 +40,12 @@ class SettingsScreen:
         )
 
     def render(
-        self, surface: pygame.Surface, font: pygame.font.Font, fullscreen: bool, sfx_muted: bool
+        self, surface: pygame.Surface, font: pygame.font.Font, fullscreen: bool, sfx_muted: bool,
+        big_font: pygame.font.Font | None = None,
     ) -> None:
         background = other_background_sprite(WINDOW_WIDTH, WINDOW_HEIGHT)
         render_screen_background(surface, background)
-        render_screen_title(surface, font, _TITLE_TEXT)
+        render_screen_title(surface, big_font or font, _TITLE_TEXT)
         render_button(surface, font, self.fullscreen_rect, f"Fullscreen: {'On' if fullscreen else 'Off'}")
         render_button(surface, font, self.mute_sfx_rect, f"Mute SFX: {'On' if sfx_muted else 'Off'}")
         render_button(surface, font, self.back_rect, "Back")

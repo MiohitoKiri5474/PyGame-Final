@@ -22,3 +22,23 @@ def wrap(text: str, font: pygame.font.Font, max_width: int) -> list[str]:
     if current:
         lines.append(current)
     return lines
+
+
+def wrap_groups(text: str, font: pygame.font.Font, max_width: int, sep: str = "   ") -> list[str]:
+    """Like wrap(), but for hint bars built from `sep`-separated "[key]
+    label" groups (e.g. "[Up/Down] select   [K/Esc] close") - treats each
+    group as an atomic unit that's never split across lines, so a key never
+    gets separated from its own label mid-line."""
+    groups = [g for g in text.split(sep) if g]
+    lines: list[str] = []
+    current = ""
+    for group in groups:
+        candidate = f"{current}{sep}{group}" if current else group
+        if current and font.size(candidate)[0] > max_width:
+            lines.append(current)
+            current = group
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines

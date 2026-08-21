@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
+import text_wrap
 from constants import (
     WINDOW_WIDTH,
     WINDOW_HEIGHT,
@@ -131,13 +132,16 @@ class PriorityTableUI:
         row_count = len(self._ensure_priority(alive_npcs[self.selected_npc_index])) if alive_npcs else 0
 
         panel_w = 480
+        hint_text = "[Tab] switch NPC   [Up/Down] select task   [Left/Right] change priority"
+        hint_lines = text_wrap.wrap_groups(hint_text, font, panel_w - pad * 2)
+        hint_line_h = font.get_linesize()
         panel_h = (
             pad * 2
             + (row_h + 8)  # title
             + (row_h + 12)  # NPC tabs
             + 8  # separator gap
             + max(1, row_count) * (row_h + row_gap)
-            + (row_h + 8)  # footer hint
+            + (len(hint_lines) * hint_line_h + 8)  # footer hint
         )
         panel_x = (WINDOW_WIDTH - panel_w) // 2
         panel_y = max(8, (WINDOW_HEIGHT - panel_h) // 2)
@@ -220,10 +224,10 @@ class PriorityTableUI:
             y += row_h + row_gap
 
         # Footer hints
-        y = panel_y + panel_h - row_h - pad
-        hints = "[Tab] switch NPC   [Up/Down] select task   [Left/Right] change priority"
-        hint_surf = font.render(hints, True, _HINT_TEXT)
-        surface.blit(hint_surf, (panel_x + pad, y))
+        y = panel_y + panel_h - len(hint_lines) * hint_line_h - pad
+        for line in hint_lines:
+            surface.blit(font.render(line, True, _HINT_TEXT), (panel_x + pad, y))
+            y += hint_line_h
 
     # ------------------------------------------------------------------
     # Internals

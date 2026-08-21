@@ -76,13 +76,17 @@ from render_buildings import draw_single_building
 from save import SAVE_PATH, load_checkpoint, save_checkpoint
 from sprites import (
     animal_sprite,
+    body_font,
+    gameover_panel_sprite,
     get_arrow_sprite,
     get_magic_orb_sprite,
     get_tool_sprite,
     map_resource_sprite,
+    menu_font,
     monster_sprite,
     nest_sprite,
     npc_sprite,
+    restart_button_sprite,
 )
 from tame_task import idle_spot_near_pen
 from terrain import (
@@ -111,15 +115,16 @@ CONFIRM_OVERWRITE = "confirm_overwrite"
 PAUSE_MENU = "pause_menu"
 SETTINGS = "settings"
 
-
 class Game:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("Colony Defense (WIP)")
         self.screen = self._create_display(pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font(None, 24)
-        self.big_font = pygame.font.Font(None, 40)  # top bar's countdown number
+        self.font = body_font(24)
+        self.big_font = body_font(40)
+        self.menu_font = menu_font(24)  # title/pause/settings/overwrite-confirm buttons
+        self.menu_big_font = menu_font(40)  # ...and their heading text
 
         self.camera = Camera()
         self.paused = False
@@ -568,13 +573,19 @@ class Game:
         if not self.world.grid.in_bounds(gx, gy):
             return
 
-        # A building is armed: place it here (or fall through, if this tile
-        # can't take one - can_queue rejects it silently, same as before).
+        # A building is armed: place it here if this tile can take one.
         if self.build_bar.selected is not None:
             task_type = TASK_TYPES.get(self.build_bar.selected)
             if task_type is not None and task_type.can_queue(self.world, (gx, gy)):
                 self.world.tasks.add(self.build_bar.selected, (gx, gy))
-            return
+                return
+            # This tile can't take the armed building (e.g. it's a resource
+            # tile, not empty claimed ground) - the player's next click here
+            # is far more likely "do something else with this tile" (gather
+            # it, tame it, ...) than "try placing again", so disarm and fall
+            # through to the normal tile-click resolution below instead of
+            # silently eating the click and leaving them stuck armed.
+            self.build_bar.clear()
 
         # Otherwise infer from what's actually on the tile: queue directly
         # when exactly one constructive task applies, ask when there's a real choice
@@ -608,12 +619,22 @@ class Game:
         mounted_rider_ids = {
             a.tamer_npc_id for a in self.world.animals if a.is_mounted and a.tamer_npc_id is not None
         }
+        # Nearest match, not first-in-list-order match - NPCs cluster tightly
+        # around shared resource tiles, so more than one can fall within the
+        # hit-test radius at once. Picking the first one in world.npcs order
+        # regardless of actual distance meant a click clearly on top of one
+        # NPC could silently select a different, merely-nearby one instead -
+        # seen as a selection box appearing on the "wrong" NPC.
+        best: NPC | None = None
+        best_dist = NPC_RADIUS * 1.5
         for npc in self.world.npcs:
             if npc.id in mounted_rider_ids:
                 continue
-            if math.hypot(npc.x - wx, npc.y - wy) <= NPC_RADIUS * 1.5:
-                return npc
-        return None
+            dist = math.hypot(npc.x - wx, npc.y - wy)
+            if dist <= best_dist:
+                best = npc
+                best_dist = dist
+        return best
 
     def _tamed_animal_at_world_pos(self, wx: float, wy: float):
         # Only tamed animals are click-interactive this way - a wild one
@@ -1145,19 +1166,23 @@ class Game:
     def render(self) -> None:
         self.screen.fill(COLOR_BG)
         if self.state == TITLE:
-            self.title_screen.render(self.screen, self.font, self.save_exists)
+            self.title_screen.render(
+                self.screen, self.menu_font, self.save_exists, big_font=self.menu_big_font
+            )
             pygame.display.flip()
             return
         if self.state == CONFIRM_OVERWRITE:
-            self.confirm_dialog.render(self.screen, self.font)
+            self.confirm_dialog.render(self.screen, self.menu_font, big_font=self.menu_big_font)
             pygame.display.flip()
             return
         if self.state == PAUSE_MENU:
-            self.pause_menu.render(self.screen, self.font)
+            self.pause_menu.render(self.screen, self.menu_font, big_font=self.menu_big_font)
             pygame.display.flip()
             return
         if self.state == SETTINGS:
-            self.settings_screen.render(self.screen, self.font, self.fullscreen, self.sfx_muted)
+            self.settings_screen.render(
+                self.screen, self.menu_font, self.fullscreen, self.sfx_muted, big_font=self.menu_big_font
+            )
             pygame.display.flip()
             return
         self.render_grid()
@@ -2120,31 +2145,45 @@ class Game:
     def _game_over_restart_button_rect(self) -> pygame.Rect:
         panel = self._game_over_panel_rect()
         btn_w, btn_h = 200, 48
-        return pygame.Rect(panel.centerx - btn_w // 2, panel.bottom - btn_h - 24, btn_w, btn_h)
+        return pygame.Rect(panel.centerx - btn_w // 2, panel.bottom - btn_h - 38, btn_w, btn_h)
 
 
     def render_game_over(self) -> None:
         if not self.game_over_state.is_over:
             return
 
-        panel = self._game_over_panel_rect()
-        overlay = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
-        overlay.fill((20, 22, 28, 235))
-        self.screen.blit(overlay, panel.topleft)
-        pygame.draw.rect(self.screen, COLOR_GAME_OVER, panel, 3, border_radius=8)
+        # Full-screen dim behind the panel - darker than the night sky tint
+        # so the panel reads as a clear modal even during a daytime death.
+        dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 210))
+        self.screen.blit(dim, (0, 0))
 
-        title_surf = self.big_font.render("GAME OVER", True, COLOR_GAME_OVER)
-        self.screen.blit(title_surf, title_surf.get_rect(center=(panel.centerx, panel.top + 54)))
+        panel = self._game_over_panel_rect()
+        panel_art = gameover_panel_sprite(panel.width, panel.height)
+        if panel_art is not None:
+            self.screen.blit(panel_art, panel)
+        else:
+            overlay = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
+            overlay.fill((20, 22, 28, 235))
+            self.screen.blit(overlay, panel.topleft)
+            pygame.draw.rect(self.screen, COLOR_GAME_OVER, panel, 3, border_radius=8)
+
+        title_surf = self.menu_big_font.render("GAME OVER", True, COLOR_GAME_OVER)
+        self.screen.blit(title_surf, title_surf.get_rect(center=(panel.centerx, panel.top + 94)))
 
         score_surf = self.font.render(f"Score: Round {self.game_over_state.score}", True, COLOR_TEXT)
-        self.screen.blit(score_surf, score_surf.get_rect(center=(panel.centerx, panel.top + 108)))
+        self.screen.blit(score_surf, score_surf.get_rect(center=(panel.centerx, panel.top + 130)))
 
         best_surf = self.font.render(f"Best Score: Round {self.best_score}", True, COLOR_DAY_BANNER)
-        self.screen.blit(best_surf, best_surf.get_rect(center=(panel.centerx, panel.top + 138)))
+        self.screen.blit(best_surf, best_surf.get_rect(center=(panel.centerx, panel.top + 158)))
 
         button = self._game_over_restart_button_rect()
-        hovered = button.collidepoint(pygame.mouse.get_pos())
-        pygame.draw.rect(self.screen, (48, 56, 72) if hovered else (30, 33, 40), button, border_radius=6)
-        pygame.draw.rect(self.screen, COLOR_GAME_OVER, button, 2, border_radius=6)
+        button_art = restart_button_sprite(button.width + 16, button.height + 12)
+        if button_art is not None:
+            self.screen.blit(button_art, button_art.get_rect(center=button.center))
+        else:
+            hovered = button.collidepoint(pygame.mouse.get_pos())
+            pygame.draw.rect(self.screen, (48, 56, 72) if hovered else (30, 33, 40), button, border_radius=6)
+            pygame.draw.rect(self.screen, COLOR_GAME_OVER, button, 2, border_radius=6)
         btn_label = self.font.render("Restart  [R]", True, COLOR_TEXT)
         self.screen.blit(btn_label, btn_label.get_rect(center=button.center))
